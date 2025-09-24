@@ -1,6 +1,6 @@
 project(Intonator VERSION 0.0.1)
 
-juce_add_plugin(verb
+juce_add_plugin(Intonator
         VERSION 0.0.1
         # ICON_BIG ...
         # ICON_SMALL ...
