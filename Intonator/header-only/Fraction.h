@@ -27,6 +27,10 @@ public:
         }
     }
 
+    float toFloat() const {
+        return static_cast<float>(num) / static_cast<float>(den);
+    }
+
     Fraction operator*(const Fraction& other) const {
         return Fraction(num * other.num, den * other.den);
     }

@@ -9,6 +9,5 @@ class RootNote : public Note {
 public:
     RootNote(float freq, int s, int e)
         : Note(freq, s, e) {
-        // children vector default constructed empty
     }
 };
