@@ -9,6 +9,16 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     setSize (400, 300);
+
+    MPEslider.setSliderStyle(juce::Slider::SliderStyle::LinearBarVertical);
+    MPEslider.setRange(-100.0,100.0,1.0);
+    MPEslider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+    MPEslider.setPopupDisplayEnabled(true, false, this);
+    MPEslider.setTextValueSuffix("MPE pitch bend");
+    MPEslider.setValue(0.0);
+
+    addAndMakeVisible(&MPEslider);
+
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
