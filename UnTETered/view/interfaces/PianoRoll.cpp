@@ -7,6 +7,7 @@
 PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc) : processor(proc) {
     initialisePotentialRatios();
     setWantsKeyboardFocus(true);
+    startTimerHz(30);
 }
 
 void PianoRoll::initialisePotentialRatios() {
@@ -39,6 +40,7 @@ void PianoRoll::paint(juce::Graphics& g) {
     drawBarLines(g);
     drawNotes(g);
     drawRectDragged(g);
+    drawPlayhead(g);
 }
 
 void PianoRoll::fillRect(Rect& rect, juce::Graphics& g) {
@@ -80,9 +82,7 @@ void PianoRoll::drawBarLines(juce::Graphics& g) const {
 }
 
 int PianoRoll::getNrOfSubDivs() const {
-    auto playHead = processor.getPlayHead();
-    int nrOfSubDivs = playHead ? playHead->getPosition()->getTimeSignature()->numerator : 4;
-    return nrOfSubDivs;
+    return cachedNumerator > 0 ? cachedNumerator : 4;
 }
 
 void PianoRoll::drawNotes(juce::Graphics& g) const {
@@ -152,6 +152,14 @@ void PianoRoll::drawRectDragged(juce::Graphics& g) const {
         g.drawRect(draggedRect.value());
     }
 }
+
+void PianoRoll::drawPlayhead(juce::Graphics &g) const {
+    auto bounds = getLocalBounds();
+    auto playheadX = getXPxFromBar(playheadBarPos);
+    g.setColour(juce::Colour::fromRGB(255, 255, 255));
+    g.drawVerticalLine(playheadX, 0, static_cast<float>(bounds.getHeight()));
+}
+
 
 float PianoRoll::getHueFromYPx(int y) const {
     double freq = getFreqFromYPx(y);
@@ -294,6 +302,12 @@ Rect PianoRoll::mirrorYPx(Rect rect) const {
     return {rect.getX(), getHeight() - rect.getY() - 1 - rect.getHeight(), rect.getWidth(), rect.getHeight()};
 }
 
+void PianoRoll::setPlayheadPosFromPoint(Point point) {
+    float bar = getBarSubFromXPx(point.x);
+    playheadBarPos = bar;
+}
+
+
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     Point posPx = event.getPosition();
     int nrOfClicks = (event.getNumberOfClicks()-1)%2+1;
@@ -357,12 +371,14 @@ void PianoRoll::scroll(const PointF deltaXY) {
 }
 
 void PianoRoll::handleSingleClick(Point px) {
-    if (auto note = getNoteAt(px))
+    if (auto note = getNoteAt(px)) {
         selectNote(note, px);
-    else if (auto potentialChild = getPotentialRatioAt(px))
+    } else if (auto potentialChild = getPotentialRatioAt(px)) {
         selectPotentialRatio(potentialChild.value());
-    else
+    } else {
         unselectNote();
+        setPlayheadPosFromPoint(px);
+    }
 }
 
 void PianoRoll::handleDoubleClick(Point px) {
@@ -406,4 +422,30 @@ void PianoRoll::deleteSelection() {
         noteRegion.deleteNote(note);
 
     selectedNotesDragged.clear();
+}
+
+void PianoRoll::timerCallback() {
+    const auto& transportState = processor.getTransportState();
+
+    cachedPpqPosition = transportState.ppqPosition.load(std::memory_order_relaxed);
+    cachedNumerator = transportState.numerator.load(std::memory_order_relaxed);
+    cachedDenominator = transportState.denominator.load(std::memory_order_relaxed);
+
+    DBG(cachedPpqPosition + cachedNumerator + cachedDenominator);
+    playheadBarPos = static_cast<float>(ppqToBar(cachedPpqPosition, cachedNumerator, cachedDenominator));
+
+    DBG(playheadBarPos);
+
+    repaint();
+}
+
+double PianoRoll::getQuarterNotesPerBar(int numerator, int denominator) {
+    return denominator > 0
+        ? 4.0 * static_cast<double>(numerator) / static_cast<double>(denominator)
+        : 4.0;
+}
+
+double PianoRoll::ppqToBar(double ppq, int numerator, int denominator) {
+    const auto qNPerBar = getQuarterNotesPerBar(numerator, denominator);
+    return qNPerBar > 0.0 ? ppq / qNPerBar : 0.0;
 }

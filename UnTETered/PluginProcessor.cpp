@@ -121,6 +121,11 @@ bool UnTETeredAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts
 void UnTETeredAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
+    if (auto* playHead = getPlayHead()) {
+        setTransportStateFromHost(playHead);
+        //playMidi();
+    }
+
     for (const auto& midi : midiBuffer)
         DBG(midi.getMessage().getDescription());
     std::swap(midiBuffer, midiMessages);
@@ -151,6 +156,36 @@ void UnTETeredAudioProcessor::setStateInformation (const void* data, int sizeInB
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     juce::ignoreUnused (data, sizeInBytes);
+}
+
+const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
+
+void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* playHead) {
+    if (playHead) {
+        if (auto pos = playHead->getPosition()) {
+            transportState.isPlaying.store(pos->getIsPlaying(), std::memory_order_relaxed);
+            transportState.isRecording.store(pos->getIsRecording(), std::memory_order_relaxed);
+
+            if (auto bpm = pos->getBpm())
+                transportState.bpm.store(*bpm, std::memory_order_relaxed);
+            if (auto ppq = pos->getPpqPosition())
+                transportState.ppqPosition.store(*ppq, std::memory_order_relaxed);
+            if (auto samples = pos->getTimeInSamples())
+                transportState.timeInSamples.store(*samples, std::memory_order_relaxed);
+
+            if (auto sig = pos->getTimeSignature()) {
+                transportState.numerator.store(sig->numerator, std::memory_order_relaxed);
+                transportState.denominator.store(sig->denominator, std::memory_order_relaxed);
+            }
+        }
+
+        transportState.sampleRate.store(getSampleRate(), std::memory_order_relaxed);
+    }
+}
+
+void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept {
+    hostSeekRequest.targetBar.store(targetBar, std::memory_order_relaxed);
+    hostSeekRequest.pending.store(true , std::memory_order_relaxed);
 }
 
 //==============================================================================

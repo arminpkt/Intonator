@@ -8,7 +8,7 @@
 #include "../../logic/NoteRegion.h"
 #include "../../PluginProcessor.h"
 
-class PianoRoll : public juce::Component {
+class PianoRoll : public juce::Component, private juce::Timer {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 1.0f/24.0f;
     const float SCROLL_FACTOR = 60.0f;
@@ -26,6 +26,7 @@ public:
     void drawNotes(juce::Graphics& g) const;
     void drawPotentialRatios(juce::Graphics& g) const;
     void drawRectDragged(juce::Graphics& g) const;
+    void drawPlayhead(juce::Graphics& g) const;
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq) ;
     double getFreqFromYPx(int y) const;
@@ -48,6 +49,8 @@ public:
     Point mirrorYPx(Point point) const;
     Rect mirrorYPx(Rect rect) const;
 
+    void setPlayheadPosFromPoint(Point);
+
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& _) override;
@@ -58,6 +61,11 @@ public:
     bool keyPressed(const juce::KeyPress& key) override;
     void deleteSelection();
 
+    void timerCallback() override;
+
+    static double getQuarterNotesPerBar(int numerator, int denominator);
+    static double ppqToBar(double ppq, int numerator, int denominator);
+
 private:
     UnTETeredAudioProcessor& processor;
     NoteRegion noteRegion;
@@ -65,6 +73,7 @@ private:
     int barWidthPx = 100;
     double freqBottomScreen = 200;
     float barLeftScreen = 0;
+    float playheadBarPos = 0;
     std::vector<Fraction> potentialRatios;
     Note* selectedNote{};
     float selectedNoteStart{};
@@ -74,4 +83,8 @@ private:
     std::vector<Note*> selectedNotesDragged;
     std::optional<Rect> draggedRect;
     std::optional<Fraction> selectedPotentialRatio;
+
+    double cachedPpqPosition = 0.0;
+    int cachedNumerator = 4;
+    int cachedDenominator = 4;
 };
