@@ -43,6 +43,15 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    const juce::File midiFile { "/Users/armin/Desktop/7years.mid" };
+
+    juce::MidiFile loadedMidi;
+    juce::MidiMessageSequence mergedMidiSequence; // Holds the loaded MIDI
+    // Keep track of currently active notes per channel
+    std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
+    double currentSamplePosition = 0.0;           // Tracks playback position
+    double lastHostPosition = 0.0; // in samples
+    int currentEventIndex = 0; // Tracks which MIDI event comes next
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

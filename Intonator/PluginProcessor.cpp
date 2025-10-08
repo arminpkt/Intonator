@@ -12,6 +12,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+    DBG("TEST");
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -86,9 +87,42 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    DBG("PREPARE TO PLAY");
+
+    mergedMidiSequence.clear();
+    currentSamplePosition = 0.0;
+    currentEventIndex = 0;
+
+
+    if (midiFile.existsAsFile())
+    {
+        juce::FileInputStream inputStream(midiFile);
+
+        if (inputStream.openedOk())
+        {
+            juce::MidiFile midi;
+            if (midi.readFrom(inputStream))
+            {
+                midi.convertTimestampTicksToSeconds();
+
+                // Merge all tracks into one sequence
+                for (int t = 0; t < midi.getNumTracks(); ++t) {
+                    DBG("Track " << t << " has " << midi.getTrack(t)->getNumEvents() << " events");
+                    auto* track = midi.getTrack(t);
+                    mergedMidiSequence.addSequence(*track, 0.0, 0.0, track->getEndTime());
+                }
+
+                mergedMidiSequence.updateMatchedPairs(); // Needed for note-offs
+                mergedMidiSequence.sort();
+
+                DBG("Merged sequence has " << mergedMidiSequence.getNumEvents() << " events");
+            }
+        }
+    }
+    else
+    {
+        DBG("MIDI file not found: " + midiFile.getFullPathName());
+    }
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -124,33 +158,91 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
+    //DBG("PROCESS BLOCK");
 
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
+    auto numSamples = buffer.getNumSamples();
+    juce::MidiBuffer tempBuffer;
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
+    juce::AudioPlayHead* playHead = getPlayHead();
+    double hostPositionInSamples = currentSamplePosition;
+    bool hostIsPlaying = true;
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    if (playHead != nullptr)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        juce::AudioPlayHead::CurrentPositionInfo posInfo;
+        if (playHead->getCurrentPosition(posInfo))
+        {
+            hostIsPlaying = posInfo.isPlaying;
+            hostPositionInSamples = posInfo.timeInSeconds * getSampleRate();
+        }
     }
+
+    // Detect jumps or scrubbing
+    if (std::abs(hostPositionInSamples - lastHostPosition) > getSampleRate() * 0.01)
+    {
+        for (auto& [channel, note] : activeNotes)
+            tempBuffer.addEvent(juce::MidiMessage::noteOff(channel, note), 0);
+
+        activeNotes.clear();
+        currentSamplePosition = hostPositionInSamples;
+
+        // Reset event index to first event after new host position
+        currentEventIndex = 0;
+        while (currentEventIndex < mergedMidiSequence.getNumEvents() &&
+               mergedMidiSequence.getEventTime(currentEventIndex) * getSampleRate() < currentSamplePosition)
+        {
+            ++currentEventIndex;
+        }
+    }
+
+    lastHostPosition = hostPositionInSamples;
+
+    if (mergedMidiSequence.getNumEvents() > 0 && hostIsPlaying)
+    {
+        // Send MIDI events from currentEventIndex only
+        while (currentEventIndex < mergedMidiSequence.getNumEvents())
+        {
+            auto& e = mergedMidiSequence.getEventPointer(currentEventIndex)->message;
+            double eventTimeInSamples = mergedMidiSequence.getEventTime(currentEventIndex) * getSampleRate();
+
+            if (eventTimeInSamples >= currentSamplePosition + numSamples)
+                break; // Stop for this block
+
+            if (eventTimeInSamples >= currentSamplePosition)
+            {
+                int sampleOffset = static_cast<int>(eventTimeInSamples - currentSamplePosition);
+                tempBuffer.addEvent(e, sampleOffset);
+
+                if (e.isNoteOn())
+                    activeNotes.insert({e.getChannel(), e.getNoteNumber()});
+                else if (e.isNoteOff())
+                    activeNotes.erase({e.getChannel(), e.getNoteNumber()});
+            }
+
+            ++currentEventIndex;
+        }
+
+        currentSamplePosition += numSamples;
+    }
+    else if (!hostIsPlaying)
+    {
+        for (auto& [channel, note] : activeNotes)
+            tempBuffer.addEvent(juce::MidiMessage::noteOff(channel, note), 0);
+
+        activeNotes.clear();
+    }
+
+    double lastEventTime = mergedMidiSequence.getEndTime() * getSampleRate();
+    if (currentSamplePosition >= lastEventTime)
+    {
+        for (auto& [channel, note] : activeNotes)
+            tempBuffer.addEvent(juce::MidiMessage::noteOff(channel, note), 0);
+
+        activeNotes.clear();
+        currentSamplePosition = lastEventTime;
+    }
+
+    midiMessages.addEvents(tempBuffer, 0, numSamples, 0);
 }
 
 //==============================================================================
