@@ -20,7 +20,8 @@ juce_add_plugin(Intonator
 target_sources(Intonator
         PRIVATE
         PluginEditor.cpp
-        PluginProcessor.cpp)
+        PluginProcessor.cpp
+        PianoRoll.cpp)
 
 target_compile_definitions(Intonator
         PUBLIC
