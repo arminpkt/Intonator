@@ -23,14 +23,17 @@ public:
     virtual ~Note() = default;
     virtual void dummy() = 0;
 
-    // Computes the interval between f and this note's frequency in semitones
+    /** Computes the interval between f and this note's frequency in semitones.
+     *
+     * @param f     Reference frequency in Hz
+     */
     float getDistanceFrom(const float f) const {
         float ratio = frequency / f;
         float ratio_log = std::log2(ratio);
         return ratio_log * 12;
     }
 
-    // Computes the MIDI value if MIDI were continuous
+    // Computes the MIDI value if MIDI were continuous.
     float getPitch() const {
         float distanceFromA440 = getDistanceFrom(440);
         float pitch = distanceFromA440 - 69;
@@ -43,13 +46,16 @@ public:
         return std::fmodf(pitch, 12);
     }
 
-    // Computes the closest MIDI value for this note
+    // Computes the closest MIDI value for this note.
     int getRoundedMidiValue() const {
         float roundedMidiValue = std::round(getPitch());
         return static_cast<int>(roundedMidiValue);
     }
 
-    // Computes the pitch bend value from the rounded MIDI value for this note
+    /** Computes the pitch bend value from the rounded MIDI value for this note.
+     *
+     * @param bendRange     The pitch bend range in semitones
+     */
     int getPitchBendValue(const float bendRange = 2) const {
         float offsetInSemitones = getPitch() - static_cast<float>(getRoundedMidiValue());
         float bendRatio = offsetInSemitones / bendRange;
