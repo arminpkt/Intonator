@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include <cmath>
 #include <vector>
 #include <memory>
 
@@ -21,6 +22,41 @@ public:
 
     virtual ~Note() = default;
     virtual void dummy() = 0;
+
+    // Computes the interval between f and this note's frequency in semitones
+    float getDistanceFrom(const float f) const {
+        float ratio = frequency / f;
+        float ratio_log = std::log2(ratio);
+        return ratio_log * 12;
+    }
+
+    // Computes the MIDI value if MIDI were continuous
+    float getPitch() const {
+        float distanceFromA440 = getDistanceFrom(440);
+        float pitch = distanceFromA440 - 69;
+        return pitch;
+    }
+
+    // Computes the continuous pitch class, where A -> 0, Bb -> 1, ...
+    float getPitchClass() const {
+        float pitch = getPitch();
+        return std::fmodf(pitch, 12);
+    }
+
+    // Computes the closest MIDI value for this note
+    int getRoundedMidiValue() const {
+        float roundedMidiValue = std::round(getPitch());
+        return static_cast<int>(roundedMidiValue);
+    }
+
+    // Computes the pitch bend value from the rounded MIDI value for this note
+    int getPitchBendValue(const float bendRange = 2) const {
+        float offsetInSemitones = getPitch() - static_cast<float>(getRoundedMidiValue());
+        float bendRatio = offsetInSemitones / bendRange;
+        float bendValueCont = 8192 + 8192 * bendRatio;
+        float roundedBendValue = std::round(bendValueCont);
+        return static_cast<int>(roundedBendValue);
+    }
 
     bool operator<(const Note& other) const {
         return frequency < other.frequency;
