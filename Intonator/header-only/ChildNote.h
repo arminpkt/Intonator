@@ -14,6 +14,8 @@ public:
     Fraction ratio;
     Fraction ratioToRoot;
 
+    void dummy() override {}
+
 private:
     static Fraction computeRatioToRoot(const Note& p, Fraction r, const RootNote*& rootPtr) {
         if (const auto rp = dynamic_cast<const RootNote*>(&p)) {

@@ -10,4 +10,5 @@ public:
     RootNote(float freq, int s, int e)
         : Note(freq, s, e) {
     }
+    void dummy() override {}
 };

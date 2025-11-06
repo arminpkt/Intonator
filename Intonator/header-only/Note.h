@@ -19,4 +19,5 @@ public:
         : frequency(freq), start(s), end(e) {}
 
     virtual ~Note() = default;
+    virtual void dummy() = 0;
 };
