@@ -7,9 +7,9 @@
 #include <memory>
 #include <vector>
 #include <utility>
-#include "header-only/Note.h"
-#include "header-only/ChildNote.h"
-#include "header-only/RootNote.h"
+#include "logic/header-only/Note.h"
+#include "logic/header-only/ChildNote.h"
+#include "logic/header-only/RootNote.h"
 
 class NoteRegion {
 public:
