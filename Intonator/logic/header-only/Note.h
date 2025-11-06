@@ -6,7 +6,8 @@
 #include <vector>
 #include <memory>
 
-#include "ChildNote.h"
+
+class ChildNote;
 
 class Note {
 public:
@@ -20,9 +21,25 @@ public:
 
     virtual ~Note() = default;
     virtual void dummy() = 0;
-};
 
     bool operator<(const Note& other) const {
         return frequency < other.frequency;
     }
+};
+
+class ChildNote : public Note {
+public:
+    const Note* parent;
+    float ratio;
+
+    ChildNote(const Note& p, float r, int s, int e)
+        : Note(p.frequency * r, s, e), parent(&p), ratio(r) {}
+};
+
+class RootNote : public Note {
+public:
+    RootNote(float freq, int s, int e)
+        : Note(freq, s, e) {
+    }
+    void dummy() override {}
 };
