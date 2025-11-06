@@ -93,36 +93,43 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     currentSamplePosition = 0.0;
     currentEventIndex = 0;
 
+    // Fixed tempo assumption
+    constexpr double bpm = 120.0;
+    constexpr double secondsPerBeat = 60.0 / bpm;
+    constexpr double measureLength = 4.0 * secondsPerBeat; // One 4/4 measure
 
-    if (midiFile.existsAsFile())
-    {
-        juce::FileInputStream inputStream(midiFile);
+    constexpr double noteOnTime = 0.0;
+    constexpr double noteOffTime = measureLength;
 
-        if (inputStream.openedOk())
-        {
-            juce::MidiFile midi;
-            if (midi.readFrom(inputStream))
-            {
-                midi.convertTimestampTicksToSeconds();
+    // MIDI note numbers
+    constexpr int noteA3 = 57;       // A3 = 220 Hz
+    constexpr int noteCSharp4 = 61;  // C#4 = ~277.18 Hz, need to bend it to 275 Hz
 
-                // Merge all tracks into one sequence
-                for (int t = 0; t < midi.getNumTracks(); ++t) {
-                    DBG("Track " << t << " has " << midi.getTrack(t)->getNumEvents() << " events");
-                    auto* track = midi.getTrack(t);
-                    mergedMidiSequence.addSequence(*track, 0.0, 0.0, track->getEndTime());
-                }
+    // Channels
+    constexpr int channelA3 = 2;
+    constexpr int channelCSharp4 = 3;
 
-                mergedMidiSequence.updateMatchedPairs(); // Needed for note-offs
-                mergedMidiSequence.sort();
+    // Pitch bend: C#4 down to 275 Hz (Just Intonation 5:4 from A3)
+    constexpr double bendInSemitones = -0.137; // Approx. 13.7 cents down
+    constexpr double bendRange = 2.0; // ±2 semitones assumed
+    int bendValue = static_cast<int>(8192 + (bendInSemitones / bendRange) * 8192);
+    bendValue = std::clamp(bendValue, 0, 16383);
 
-                DBG("Merged sequence has " << mergedMidiSequence.getNumEvents() << " events");
-            }
-        }
-    }
-    else
-    {
-        DBG("MIDI file not found: " + midiFile.getFullPathName());
-    }
+    // Add pitch bend for C#4 channel
+    mergedMidiSequence.addEvent(juce::MidiMessage::pitchWheel(channelCSharp4, bendValue), noteOnTime);
+
+    // Note-on
+    mergedMidiSequence.addEvent(juce::MidiMessage::noteOn(channelA3, noteA3, static_cast<juce::uint8>(127)), noteOnTime);
+    mergedMidiSequence.addEvent(juce::MidiMessage::noteOn(channelCSharp4, noteCSharp4, static_cast<juce::uint8>(127)), noteOnTime);
+
+    // Note-off
+    mergedMidiSequence.addEvent(juce::MidiMessage::noteOff(channelA3, noteA3), noteOffTime);
+    mergedMidiSequence.addEvent(juce::MidiMessage::noteOff(channelCSharp4, noteCSharp4), noteOffTime);
+
+    mergedMidiSequence.updateMatchedPairs();
+    mergedMidiSequence.sort();
+
+    DBG("Merged sequence has " << mergedMidiSequence.getNumEvents() << " events");
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -213,8 +220,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                 int sampleOffset = static_cast<int>(eventTimeInSamples - currentSamplePosition);
                 tempBuffer.addEvent(e, sampleOffset);
 
+                DBG(e.getDescription());
+
                 if (e.isNoteOn())
                     activeNotes.insert({e.getChannel(), e.getNoteNumber()});
+
                 else if (e.isNoteOff())
                     activeNotes.erase({e.getChannel(), e.getNoteNumber()});
             }

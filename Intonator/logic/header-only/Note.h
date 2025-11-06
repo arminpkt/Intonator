@@ -21,3 +21,8 @@ public:
     virtual ~Note() = default;
     virtual void dummy() = 0;
 };
+
+    bool operator<(const Note& other) const {
+        return frequency < other.frequency;
+    }
+};

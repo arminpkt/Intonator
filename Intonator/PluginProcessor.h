@@ -43,9 +43,6 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
-    const juce::File midiFile { "/Users/armin/Desktop/7years.mid" };
-
-    juce::MidiFile loadedMidi;
     juce::MidiMessageSequence mergedMidiSequence; // Holds the loaded MIDI
     // Keep track of currently active notes per channel
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>

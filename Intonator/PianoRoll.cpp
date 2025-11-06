@@ -26,8 +26,12 @@ void PianoRoll::paint(juce::Graphics& g)
             // Fill color if cell is active
             if (cellStates[row][col])
                 g.setColour(juce::Colours::skyblue);
-            else
-                g.setColour(juce::Colours::white);
+            else {
+                if (allowedNotes.find(row % 12) != allowedNotes.end())
+                    g.setColour(juce::Colours::white);
+                else
+                    g.setColour(juce::Colours::lightgrey);
+            }
 
             g.fillRect(cell);
 
