@@ -19,4 +19,8 @@ public:
         : frequency(freq), start(s), end(e) {}
 
     virtual ~Note() = default;
+
+    bool operator<(const Note& other) const {
+        return frequency < other.frequency;
+    }
 };

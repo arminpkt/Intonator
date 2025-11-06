@@ -19,6 +19,7 @@ private:
     int numRows;
     int numCols;
     std::vector<std::vector<bool>> cellStates; // true = active (colored), false = inactive
+    const std::unordered_set<int> allowedNotes = {0, 2, 4, 5, 7, 9, 11};
 
     juce::Rectangle<int> getCellBounds(int row, int col) const;
 };

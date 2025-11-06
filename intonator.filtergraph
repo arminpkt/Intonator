@@ -65,7 +65,7 @@
           uiLastY_Normal="179" uiopen_Normal="0">
     <PLUGIN name="Intonator" format="VST3" category="Fx" manufacturer="ACV"
             version="0.0.1" file="/Users/vos/CLionProjects/Intonator/cmake-build-debug/Intonator/Intonator_artefacts/Debug/VST3/Intonator.vst3"
-            uniqueId="7efdfa63" isInstrument="0" fileTime="19985de1f11" infoUpdateTime="1999b68f368"
+            uniqueId="7efdfa63" isInstrument="0" fileTime="19985de1f11" infoUpdateTime="199e9f0a077"
             numInputs="2" numOutputs="2" isShell="0" hasARAExtension="0"
             uid="70c4c7d8"/>
     <STATE>191.VMjLgXK....O+fWarAhckI2bo8la8HRLt.iHfTlai8FYo41Y8HRUTYTK3HxO9.BOVMEUy.Ea0cVZtMEcgQWY9vSRC8Vav8lak4Fc9XCLt3hKt3hKt3hKt3hYRUUSTEETIckVwTjQisVTTgkdEYjKAQjYPQSPWgUdMcjKAQjct3hdA4hKt3hKt3hKtnTUv.UQAslXuk0UXoWUFE0YQcEV77RRC8Vav8lak4Fc9vyKVMEUy.Ea0cVZtMEcgQWY9..</STATE>
@@ -92,4 +92,6 @@
     </LAYOUT>
   </FILTER>
   <CONNECTION srcFilter="5" srcChannel="4096" dstFilter="6" dstChannel="4096"/>
+  <CONNECTION srcFilter="6" srcChannel="0" dstFilter="3" dstChannel="0"/>
+  <CONNECTION srcFilter="6" srcChannel="1" dstFilter="3" dstChannel="1"/>
 </FILTERGRAPH>
