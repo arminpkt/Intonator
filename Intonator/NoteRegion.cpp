@@ -15,7 +15,7 @@ void NoteRegion::addNote(float frequency, int start, int end)
     calculateMidiMessages();
 }
 
-void NoteRegion::calculateMidiMessages(const float pitchBendRange = 2)
+void NoteRegion::calculateMidiMessages(const float pitchBendRange)
 {
     midiMessages.clear();
 

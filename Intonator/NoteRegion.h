@@ -16,7 +16,7 @@ public:
     std::vector<juce::MidiMessage> midiMessages;
 
     void addNote(float frequency, int start, int end);
-    void calculateMidiMessages(const float pitchBendRange); // not const!
+    void calculateMidiMessages(float pitchBendRange = 2); // not const!
     void useAsParentToCreate(Note* note, Fraction ratio);
     void useAsParentToCreate(Note* note, float irratio);
 
