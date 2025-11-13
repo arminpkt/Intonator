@@ -13,9 +13,16 @@ public:
         if (denominator == 0)
             throw std::invalid_argument("Denominator cannot be zero.");
 
-        int g = std::gcd(numerator, denominator);
-        num = numerator / g;
-        den = denominator / g;
+        num = numerator;
+        den = denominator;
+
+        simplify();
+    }
+
+    void simplify() {
+        int g = std::gcd(num, den);
+        num /= g;
+        den /= g;
 
         if (den < 0) {
             num = -num;
@@ -23,41 +30,67 @@ public:
         }
     }
 
-    float toFloat() const {
+    [[nodiscard]] float toFloat() const {
         return static_cast<float>(num) / static_cast<float>(den);
     }
 
     Fraction operator*(const Fraction& other) const {
-        return Fraction(num * other.num, den * other.den);
+        return {num * other.num, den * other.den};
     }
 
     Fraction operator/(const Fraction& other) const {
         if (other.num == 0)
             throw std::domain_error("Cannot divide by zero.");
-        return Fraction(num * other.den, den * other.num);
+        return {num * other.den, den * other.num};
     }
 
     friend std::ostream& operator<<(std::ostream& os, const Fraction& f) {
         return os << f.num << "/" << f.den;
     }
 
-    friend Fraction operator/(const Fraction& f, const int i) {
+    Fraction operator/(const int i) const {
         if (i == 0)
             throw std::invalid_argument("Cannot divide by zero.");
-        return Fraction(f.num, f.den * i);
+        return {num, den * i};
     }
 
     friend Fraction operator/(const int i, const Fraction& f) {
         if (f.num == 0)
             throw std::invalid_argument("Cannot divide by zero.");
-        return Fraction(i * f.den, f.num);
+        return {i * f.den, f.num};
     }
 
-    friend Fraction operator*(const Fraction& f, const int i) {
-        return Fraction(f.num * i, f.den);
+    Fraction operator*(const int i) const {
+        return {num * i, den};
     }
 
     friend Fraction operator*(const int i, const Fraction& f) {
-        return Fraction(f.num * i, f.den);
+        return {f.num * i, f.den};
+    }
+
+    Fraction& operator*=(const Fraction& f) {
+        num *= f.num;
+        den *= f.den;
+        simplify();
+        return *this;
+    }
+
+    Fraction& operator*=(const int i) {
+        num *= i;
+        simplify();
+        return *this;
+    }
+
+    Fraction& operator/=(const Fraction& f) {
+        num *= f.den;
+        den *= f.num;
+        simplify();
+        return *this;
+    }
+
+    Fraction& operator/=(const int i) {
+        den *= i;
+        simplify();
+        return *this;
     }
 };

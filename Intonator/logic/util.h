@@ -4,10 +4,13 @@
 
 #pragma once
 
-#include "Note.h"
 #include <vector>
 
-float dist(const Note& a, const Note& b);
-std::vector<float> dists(const std::vector<Note*>& freq_as, const std::vector<Note*>& freq_bs);
-void optimiseDestinationOrder(const std::vector<Note>& as, std::vector<Note>& bs);
+#include "header-only/Note.h"
+#include "header-only/PitchClass.h"
+
+
+float dist(PitchClass& a, PitchClass& b);
+float dists_sum(const std::vector<PitchClass>& freq_as, const std::vector<PitchClass>& freq_bs);
 void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& bs);
+void optimiseOctaves(const std::vector<Note*>& as, std::vector<Note*>& bs);

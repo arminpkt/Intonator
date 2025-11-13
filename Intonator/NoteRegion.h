@@ -6,10 +6,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 #include <vector>
-#include <utility>
+
+#include "logic/header-only/ChannelPool.h"
 #include "logic/header-only/Note.h"
-#include "logic/header-only/ChildNote.h"
-#include "logic/header-only/RootNote.h"
 
 class NoteRegion {
 public:
@@ -17,5 +16,10 @@ public:
     std::vector<juce::MidiMessage> midiMessages;
 
     void addNote(float frequency, int start, int end);
-    void calculateMidiMessages(); // not const!
+    void calculateMidiMessages(const float pitchBendRange); // not const!
+    void useAsParentToCreate(Note* note, Fraction ratio);
+    void useAsParentToCreate(Note* note, float irratio);
+
+private:
+    ChannelPool channelPool;
 };
