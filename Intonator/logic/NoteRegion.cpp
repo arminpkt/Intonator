@@ -3,7 +3,6 @@
 //
 
 #include "NoteRegion.h"
-#include <cmath>
 #include <algorithm>
 
 void NoteRegion::addNote(float frequency, int start, int end)
@@ -37,7 +36,8 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange)
         midiMessages.push_back(noteOn);
 
         // Create Pitchbend message
-        juce::MidiMessage pitchBend = juce::MidiMessage::pitchbendToPitchwheelPos(pitchBendInSemitones, pitchBendRange);
+        const auto pitchBendValue = juce::MidiMessage::pitchbendToPitchwheelPos(pitchBendInSemitones, pitchBendRange);
+        juce::MidiMessage pitchBend = juce::MidiMessage::pitchWheel(1, pitchBendValue);
         pitchBend.setTimeStamp(note->start);
         midiMessages.push_back(pitchBend);
 

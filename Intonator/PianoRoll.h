@@ -9,17 +9,17 @@
 class PianoRoll : public juce::Component
 {
 public:
-    PianoRoll(int rows, int cols);
+    PianoRoll(size_t rows, size_t cols);
     ~PianoRoll() override = default;
 
     void paint(juce::Graphics& g) override;
     void mouseDown(const juce::MouseEvent& event) override;
 
 private:
-    int numRows;
-    int numCols;
+    size_t numRows;
+    size_t numCols;
     std::vector<std::vector<bool>> cellStates; // true = active (colored), false = inactive
-    const std::unordered_set<int> allowedNotes = {0, 2, 4, 5, 7, 9, 11};
+    const std::unordered_set<int> whiteNotes = {0, 2, 4, 5, 7, 9, 11};
 
-    juce::Rectangle<int> getCellBounds(int row, int col) const;
+    juce::Rectangle<int> getCellBounds(size_t row, size_t col) const;
 };

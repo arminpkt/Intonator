@@ -81,3 +81,8 @@ void optimiseOctaves(const std::vector<Note*>& as, std::vector<Note*>& bs) {
         bs[i]->octavateClosestTo(*as[i]);
     }
 }
+
+void optimiseTransition(const std::vector<Note *> &as, std::vector<Note *> &bs) {
+    optimiseDestinationOrder(as, bs);
+    optimiseOctaves(as, bs);
+}

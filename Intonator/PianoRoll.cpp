@@ -4,22 +4,16 @@
 
 #include "PianoRoll.h"
 
-PianoRoll::PianoRoll(int rows, int cols)
-    : numRows(rows), numCols(cols)
-{
+PianoRoll::PianoRoll(size_t rows, size_t cols)
+    : numRows(rows), numCols(cols) {
     cellStates.resize(numRows, std::vector<bool>(numCols, false));
 }
 
-void PianoRoll::paint(juce::Graphics& g)
-{
-    auto bounds = getLocalBounds();
-    float cellWidth = bounds.getWidth() / (float)numCols;
-    float cellHeight = bounds.getHeight() / (float)numRows;
-
+void PianoRoll::paint(juce::Graphics& g) {
     // Draw grid cells and colors
-    for (int row = 0; row < numRows; ++row)
+    for (size_t row = 0; row < numRows; ++row)
     {
-        for (int col = 0; col < numCols; ++col)
+        for (size_t col = 0; col < numCols; ++col)
         {
             auto cell = getCellBounds(row, col);
 
@@ -27,7 +21,7 @@ void PianoRoll::paint(juce::Graphics& g)
             if (cellStates[row][col])
                 g.setColour(juce::Colours::skyblue);
             else {
-                if (allowedNotes.find(row % 12) != allowedNotes.end())
+                if (whiteNotes.find(row % 12) != whiteNotes.end())
                     g.setColour(juce::Colours::white);
                 else
                     g.setColour(juce::Colours::lightgrey);
@@ -42,8 +36,7 @@ void PianoRoll::paint(juce::Graphics& g)
     }
 }
 
-void PianoRoll::mouseDown(const juce::MouseEvent& event)
-{
+void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     auto pos = event.getPosition();
     auto bounds = getLocalBounds();
     float cellWidth = bounds.getWidth() / (float)numCols;
@@ -60,8 +53,7 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event)
     }
 }
 
-juce::Rectangle<int> PianoRoll::getCellBounds(int row, int col) const
-{
+juce::Rectangle<int> PianoRoll::getCellBounds(size_t row, size_t col) const {
     auto bounds = getLocalBounds();
     float cellWidth = bounds.getWidth() / (float)numCols;
     float cellHeight = bounds.getHeight() / (float)numRows;

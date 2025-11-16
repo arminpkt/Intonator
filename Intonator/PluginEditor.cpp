@@ -6,8 +6,6 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     : AudioProcessorEditor (&p), processorRef (p)
 {
     juce::ignoreUnused (processorRef);
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
     setSize (400, 400);
 }
 
@@ -20,10 +18,10 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (juce::Colours::darkgrey);
-    addAndMakeVisible(pianoRoll);
+    addAndMakeVisible(grid2D);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
 {
-    pianoRoll.setBounds(getLocalBounds());
+    grid2D.setBounds(getLocalBounds());
 }

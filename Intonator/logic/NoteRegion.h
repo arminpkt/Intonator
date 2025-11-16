@@ -7,8 +7,8 @@
 #include <memory>
 #include <vector>
 
-#include "logic/header-only/ChannelPool.h"
-#include "logic/header-only/Note.h"
+#include "header-only/ChannelPool.h"
+#include "header-only/Note.h"
 
 class NoteRegion {
 public:

@@ -42,8 +42,10 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    //==============================================================================
+    juce::MidiBuffer midiBuffer;
+
 private:
-    juce::MidiMessageSequence mergedMidiSequence; // Holds the loaded MIDI
     // Keep track of currently active notes per channel
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
     double currentSamplePosition = 0.0;           // Tracks playback position

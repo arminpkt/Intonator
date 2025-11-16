@@ -21,6 +21,8 @@ target_sources(Intonator
         PRIVATE
         PluginEditor.cpp
         PluginProcessor.cpp
+        interfaces/Grid2D.cpp
+        logic/util.cpp
         PianoRoll.cpp)
 
 target_compile_definitions(Intonator
