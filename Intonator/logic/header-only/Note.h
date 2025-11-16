@@ -87,7 +87,6 @@ public:
      * @param other     The note to move this note close to
      */
     void octavateClosestTo(const Note& other) {
-        std::cout << frequency << " closest to " << other.frequency << std::endl;
         float distanceInSemitones = getDistanceFrom(other);
         float distanceInOctaves = distanceInSemitones / 12;
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
@@ -102,7 +101,6 @@ public:
         }
 
         *this *= f;
-        std::cout << "new frequency: " << frequency << std::endl;
     }
 
     bool operator<(const Note& other) const {
