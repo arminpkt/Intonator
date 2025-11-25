@@ -96,7 +96,7 @@ public:
             int num = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
             f = Fraction(num, 1);
         } else {
-            int den = static_cast<int>(std::pow(2, -numberOfOctavesToOctavate));
+            int den = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
             f = Fraction(1, den);
         }
 

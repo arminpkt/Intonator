@@ -121,6 +121,8 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
+    for (const auto& midi : midiBuffer)
+        DBG(midi.getMessage().getDescription());
     std::swap(midiBuffer, midiMessages);
 }
 

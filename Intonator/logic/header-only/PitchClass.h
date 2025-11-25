@@ -34,6 +34,9 @@ struct PitchClass {
     PitchClass operator/(const PitchClass& other) const {
         return {value / other.value};
     }
+    bool operator<(const PitchClass& other) const {
+        return value < other.value;
+    }
 
     // Arithmetic with plain float
     PitchClass operator+(float rhs) const { return {value + rhs}; }

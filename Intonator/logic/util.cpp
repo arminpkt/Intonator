@@ -29,7 +29,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& 
         as_pcs[i] = std::make_pair(as[i]->getPitchClass(), i);
     std::sort(as_pcs.begin(), as_pcs.end(),
           [](auto const& a1, auto const& a2) {
-              return a1.second < a2.second;
+              return a1.first < a2.first;
     });
 
     // vector of pairs of PitchClasses and their indices in bs, sorted by PitchClass
@@ -38,7 +38,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& 
         bs_pcs[i] = std::make_pair(bs[i]->getPitchClass(), i);
     std::sort(bs_pcs.begin(), bs_pcs.end(),
           [](auto const& b1, auto const& b2) {
-              return b1.second < b2.second;
+              return b1.first < b2.first;
           });
 
     // finding the best rotation of bs to match as
