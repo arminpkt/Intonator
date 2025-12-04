@@ -5,7 +5,7 @@
 #include "Grid2D.h"
 
 Grid2D::Grid2D(size_t rows, size_t cols, Fraction horizontal, Fraction vertical,
-    float freqBL, AudioPluginAudioProcessor& processor)
+    float freqBL, UnTETeredAudioProcessor& processor)
     : numRows(rows), numCols(cols), intervalHorizontal(horizontal),
         intervalVertical(vertical), frequencyBottomLeft(freqBL), processorRef(processor){
     currentCellStates.resize(numRows, std::vector<bool>(numCols, false));

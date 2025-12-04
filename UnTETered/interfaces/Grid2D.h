@@ -17,7 +17,7 @@ class Grid2D : public juce::Component
 {
     public:
     Grid2D(size_t rows, size_t cols, Fraction horizontal, Fraction vertical,
-        float freqBL, AudioPluginAudioProcessor& processor);
+        float freqBL, UnTETeredAudioProcessor& processor);
     ~Grid2D() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -42,7 +42,7 @@ class Grid2D : public juce::Component
     std::vector<std::unique_ptr<Note>> nextActiveNotes;
     // std::vector<Note*> orderedCurrentActiveNotes;
     // std::vector<Note*> orderedNextActiveNotes;
-    AudioPluginAudioProcessor& processorRef;
+    UnTETeredAudioProcessor& processorRef;
 
     std::unique_ptr<Note> generateNote(size_t row, size_t col);
     void update();
