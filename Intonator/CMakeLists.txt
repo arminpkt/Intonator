@@ -1,5 +1,9 @@
 project(Intonator VERSION 0.0.1)
 
+if (APPLE)
+    set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+endif()
+
 juce_add_plugin(Intonator
         VERSION 0.0.1
         # ICON_BIG ...
