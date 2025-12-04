@@ -99,16 +99,16 @@ juce::Rectangle<int> Grid2D::getCellBounds(size_t row, size_t col) const {
 
 void Grid2D::update() {
     nextActiveNotes.clear();
+    nextActiveNotesOrdered.clear();
     for (size_t row = 0; row < numRows; ++row)
         for (size_t col = 0; col < numCols; ++col)
             if (nextCellStates[row][col]) {
                 auto note = generateNote(row, col);
+                nextActiveNotesOrdered.push_back(note.get());
                 nextActiveNotes.push_back(std::move(note));
             }
 
-    if (currentActiveNotes.size() == nextActiveNotes.size()) {
-        optimiseTransition(currentActiveNotes, nextActiveNotes);
-    }
+    optimiseTransition(currentActiveNotesOrdered, nextActiveNotesOrdered);
 }
 
 void Grid2D::activateTransition() {
@@ -131,6 +131,7 @@ void Grid2D::activateTransition() {
     }
 
     currentActiveNotes = std::move(nextActiveNotes);
+    currentActiveNotesOrdered = std::move(nextActiveNotesOrdered);
     currentCellStates = std::move(nextCellStates);
     nextCellStates.resize(numRows, std::vector<bool>(numCols, false));
 
