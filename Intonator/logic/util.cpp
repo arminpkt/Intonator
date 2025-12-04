@@ -8,6 +8,8 @@
 
 #include "util.h"
 
+#include <utility>
+
 
 float dists_sum(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
     assert(freq_as.size() == freq_bs.size() && "Vectors must have the same size");
@@ -20,7 +22,7 @@ float dists_sum(const std::vector<PitchClass> &freq_as, const std::vector<PitchC
     return sum;
 }
 
-void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& bs) {
+void optimiseDestinationOrder(const std::vector<std::unique_ptr<Note>>& as, std::vector<std::unique_ptr<Note>>& bs) {
     assert(as.size() == bs.size() && "Vectors must have the same size");
 
     // vector of pairs of PitchClasses and their indices in as, sorted by PitchClass
@@ -54,6 +56,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& 
     for (const auto& [fst, snd] : bs_pcs)
         bs_firsts.push_back(fst);
 
+    // find best rotation
     for (size_t i = 0; i < bs.size(); ++i) {
         float score = dists_sum(as_firsts, bs_firsts);
         if (score < best_score) {
@@ -67,14 +70,14 @@ void optimiseDestinationOrder(const std::vector<Note*>& as, std::vector<Note*>& 
     std::rotate(bs_pcs.begin(), bs_pcs.begin() + static_cast<std::vector<int>::difference_type>(best_rotation), bs_pcs.end());
 
     // create a new vector
-    std::vector<Note*> bs_best_order(bs_firsts.size());
+    std::vector<std::unique_ptr<Note>> bs_best_order(bs_firsts.size());
     for (size_t i = 0; i < as.size(); ++i)
         bs_best_order[as_pcs[i].second] = std::move(bs[bs_pcs[i].second]);
 
     std::swap(bs, bs_best_order);
 }
 
-void optimiseOctaves(const std::vector<Note*>& as, std::vector<Note*>& bs) {
+void optimiseOctaves(const std::vector<std::unique_ptr<Note>>& as, std::vector<std::unique_ptr<Note>>& bs) {
     assert(as.size() == bs.size() && "Vectors must have the same size");
 
     for (size_t i = 0; i < as.size(); ++i) {
@@ -82,7 +85,7 @@ void optimiseOctaves(const std::vector<Note*>& as, std::vector<Note*>& bs) {
     }
 }
 
-void optimiseTransition(const std::vector<Note *> &as, std::vector<Note *> &bs) {
+void optimiseTransition(const std::vector<std::unique_ptr<Note>>& as, std::vector<std::unique_ptr<Note>>& bs) {
     optimiseDestinationOrder(as, bs);
     optimiseOctaves(as, bs);
 }

@@ -40,7 +40,8 @@ class Grid2D : public juce::Component
     std::vector<std::vector<bool>> nextCellStates;
     std::vector<std::unique_ptr<Note>> currentActiveNotes;
     std::vector<std::unique_ptr<Note>> nextActiveNotes;
-    std::vector<Note*> optimisedNextNotes;
+    // std::vector<Note*> orderedCurrentActiveNotes;
+    // std::vector<Note*> orderedNextActiveNotes;
     AudioPluginAudioProcessor& processorRef;
 
     std::unique_ptr<Note> generateNote(size_t row, size_t col);

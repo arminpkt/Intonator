@@ -7,6 +7,7 @@
 #include <cmath>
 #include <vector>
 #include <stdexcept>
+#include <juce_audio_processors/juce_audio_processors.h>
 
 #include "Fraction.h"
 #include "PitchClass.h"
@@ -64,22 +65,38 @@ public:
         return static_cast<int>(roundedMidiValue);
     }
 
-    // Computes the pitchbend offset in semitones.
-    float getPitchBendInSemitones() const {
-        float offsetInSemitones = getPitch() - static_cast<float>(getRoundedMidiValue());
+    /** Computer the pitchend offset in semitones with respect to the input MIDI note value.
+     *
+     * @param midiNoteValue     The note from which the offset is calculated
+     * @return                  The distance in semitones
+     */
+    float getPitchBendInSemitonesWRT(const int midiNoteValue) const {
+        float offsetInSemitones = getPitch() - static_cast<float>(midiNoteValue);
         return offsetInSemitones;
     }
 
     /** Computes the pitch bend value from the rounded MIDI value for this note.
      *
-     * @param bendRange     The pitch bend range in semitones
+     * @param bendRange     The range of the pitchbend in semitones
      */
-    int getPitchBendValue(const float bendRange = 2) const {
-        float offsetInSemitones = getPitchBendInSemitones();
+    juce::uint16 getPitchBendValue(const float bendRange = 48) const {
+        int roundedMidiValue = getRoundedMidiValue();
+        return getPitchBendValueWRT(roundedMidiValue, bendRange);
+    }
+
+    /** Computes the pitchbend value to get this note, if it were constructed through pitchbend
+     *      from the provided midi note value.
+     *
+     * @param midiNoteValue     The note from which the pitchbend is calculated
+     * @param bendRange         The range of the pitchbend in semitones
+     * @return
+     */
+    juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const float bendRange = 48) const {
+        float offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
         float bendRatio = offsetInSemitones / bendRange;
         float bendValueCont = 8192 + 8192 * bendRatio;
         float roundedBendValue = std::round(bendValueCont);
-        return static_cast<int>(roundedBendValue);
+        return static_cast<juce::uint16>(roundedBendValue);
     }
 
     /** Moves this note up or down by octaves to be closest to other.
@@ -90,13 +107,15 @@ public:
         float distanceInSemitones = getDistanceFrom(other);
         float distanceInOctaves = distanceInSemitones / 12;
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
-
+        DBG(distanceInSemitones);
+        DBG(distanceInOctaves);
+        DBG(numberOfOctavesToOctavate);
         Fraction f(1, 1);
         if (numberOfOctavesToOctavate > 0) {
             int num = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
             f = Fraction(num, 1);
         } else {
-            int den = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
+            int den = static_cast<int>(std::pow(2, -numberOfOctavesToOctavate));
             f = Fraction(1, den);
         }
 

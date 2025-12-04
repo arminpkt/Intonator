@@ -99,7 +99,6 @@ juce::Rectangle<int> Grid2D::getCellBounds(size_t row, size_t col) const {
 
 void Grid2D::update() {
     nextActiveNotes.clear();
-    optimisedNextNotes.clear();
     for (size_t row = 0; row < numRows; ++row)
         for (size_t col = 0; col < numCols; ++col)
             if (nextCellStates[row][col]) {
@@ -108,13 +107,7 @@ void Grid2D::update() {
             }
 
     if (currentActiveNotes.size() == nextActiveNotes.size()) {
-        std::vector<Note*> rawCurrent;
-        for (auto& unique : currentActiveNotes)
-            rawCurrent.push_back(unique.get());
-        for (auto& unique : nextActiveNotes)
-            optimisedNextNotes.push_back(unique.get());
-        std::cout << "ja" << std::endl;
-        optimiseTransition(rawCurrent, optimisedNextNotes);
+        optimiseTransition(currentActiveNotes, nextActiveNotes);
     }
 }
 
@@ -131,8 +124,7 @@ void Grid2D::activateTransition() {
             static_cast<juce::uint8>(100));
         processorRef.midiBuffer.addEvent(noteOn, 20);
 
-        juce::uint16 pitchBendValue = juce::MidiMessage::pitchbendToPitchwheelPos(
-            note->getPitchBendInSemitones(), 2);
+        juce::uint16 pitchBendValue = note->getPitchBendValue();
         auto pitchBend = juce::MidiMessage::pitchWheel(
             static_cast<int>(i + 2), pitchBendValue);
         processorRef.midiBuffer.addEvent(pitchBend, 30);
