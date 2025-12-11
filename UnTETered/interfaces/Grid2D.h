@@ -48,7 +48,7 @@ class Grid2D : public juce::Component
     UnTETeredAudioProcessor& processorRef;
 
     std::unique_ptr<Note> generateNote(size_t row, size_t col) const;
-    juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected) const;
+    static juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected) ;
     void update();
 
     std::vector<juce::MidiMessage> midiMessages;

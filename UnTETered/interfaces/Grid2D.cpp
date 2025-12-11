@@ -85,7 +85,7 @@ std::unique_ptr<Note> Grid2D::generateNote(const size_t row, const size_t col) c
     return std::make_unique<RootNote>(frequency, 0, 0);
 }
 
-juce::Colour Grid2D::getColourForPitchClass(PitchClass pitchClass, bool selected) const {
+juce::Colour Grid2D::getColourForPitchClass(PitchClass pitchClass, bool selected) {
     float hue = pitchClass.value / 12.0f;
     auto colour = juce::Colour::fromHSV(hue, 0.4f, 0.7f, 1.0f);
     if (selected) {
