@@ -14,7 +14,7 @@ juce_add_plugin(UnTETered
         NEEDS_MIDI_OUTPUT TRUE
         IS_MIDI_EFFECT FALSE
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE
-#        COPY_PLUGIN_AFTER_BUILD TRUE
+        COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE ACVV
         PLUGIN_CODE Into
 
@@ -44,7 +44,7 @@ target_link_libraries(UnTETered
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
-set(VST3_DESTINATION "/Library/Audio/Plug-Ins/VST3/")
+#set(VST3_DESTINATION "/Library/Audio/Plug-Ins/VST3/")
 #set(AU_DESTINATION "/Library/Audio/Plug-Ins/Components/")
 
 # Copy VST3 and AU files upon build completion

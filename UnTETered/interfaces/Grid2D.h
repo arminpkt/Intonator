@@ -7,6 +7,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
+#include <cmath>
 
 #include "../logic/util.h"
 #include "../logic/NoteRegion.h"
@@ -34,6 +35,8 @@ class Grid2D : public juce::Component
     float frequencyBottomLeft;
     RootNote A440{440, 0, 0};
 
+    std::vector<juce::Colour> pitchClassColours;
+
     juce::Rectangle<int> getCellBounds(size_t row, size_t col) const;
 
     std::vector<std::vector<bool>> currentCellStates;
@@ -44,7 +47,8 @@ class Grid2D : public juce::Component
     std::vector<Note*> nextActiveNotesOrdered;
     UnTETeredAudioProcessor& processorRef;
 
-    std::unique_ptr<Note> generateNote(size_t row, size_t col);
+    std::unique_ptr<Note> generateNote(size_t row, size_t col) const;
+    juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected) const;
     void update();
 
     std::vector<juce::MidiMessage> midiMessages;

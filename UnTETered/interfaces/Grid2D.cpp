@@ -7,7 +7,8 @@
 Grid2D::Grid2D(size_t rows, size_t cols, Fraction horizontal, Fraction vertical,
     float freqBL, UnTETeredAudioProcessor& processor)
     : numRows(rows), numCols(cols), intervalHorizontal(horizontal),
-        intervalVertical(vertical), frequencyBottomLeft(freqBL), processorRef(processor){
+        intervalVertical(vertical), frequencyBottomLeft(freqBL), processorRef(processor)
+{
     currentCellStates.resize(numRows, std::vector<bool>(numCols, false));
     nextCellStates.resize(numRows, std::vector<bool>(numCols, false));
     setWantsKeyboardFocus(true);
@@ -21,12 +22,12 @@ void Grid2D::paint(juce::Graphics& g) {
         {
             auto cell = getCellBounds(row, col);
 
-            // Fill color if cell is set to be active next
-            if (nextCellStates[row][col])
-                g.setColour(juce::Colours::skyblue);
-            else
-                g.setColour(juce::Colours::white);
+            auto note = generateNote(row, col);
+            PitchClass pitchClass = note->getPitchClass();
 
+            juce::Colour cellColour = getColourForPitchClass(pitchClass, nextCellStates[row][col]);
+
+            g.setColour(cellColour);
             g.fillRect(cell);
 
             // Draw dots in currently active cells
@@ -72,7 +73,7 @@ bool Grid2D::keyPressed(const juce::KeyPress& key)
     return false;
 }
 
-std::unique_ptr<Note> Grid2D::generateNote(const size_t row, const size_t col) {
+std::unique_ptr<Note> Grid2D::generateNote(const size_t row, const size_t col) const {
     auto rowFlipped = numRows - row - 1;
     Fraction ratioToBL(1, 1);
     for (size_t i = 0; i < col; ++i)
@@ -84,7 +85,16 @@ std::unique_ptr<Note> Grid2D::generateNote(const size_t row, const size_t col) {
     return std::make_unique<RootNote>(frequency, 0, 0);
 }
 
-juce::Rectangle<int> Grid2D::getCellBounds(size_t row, size_t col) const {
+juce::Colour Grid2D::getColourForPitchClass(PitchClass pitchClass, bool selected) const {
+    float hue = pitchClass.value / 12.0f;
+    auto colour = juce::Colour::fromHSV(hue, 0.4f, 0.7f, 1.0f);
+    if (selected) {
+        colour = colour.withBrightness(0.9f).withSaturation(0.25f);
+    }
+    return colour;
+}
+
+juce::Rectangle<int> Grid2D::getCellBounds(const size_t row, const size_t col) const {
     auto bounds = getLocalBounds();
     float cellWidth = bounds.getWidth() / numCols;
     float cellHeight = bounds.getHeight() / numRows;

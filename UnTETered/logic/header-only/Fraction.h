@@ -6,10 +6,18 @@
 
 class Fraction {
 public:
-    int num;
-    int den;
+    u_long num;
+    u_long den;
 
-    Fraction(int numerator, int denominator) {
+    Fraction(int numerator, int denominator) : Fraction(
+        static_cast<u_long>(numerator),
+        static_cast<u_long>(denominator)
+    ) {
+        if (numerator < 0 || denominator < 0)
+            throw std::invalid_argument("Negative arguments indicate integer overflow.");
+    }
+
+    Fraction(u_long numerator, u_long denominator) {
         if (denominator == 0)
             throw std::invalid_argument("Denominator cannot be zero.");
 
@@ -20,7 +28,7 @@ public:
     }
 
     void simplify() {
-        int g = std::gcd(num, den);
+        const auto g = std::__gcd<u_long>(num, den);
         num /= g;
         den /= g;
 
@@ -51,21 +59,21 @@ public:
     Fraction operator/(const int i) const {
         if (i == 0)
             throw std::invalid_argument("Cannot divide by zero.");
-        return {num, den * i};
+        return {num, den * static_cast<u_long>(i)};
     }
 
     friend Fraction operator/(const int i, const Fraction& f) {
         if (f.num == 0)
             throw std::invalid_argument("Cannot divide by zero.");
-        return {i * f.den, f.num};
+        return {static_cast<u_long>(i) * f.den, f.num};
     }
 
     Fraction operator*(const int i) const {
-        return {num * i, den};
+        return {num * static_cast<u_long>(i), den};
     }
 
     friend Fraction operator*(const int i, const Fraction& f) {
-        return {f.num * i, f.den};
+        return {f.num * static_cast<u_long>(i), f.den};
     }
 
     Fraction& operator*=(const Fraction& f) {
@@ -76,7 +84,7 @@ public:
     }
 
     Fraction& operator*=(const int i) {
-        num *= i;
+        num *= static_cast<u_long>(i);
         simplify();
         return *this;
     }
@@ -89,7 +97,7 @@ public:
     }
 
     Fraction& operator/=(const int i) {
-        den *= i;
+        den *= static_cast<u_long>(i);
         simplify();
         return *this;
     }
