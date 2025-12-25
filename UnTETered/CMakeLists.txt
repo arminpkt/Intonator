@@ -25,7 +25,7 @@ target_sources(UnTETered
         PRIVATE
         PluginEditor.cpp
         PluginProcessor.cpp
-        interfaces/Grid2D.cpp
+        view/interfaces/Grid2D.cpp
         logic/util.cpp
         PianoRoll.cpp)
 
@@ -39,6 +39,7 @@ target_compile_definitions(UnTETered
 target_link_libraries(UnTETered
         PRIVATE
         juce::juce_audio_utils
+        juce::juce_animation
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
