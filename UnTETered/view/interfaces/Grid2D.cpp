@@ -11,29 +11,32 @@
 // test
 
 Grid2D::Grid2D(int rows, int cols, Fraction horizontal, Fraction vertical, float refFreq,
-    UnTETeredAudioProcessor& processor)
+    UnTETeredAudioProcessor& processor, juce::VBlankAnimatorUpdater& updater)
     : numRows(rows), numCols(cols), intervalHorizontal(horizontal),
-    intervalVertical(vertical), refCoordinatesCellTarget({rows, cols}),
-    refNote(std::make_unique<RootNote>(refFreq, 0, 0)), gridTranspositionAnimator(
+    intervalVertical(vertical), refCoordinatesCellTarget({(rows-1)/2, (cols-1)/2}),
+    refNote(std::make_unique<RootNote>(refFreq, 0, 0)), processorRef(processor),
+    gridTranspositionAnimator(
         juce::ValueAnimatorBuilder{}
-        .withOnStartCallback([this]
-        {
-            auto refCellActual = getCellBounds(refCoordinatesCellActual);
-            auto refCellTarget = getCellBounds(refCoordinatesCellTarget);
-            auto refCoordinatesPxActual = refCellActual.getCentre();
-            auto refCoordinatesPxTarget = refCellTarget.getCentre();
-            paintingOffsetInitial = refCoordinatesPxTarget - refCoordinatesPxActual;
-        }).withValueChangedCallback([this](auto value)
-        {
-            paintingOffset = juce::makeAnimationLimits(
-                paintingOffsetInitial, {0, 0}
-            ).lerp(value);
-        }).withEasing(juce::Easings::createEaseInOut())
-        .build()
-    ),
-    processorRef(processor) {
+            .withOnStartCallback([this]{
+                auto refCellActual = getCellBounds(refCoordinatesCellActual);
+                auto refCellTarget = getCellBounds(refCoordinatesCellTarget);
+                auto refCoordinatesPxActual = refCellActual.getCentre();
+                auto refCoordinatesPxTarget = refCellTarget.getCentre();
+                paintingOffsetInitial = refCoordinatesPxTarget - refCoordinatesPxActual;
+            })
+            .withValueChangedCallback([this](auto value){
+                paintingOffset = juce::makeAnimationLimits(
+                    paintingOffsetInitial, {0, 0}
+                ).lerp(value);
+                repaint();
+            })
+            .withEasing(juce::Easings::createEaseInOut())
+            .withDurationMs(600)
+            .build()
+    ) {
     currentCellStates.resize(numRows, std::vector(numCols, false));
     nextCellStates.resize(numRows, std::vector(numCols, false));
+    updater.addAnimator(gridTranspositionAnimator);
 
     setWantsKeyboardFocus(true);
 }
@@ -64,13 +67,11 @@ void Grid2D::paint(juce::Graphics& g) {
 }
 
 void Grid2D::mouseDown(const juce::MouseEvent& event) {
-    auto pos = event.getPosition().toFloat();
-    auto bounds = getLocalBounds().toFloat();
-    float cellWidth = bounds.getWidth() / static_cast<float>(numCols);
-    float cellHeight = bounds.getHeight() / static_cast<float>(numRows);
+    auto pos = event.getPosition();
 
-    int col = static_cast<int>(pos.x / cellWidth);
-    int row = static_cast<int>(pos.y / cellHeight);
+    auto cell = getCellFromPx(pos);
+    auto row = cell.y;
+    auto col = cell.x;
 
     if (row < numRows && col < numCols)
     {
@@ -78,6 +79,18 @@ void Grid2D::mouseDown(const juce::MouseEvent& event) {
         updateNextActive();
         repaint();
     }
+}
+
+juce::Point<int> Grid2D::getCellFromPx(const juce::Point<int>& px) const {
+    auto px_float = px.toFloat();
+    auto bounds = getLocalBounds().toFloat();
+    float cellWidth = bounds.getWidth() / static_cast<float>(numCols);
+    float cellHeight = bounds.getHeight() / static_cast<float>(numRows);
+
+    int col = static_cast<int>(px_float.x / cellWidth);
+    int row = static_cast<int>(px_float.y / cellHeight);
+
+    return {col, row};
 }
 
 bool Grid2D::keyPressed(const juce::KeyPress& key) {
@@ -174,6 +187,9 @@ juce::Colour Grid2D::getColourForCoordinates(juce::Point<int> coordinates) const
     auto note = generateNote(coordinates);
     PitchClass pitchClass = note->getPitchClass();
 
+    if (coordinates.y < 0 || coordinates.y >= numRows || coordinates.x < 0 || coordinates.x >= numCols)
+        return getColourForPitchClass(pitchClass, false);
+
     return getColourForPitchClass(pitchClass, nextCellStates[coordinates.y][coordinates.x]);
 }
 
@@ -192,19 +208,22 @@ void Grid2D::updateNextActive() {
 }
 
 juce::Point<int> Grid2D::calculateCenterOfGravityCell() const {
-    std::vector<juce::Point<int>> bottomLefts;
+    std::vector<juce::Point<int>> centers;
     for (int row = 0; row < numRows; ++row)
         for (int col = 0; col < numCols; ++col)
             if (currentCellStates[row][col])
-                bottomLefts.push_back(getCellBounds({row, col}).getBottomLeft());
+                centers.push_back(getCellBounds({row, col}).getCentre());
 
     juce::Point<float> sum;
-    for (const auto& bl : bottomLefts)
-        sum += bl.toFloat();
+    for (const auto& center : centers)
+        sum += center.toFloat();
 
-    juce::Point<float> centerFloat = sum / bottomLefts.size();
+    juce::Point<float> centerFloat = sum / centers.size();
     centerFloat -= {0.1f, 0.1f};
 
     juce::Point<int> center = centerFloat.roundToInt();
-    return center;
+
+    auto cell = getCellFromPx(center);
+
+    return cell;
 }

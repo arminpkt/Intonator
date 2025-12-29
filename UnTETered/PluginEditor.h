@@ -19,6 +19,7 @@ private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     UnTETeredAudioProcessor& processorRef;
-    Grid2D grid2D{10, 10, {5, 4}, {3, 2}, 220, processorRef};
+    juce::VBlankAnimatorUpdater animatorUpdater;
+    Grid2D grid2D{10, 10, {5, 4}, {3, 2}, 220, processorRef, animatorUpdater};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessorEditor)
 };

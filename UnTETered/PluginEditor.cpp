@@ -3,15 +3,13 @@
 
 //==============================================================================
 UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
+    : AudioProcessorEditor (&p), processorRef (p), animatorUpdater(juce::VBlankAnimatorUpdater(this))
 {
     juce::ignoreUnused (processorRef);
     setSize (400, 400);
 }
 
-UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor()
-{
-}
+UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;
 
 //==============================================================================
 void UnTETeredAudioProcessorEditor::paint (juce::Graphics& g)
