@@ -172,13 +172,13 @@ std::unique_ptr<Note> Grid2D::generateNote(juce::Point<int> coordinates) const {
 
     Fraction ratioToRef(1, 1);
     for (int x = refCoordinatesCellTarget.x; x < mirrored.x; ++x)
-        ratioToRef *= intervalHorizontal;
+        ratioToRef = ratioToRef * intervalHorizontal;
     for (int x = refCoordinatesCellTarget.x; x > mirrored.x; --x)
-        ratioToRef /= intervalHorizontal;
+        ratioToRef = ratioToRef / intervalHorizontal;
     for (int y = refCoordinatesCellTarget.y; y < mirrored.y; ++y)
-        ratioToRef *= intervalVertical;
+        ratioToRef = ratioToRef * intervalVertical;
     for (int y = refCoordinatesCellTarget.y; y > mirrored.y; --y)
-        ratioToRef /= intervalVertical;
+        ratioToRef = ratioToRef / intervalVertical;
 
     return std::make_unique<ChildNote>(*refNote, ratioToRef, 0, 0);
 }

@@ -4,15 +4,22 @@
 
 #pragma once
 
+#include <MacTypes.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_animation/juce_animation.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 
 #include "../../logic/util.h"
-#include "../../logic/NoteRegion.h"
 #include "../../logic/header-only/Fraction.h"
+#include "../../logic/header-only/Note.h"
 #include "../../PluginProcessor.h"
+
+class Cell: public juce::Component {
+    public:
+    juce::Point<int> coordinates;
+    std::unique_ptr<Note> note;
+};
 
 class Grid2D: public juce::Component
 {
@@ -26,7 +33,6 @@ class Grid2D: public juce::Component
     bool keyPressed(const juce::KeyPress& event) override;
 
     void activateTransition();
-    void addAnimatorToUpdater(juce::AnimatorUpdater& updater) const;
 
     static juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected);
 
@@ -51,10 +57,10 @@ class Grid2D: public juce::Component
 
     juce::Animator gridTranspositionAnimator;
 
-    juce::Rectangle<int> getCellBounds(juce::Point<int> coordinates) const;
-    juce::Point<int> getCellFromPx(const juce::Point<int>& px) const;
-    juce::Point<int> mirrorY(juce::Point<int> point) const;
-    juce::Point<int> mirrorYPx(juce::Point<int> point) const;
+    juce::Rectangle<int> getCellBounds(Cell cell) const;
+    Cell getCellFromPx(const juce::Point<int>& px) const;
+    // juce::Point<int> mirrorY(juce::Point<int> point) const;
+    // juce::Point<int> mirrorYPx(juce::Point<int> point) const;
     std::unique_ptr<Note> generateNote(juce::Point<int> coordinates) const;
     juce::Colour getColourForCoordinates(juce::Point<int> coordinates) const;
     void updateNextActive();

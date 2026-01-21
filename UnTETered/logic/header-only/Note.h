@@ -17,21 +17,21 @@ class ChildNote;
 
 class Note {
 public:
-    float frequency;
+    double frequency;
     int start;
     int end;
     std::vector<ChildNote*> children;
 
-    Note(const float freq, const int s, const int e)
+    Note(const double freq, const int s, const int e)
         : frequency(freq), start(s), end(e) {}
 
     /** Computes the interval between f and this note's frequency in semitones.
      *
      * @param f     Reference frequency in Hz
      */
-    float getDistanceFrom(const float f) const {
-        float ratio = frequency / f;
-        float ratio_log = std::log2(ratio);
+    double getDistanceFrom(const double f) const {
+        double ratio = frequency / f;
+        double ratio_log = std::log2(ratio);
         return ratio_log * 12;
     }
 
@@ -39,26 +39,26 @@ public:
      *
      * @param note  Reference note
      */
-    float getDistanceFrom(const Note& note) const {
+    double getDistanceFrom(const Note& note) const {
         return getDistanceFrom(note.frequency);
     }
 
     // Computes the MIDI value if MIDI were continuous.
-    float getPitch() const {
-        float distanceFromA440 = getDistanceFrom(440);
-        float pitch = distanceFromA440 + 69;
+    double getPitch() const {
+        double distanceFromA440 = getDistanceFrom(440);
+        double pitch = distanceFromA440 + 69;
         return pitch;
     }
 
     // Computes the continuous pitch class, where A -> 0, Bb -> 1, ...
     PitchClass getPitchClass() const {
-        float pitch = getPitch();
+        double pitch = getPitch();
         return {pitch};
     }
 
     // Computes the closest MIDI value for this note.
     int getRoundedMidiValue() const {
-        float roundedMidiValue = std::round(getPitch());
+        double roundedMidiValue = std::round(getPitch());
         if (roundedMidiValue < 0 || roundedMidiValue > 127) {
             throw std::out_of_range("note out of midi range");
         }
@@ -70,8 +70,8 @@ public:
      * @param midiNoteValue     The note from which the offset is calculated
      * @return                  The distance in semitones
      */
-    float getPitchBendInSemitonesWRT(const int midiNoteValue) const {
-        float offsetInSemitones = getPitch() - static_cast<float>(midiNoteValue);
+    double getPitchBendInSemitonesWRT(const int midiNoteValue) const {
+        double offsetInSemitones = getPitch() - static_cast<double>(midiNoteValue);
         return offsetInSemitones;
     }
 
@@ -79,7 +79,7 @@ public:
      *
      * @param bendRange     The range of the pitchbend in semitones
      */
-    juce::uint16 getPitchBendValue(const float bendRange = 48) const {
+    juce::uint16 getPitchBendValue(const double bendRange = .5) const {
         int roundedMidiValue = getRoundedMidiValue();
         return getPitchBendValueWRT(roundedMidiValue, bendRange);
     }
@@ -91,11 +91,11 @@ public:
      * @param bendRange         The range of the pitchbend in semitones
      * @return
      */
-    juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const float bendRange = 48) const {
-        float offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
-        float bendRatio = offsetInSemitones / bendRange;
-        float bendValueCont = 8192 + 8192 * bendRatio;
-        float roundedBendValue = std::round(bendValueCont);
+    juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = .5) const {
+        double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
+        double bendRatio = offsetInSemitones / bendRange;
+        double bendValueCont = 8192 + 8192 * bendRatio;
+        double roundedBendValue = std::round(bendValueCont);
         return static_cast<juce::uint16>(roundedBendValue);
     }
 
@@ -104,22 +104,19 @@ public:
      * @param other     The note to move this note close to
      */
     void octavateClosestTo(const Note& other) {
-        float distanceInSemitones = getDistanceFrom(other);
-        float distanceInOctaves = distanceInSemitones / 12;
+        double distanceInSemitones = getDistanceFrom(other);
+        double distanceInOctaves = distanceInSemitones / 12;
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
         DBG(distanceInSemitones);
         DBG(distanceInOctaves);
         DBG(numberOfOctavesToOctavate);
-        Fraction f(1, 1);
         if (numberOfOctavesToOctavate > 0) {
             int num = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
-            f = Fraction(num, 1);
+            *this *= {num, 1};
         } else {
             int den = static_cast<int>(std::pow(2, -numberOfOctavesToOctavate));
-            f = Fraction(1, den);
+            *this *= {1, den};
         }
-
-        *this *= f;
     }
 
     bool operator<(const Note& other) const {
@@ -130,8 +127,8 @@ public:
     virtual void recalculate() = 0;
     virtual Note& operator*=(const Fraction& f) = 0;
     virtual Note& operator/=(const Fraction& f) = 0;
-    virtual Note& operator*=(const float& i) = 0;
-    virtual Note& operator/=(const float& i) = 0;
+    virtual Note& operator*=(const double& i) = 0;
+    virtual Note& operator/=(const double& i) = 0;
     Note& operator*=(const int& i) {
         *this *= Fraction(i, 1);
         return *this;
@@ -146,41 +143,40 @@ class ChildNote : public Note {
 public:
     const Note* parent;
     Fraction ratio;
-    float irratio;
+    double irratio;
 
     ChildNote(Note& p, Fraction r, int s, int e)
-    : Note(p.frequency * r.toFloat(), s, e), parent(&p), ratio(r), irratio(1) {}
+    : Note(p.frequency * static_cast<double>(r), s, e), parent(&p), ratio(r), irratio(1) {}
 
-    ChildNote(Note& p, float i, int s, int e)
+    ChildNote(Note& p, double i, int s, int e)
     : Note(p.frequency * i, s, e), parent(&p), ratio(Fraction(1, 1)), irratio(i) {}
 
-    ChildNote(Note& p, Fraction r, float i, int s, int e)
-    : Note(p.frequency * r.toFloat() * i, s, e), parent(&p), ratio(r), irratio(i) {}
+    ChildNote(Note& p, Fraction r, double i, int s, int e)
+    : Note(p.frequency * static_cast<double>(r) * i, s, e), parent(&p), ratio(r), irratio(i) {}
 
 
     void recalculate() override {
-        frequency = parent->frequency * ratio.toFloat() * irratio;
+        frequency = parent->frequency * static_cast<double>(ratio) * irratio;
         for (const auto& note : children)
             note->recalculate();
     }
 
-    // Compound assignment
     Note& operator*=(const Fraction& f) override {
-        ratio *= f;
+        ratio = ratio * f;
         recalculate();
         return *this;
     }
     Note& operator/=(const Fraction& f) override {
-        ratio /= f;
+        ratio = ratio / f;
         recalculate();
         return *this;
     }
-    Note& operator*=(const float& i) override {
+    Note& operator*=(const double& i) override {
         irratio *= i;
         recalculate();
         return *this;
     }
-    Note& operator/=(const float& i) override {
+    Note& operator/=(const double& i) override {
         irratio /= i;
         recalculate();
         return *this;
@@ -189,7 +185,7 @@ public:
 
 class RootNote : public Note {
 public:
-    RootNote(float freq, int s, int e)
+    RootNote(double freq, int s, int e)
         : Note(freq, s, e) {
     }
 
@@ -200,21 +196,21 @@ public:
 
     // Compound assignment
     Note& operator*=(const Fraction& f) override {
-        frequency *= f.toFloat();
+        frequency *= static_cast<double>(f);
         recalculate();
         return *this;
     }
     Note& operator/=(const Fraction& f) override {
-        frequency /= f.toFloat();
+        frequency /= static_cast<double>(f);
         recalculate();
         return *this;
     }
-    Note& operator*=(const float& i) override {
+    Note& operator*=(const double& i) override {
         frequency *= i;
         recalculate();
         return *this;
     }
-    Note& operator/=(const float& i) override {
+    Note& operator/=(const double& i) override {
         frequency /= i;
         recalculate();
         return *this;

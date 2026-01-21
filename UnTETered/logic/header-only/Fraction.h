@@ -1,104 +1,64 @@
 #pragma once
 
-#include <iostream>
 #include <stdexcept>
-#include <numeric>
+#include <utility>
+
+#include "Monzo.h"
 
 class Fraction {
+private:
+    Monzo monzo;
+    mutable std::optional<double> cachedValue;
+
+    explicit Fraction(const Monzo m) : monzo(m) {}
+
 public:
-    u_long num;
-    u_long den;
+    Fraction(const int numerator, const int denominator) : monzo(numerator, denominator) {}
 
-    Fraction(int numerator, int denominator) : Fraction(
-        static_cast<u_long>(numerator),
-        static_cast<u_long>(denominator)
-    ) {
-        if (numerator < 0 || denominator < 0)
-            throw std::invalid_argument("Negative arguments indicate integer overflow.");
+    [[nodiscard]] std::pair<int, int> getNumeratorAndDenominator() const {
+        return monzo.getNumeratorAndDenominator();
     }
 
-    Fraction(u_long numerator, u_long denominator) {
-        if (denominator == 0)
-            throw std::invalid_argument("Denominator cannot be zero.");
-
-        num = numerator;
-        den = denominator;
-
-        simplify();
-    }
-
-    void simplify() {
-        const auto g = std::__gcd<u_long>(num, den);
-        num /= g;
-        den /= g;
-
-        if (den < 0) {
-            num = -num;
-            den = -den;
-        }
-    }
-
-    [[nodiscard]] float toFloat() const {
-        return static_cast<float>(num) / static_cast<float>(den);
+    explicit operator double() const {
+        if (!cachedValue)
+            cachedValue = static_cast<double>(monzo);
+        return cachedValue.value();
     }
 
     Fraction operator*(const Fraction& other) const {
-        return {num * other.num, den * other.den};
+        const Monzo m = monzo + other.monzo;
+        return Fraction(m);
     }
 
     Fraction operator/(const Fraction& other) const {
-        if (other.num == 0)
-            throw std::domain_error("Cannot divide by zero.");
-        return {num * other.den, den * other.num};
+        const Monzo m = monzo - other.monzo;
+        return Fraction(m);
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const Fraction& f) {
-        return os << f.num << "/" << f.den;
+    friend std::ostream& operator<<(std::ostream& os, Fraction& f) {
+        const auto [numerator, denominator] = f.getNumeratorAndDenominator();
+        return os << std::to_string(numerator) << "/" << std::to_string(denominator);
     }
 
     Fraction operator/(const int i) const {
         if (i == 0)
             throw std::invalid_argument("Cannot divide by zero.");
-        return {num, den * static_cast<u_long>(i)};
+        const Fraction toDivideBy = {i, 1};
+        return *this / toDivideBy;
     }
 
     friend Fraction operator/(const int i, const Fraction& f) {
-        if (f.num == 0)
-            throw std::invalid_argument("Cannot divide by zero.");
-        return {static_cast<u_long>(i) * f.den, f.num};
+        const Fraction toBeDivided = {i, 1};
+        return toBeDivided / f;
     }
 
     Fraction operator*(const int i) const {
-        return {num * static_cast<u_long>(i), den};
+        const Fraction toMultiply = {i, 1};
+        return *this * toMultiply;
     }
 
     friend Fraction operator*(const int i, const Fraction& f) {
-        return {f.num * static_cast<u_long>(i), f.den};
-    }
-
-    Fraction& operator*=(const Fraction& f) {
-        num *= f.num;
-        den *= f.den;
-        simplify();
-        return *this;
-    }
-
-    Fraction& operator*=(const int i) {
-        num *= static_cast<u_long>(i);
-        simplify();
-        return *this;
-    }
-
-    Fraction& operator/=(const Fraction& f) {
-        num *= f.den;
-        den *= f.num;
-        simplify();
-        return *this;
-    }
-
-    Fraction& operator/=(const int i) {
-        den *= static_cast<u_long>(i);
-        simplify();
-        return *this;
+        const Fraction toMultiply = {i, 1};
+        return f * toMultiply;
     }
 };
