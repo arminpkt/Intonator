@@ -13,7 +13,6 @@ public:
         for (size_t i = 0; i < 15; ++i) {
             if (!occupied.test(i)) {
                 occupied.set(i);
-                // Start at channel 2
                 return i+2;
             }
         }
