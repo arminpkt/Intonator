@@ -5,6 +5,7 @@
 
 #include "Monzo.h"
 
+
 class Fraction {
 private:
     Monzo monzo;
@@ -14,6 +15,25 @@ private:
 
 public:
     Fraction(const int numerator, const int denominator) : monzo(numerator, denominator) {}
+    static std::optional<Fraction> fromString(const juce::String& text) {
+        auto trimmed = text.trim();
+        auto parts = juce::StringArray::fromTokens(trimmed, "/", "");
+
+        if (parts.size() != 2)
+            return std::nullopt;
+
+        if (!parts[0].containsOnly("0123456789") ||
+            !parts[1].containsOnly("0123456789"))
+            return std::nullopt;
+
+        int a = parts[0].getIntValue();
+        int b = parts[1].getIntValue();
+
+        if (b == 0)
+            return std::nullopt;
+
+        return Fraction(a, b);
+    }
 
     [[nodiscard]] std::pair<int, int> getNumeratorAndDenominator() const {
         return monzo.getNumeratorAndDenominator();
@@ -32,6 +52,11 @@ public:
 
     Fraction operator/(const Fraction& other) const {
         const Monzo m = monzo - other.monzo;
+        return Fraction(m);
+    }
+
+    Fraction operator^(const int power) const {
+        const Monzo m = power * monzo;
         return Fraction(m);
     }
 

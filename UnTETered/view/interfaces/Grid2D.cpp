@@ -10,220 +10,350 @@
 // make clickable during shift
 // test
 
-Grid2D::Grid2D(int rows, int cols, Fraction horizontal, Fraction vertical, float refFreq,
-    UnTETeredAudioProcessor& processor, juce::VBlankAnimatorUpdater& updater)
-    : numRows(rows), numCols(cols), intervalHorizontal(horizontal),
-    intervalVertical(vertical), refCoordinatesCellTarget({(rows-1)/2, (cols-1)/2}),
-    refNote(std::make_unique<RootNote>(refFreq, 0, 0)), processorRef(processor),
+Grid2D::Grid2D(const Point& dim, const Fraction& horizontal, const Fraction& vertical,
+        const double freqOr, UnTETeredAudioProcessor& proc, juce::VBlankAnimatorUpdater& updater) :
+    processor(proc), dimScreenCells(dim), boundsScreenCells(0, 0, dim.x, dim.y),
+    dimKernelCells(3*dim), boundsKernelCells(0, 0, 3*dim.x, 3*dim.y),
+    intervalHorizontal(horizontal), intervalVertical(vertical), noteOrigin(RootNote(freqOr, 0, 0)),
+    middleCellScreen((dim-Point{1, 1})/2), offsetFromOriginGrid(Point(0, 0)),
     gridTranspositionAnimator(
         juce::ValueAnimatorBuilder{}
-            .withOnStartCallback([this]{
-                auto refCellActual = getCellBounds(refCoordinatesCellActual);
-                auto refCellTarget = getCellBounds(refCoordinatesCellTarget);
-                auto refCoordinatesPxActual = refCellActual.getCentre();
-                auto refCoordinatesPxTarget = refCellTarget.getCentre();
-                paintingOffsetInitial = refCoordinatesPxTarget - refCoordinatesPxActual;
-            })
-            .withValueChangedCallback([this](auto value){
-                paintingOffset = juce::makeAnimationLimits(
-                    paintingOffsetInitial, {0, 0}
-                ).lerp(value);
-                repaint();
-            })
-            .withEasing(juce::Easings::createEaseInOut())
-            .withDurationMs(600)
-            .build()
+        .withValueChangedCallback([this](auto value){
+          paintingOffsetPx = juce::makeAnimationLimits(
+              paintingOffsetPxInitial, {0, 0}
+          ).lerp(value);
+          repaint();
+        })
+        .withOnCompleteCallback([this] {repaint();})
+        .withEasing(juce::Easings::createEaseInOut())
+        .withDurationMs(600)
+        .build()
     ) {
-    currentCellStates.resize(numRows, std::vector(numCols, false));
-    nextCellStates.resize(numRows, std::vector(numCols, false));
-    updater.addAnimator(gridTranspositionAnimator);
+        updater.addAnimator(gridTranspositionAnimator);
+        kernel = createEmptyKernel(dimKernelCells);
 
-    setWantsKeyboardFocus(true);
-}
+        setWantsKeyboardFocus(true);
+    }
 
+// deze kan slimmer, eerst alles tekenen, daarna de geselecteerde en actieve cellen veranderen (scheelt niks)
 void Grid2D::paint(juce::Graphics& g) {
-    for (int row = -numRows; row < numRows; ++row) {
-        for (int col = -numCols; col < numCols; ++col) {
-            auto cell = getCellBounds({row, col});
-
-            auto cellColour = getColourForCoordinates({row, col});
+    auto bounds = getLocalBounds();
+    auto [xCellKernelMin, yCellKernelMin] = getCellKernelFromPx({0, 0});
+    auto [xCellKernelMax, yCellKernelMax] = getCellKernelFromPx({bounds.getWidth(), bounds.getHeight()});
+    for (int y = yCellKernelMin - 1; y <= yCellKernelMax; ++y) {
+        for (int x = xCellKernelMin - 1; x <= xCellKernelMax; ++x) {
+            Point cellKernel = {x, y};
+            Point cellGrid = getCellGridFromKernel(cellKernel);
+            auto pxBoundsDraw = getPxBoundsFromCellKernel(cellKernel);
+            auto cellColour = getColourForCellKernel(cellKernel);
 
             g.setColour(cellColour);
-            g.fillRect(cell);
+            g.fillRect(pxBoundsDraw);
 
             // Draw dots in currently active cells
-            if (row > 0 && col > 0 && currentCellStates[row][col]) {
+            if (activeCellsGrid.find(cellGrid) != activeCellsGrid.end()) {
                 g.setColour(juce::Colours::red);
-                auto circleBounds = cell.toFloat().expanded(
-                    -.35f * cell.getWidth(), -.35f * cell.getHeight());
+                auto pxBoundsDrawFloat = pxBoundsDraw.toFloat();
+                auto circleBounds = pxBoundsDraw.toFloat().expanded(
+                    -.35f * pxBoundsDrawFloat.getWidth(), -.35f * pxBoundsDrawFloat.getHeight());
                 g.fillEllipse(circleBounds);
             }
 
             // Draw cell border
             g.setColour(juce::Colours::black);
-            g.drawRect(cell, 1.0f);
+            g.drawRect(pxBoundsDraw, 1.0f);
         }
     }
 }
 
 void Grid2D::mouseDown(const juce::MouseEvent& event) {
-    auto pos = event.getPosition();
+    Point posPx = event.getPosition();
+    Point mirrored = mirrorYPx(posPx);
+    Point cellGrid = getCellGridFromPx(mirrored);
 
-    auto cell = getCellFromPx(pos);
-    auto row = cell.y;
-    auto col = cell.x;
+    if (selectedCellsGrid.find(cellGrid) != selectedCellsGrid.end())
+        selectedCellsGrid.erase(cellGrid);
+    else
+        selectedCellsGrid.insert(cellGrid);
 
-    if (row < numRows && col < numCols)
-    {
-        nextCellStates[row][col] = !nextCellStates[row][col];
-        updateNextActive();
-        repaint();
-    }
-}
-
-juce::Point<int> Grid2D::getCellFromPx(const juce::Point<int>& px) const {
-    auto px_float = px.toFloat();
-    auto bounds = getLocalBounds().toFloat();
-    float cellWidth = bounds.getWidth() / static_cast<float>(numCols);
-    float cellHeight = bounds.getHeight() / static_cast<float>(numRows);
-
-    int col = static_cast<int>(px_float.x / cellWidth);
-    int row = static_cast<int>(px_float.y / cellHeight);
-
-    return {col, row};
+    repaint();
 }
 
 bool Grid2D::keyPressed(const juce::KeyPress& key) {
-    if (key == juce::KeyPress('r')) {
+    if (key == juce::KeyPress::spaceKey) {
         activateTransition();
         return true;
     }
-
+    if (key == juce::KeyPress::backspaceKey) {
+        selectedCellsGrid.clear();
+        repaint();
+        return true;
+    }
+    auto code = static_cast<size_t>(key.getKeyCode());
+    DBG(code);
+    if (code >= 65 && code <= 90) {
+        if (key.getModifiers().isShiftDown()) {
+            if (!selectedCellsGrid.empty()) {
+                saves[code] = {{}, 's'};
+                for (auto& selectedGrid : selectedCellsGrid)
+                    saves[code].first.insert(getCellScreenFromGrid(selectedGrid));
+            }
+            return true;
+        }
+        if (key.getModifiers().isAltDown()) {
+            if (!selectedCellsGrid.empty()) {
+                saves[code] = {{}, 'a'};
+                for (auto& selectedGrid : selectedCellsGrid)
+                    saves[code].first.insert(getCellScreenFromGrid(selectedGrid));
+            }
+            return true;
+        }
+        selectedCellsGrid.clear();
+        for (auto& save : saves[code].first)
+            selectedCellsGrid.insert(getCellGridFromScreen(save));
+        if (saves[code].second == 's') {
+            repaint();
+            return true;
+        }
+        if (saves[code].second == 'a') {
+            activateTransition();
+            return true;
+        }
+    }
     return false;
 }
 
 void Grid2D::activateTransition() {
-    for (size_t i = 0; i < currentActiveNotesOrdered.size(); ++i) {
-        Note* note = currentActiveNotesOrdered[i];
+    for (size_t i = 0; i < activeNotes.size(); ++i) {
+        const Note* note = activeNotes[i];
 
         auto noteOff = juce::MidiMessage::noteOff(
             static_cast<int>(i + 2), note->getRoundedMidiValue());
-        processorRef.midiBuffer.addEvent(noteOff, 10);
+        processor.midiBuffer.addEvent(noteOff, 10);
     }
 
-    for (size_t i = 0; i < nextActiveNotesOrdered.size(); ++i) {
-        Note* note = nextActiveNotesOrdered[i];
+    bool sameSize = activeCellsGrid.size() == selectedCellsGrid.size();
+
+    if (!sameSize)
+        calibrateGrid();
+
+    std::vector<Note*> nextActiveNotes;
+    for (auto& cellGrid : selectedCellsGrid) {
+        Note* note = getNoteFromGrid(cellGrid, !sameSize);
+        nextActiveNotes.push_back(note);
+    }
+    optimiseTransition(activeNotes, nextActiveNotes);
+
+    for (size_t i = 0; i < nextActiveNotes.size(); ++i) {
+        const Note* note = nextActiveNotes[i];
 
         auto noteOn = juce::MidiMessage::noteOn(
             static_cast<int>(i + 2), note->getRoundedMidiValue(),
             static_cast<juce::uint8>(100));
-        processorRef.midiBuffer.addEvent(noteOn, 20);
+        processor.midiBuffer.addEvent(noteOn, 20);
 
         auto pitchBendValue = note->getPitchBendValue();
         auto pitchBend = juce::MidiMessage::pitchWheel(
             static_cast<int>(i + 2), pitchBendValue);
-        processorRef.midiBuffer.addEvent(pitchBend, 30);
+        processor.midiBuffer.addEvent(pitchBend, 30);
     }
 
-    currentActiveNotes = std::move(nextActiveNotes);
-    currentActiveNotesOrdered = std::move(nextActiveNotesOrdered);
-    currentCellStates = std::move(nextCellStates);
-    nextCellStates.resize(numRows, std::vector(numCols, false));
+    activeNotes = std::move(nextActiveNotes);
+    activeCellsGrid = std::move(selectedCellsGrid);
 
-    refCoordinatesCellActual = calculateCenterOfGravityCell();
-    refNote = generateNote(refCoordinatesCellActual);
+    transposeGrid();
+}
 
-    gridTranspositionAnimator.start();
+void Grid2D::calibrateGrid() {
+    while (getNoteFromScreen(middleCellScreen, true)->frequency > MAX_FREQ_MIDDLE)
+        octavateGridDown();
+    while (getNoteFromScreen(middleCellScreen, true)->frequency < MIN_FREQ_MIDDLE)
+        octavateGridUp();
+}
+
+void Grid2D::octavateGridDown() {
+    noteOrigin /= 2;
+}
+
+void Grid2D::octavateGridUp() {
+    noteOrigin *= 2;
 }
 
 juce::Colour Grid2D::getColourForPitchClass(PitchClass pitchClass, bool selected) {
-    float hue = pitchClass.value / 12.0f;
+    float hue = static_cast<float>(pitchClass.value) / 12.f;
     auto colour = juce::Colour::fromHSV(hue, 0.4f, 0.7f, 1.0f);
-    if (selected) {
+    if (selected)
         colour = colour.withBrightness(0.9f).withSaturation(0.25f);
-    }
 
     return colour;
 }
 
-juce::Rectangle<int> Grid2D::getCellBounds(juce::Point<int> coordinates) const {
-    auto bounds = getLocalBounds().toFloat();
-    float cellWidth = bounds.getWidth() / numCols;
-    float cellHeight = bounds.getHeight() / numRows;
+Kernel Grid2D::createEmptyKernel(Point dim) {
+    auto x = static_cast<size_t>(dim.x);
+    auto y = static_cast<size_t>(dim.y);
 
-    int x = static_cast<int>(coordinates.x * cellWidth) + paintingOffset.x;
-    int y = static_cast<int>(coordinates.y * cellHeight) + paintingOffset.y;
-    int w = static_cast<int>(cellWidth);
-    int h = static_cast<int>(cellHeight);
-
-    return {x, y, w, h};
+    Kernel emptyKernel;
+    emptyKernel.resize(y);
+    for (auto & row : emptyKernel)
+        row.resize(x);
+    return emptyKernel;
 }
 
-juce::Point<int> Grid2D::mirrorY(juce::Point<int> point) const {
-    return {point.x, static_cast<int>(numRows) - point.y - 1};
+Rect Grid2D::getPxBoundsFromCellScreen(const Point& inputCellScreen) const {
+    PointF dimCellPxFloat = getDimCellPxFloat();
+    Point posPx = (inputCellScreen.toFloat() * dimCellPxFloat).roundToInt() + paintingOffsetPx;
+    Point dimCellPx = dimCellPxFloat.roundToInt();
+    Rect pxBounds = {posPx.x, posPx.y, dimCellPx.x, dimCellPx.y};
+    Rect localBounds = getLocalBounds();
+    if (pxBounds.getX() < 0)
+        pxBounds.removeFromLeft(pxBounds.getX());
+    if (pxBounds.getY() < 0)
+        pxBounds.removeFromTop(pxBounds.getY());
+    if (pxBounds.getRight() > localBounds.getWidth())
+        pxBounds.removeFromRight(pxBounds.getRight() - localBounds.getWidth());
+    if (pxBounds.getBottom() > localBounds.getHeight())
+        pxBounds.removeFromBottom(pxBounds.getBottom() - localBounds.getHeight());
+
+    Rect mirrored = mirrorYPx(pxBounds);
+    return mirrored;
 }
 
-juce::Point<int> Grid2D::mirrorYPx(juce::Point<int> point) const {
+Rect Grid2D::getPxBoundsFromCellKernel(const Point& inputCellKernel) const {
+    Point cellScreen = getCellScreenFromKernel(inputCellKernel);
+    return getPxBoundsFromCellScreen(cellScreen);
+}
+
+PointF Grid2D::getDimCellPxFloat() const {
+    RectF boundsScreenPxFloat = getLocalBounds().toFloat();
+    PointF dimScreenPxFloat = PointF(boundsScreenPxFloat.getWidth(), boundsScreenPxFloat.getHeight());
+    PointF dimScreenCellsFloat = dimScreenCells.toFloat();
+    PointF dimCellPxFloat = dimScreenPxFloat / dimScreenCellsFloat;
+    return dimCellPxFloat;
+}
+
+Point Grid2D::getCellScreenFromPx(const Point& inputPx) const {
+    PointF dimCellPxFloat = getDimCellPxFloat();
+    Point inputPxCorrected = inputPx - paintingOffsetPx;
+    Point inputCellScreen = (inputPxCorrected.toFloat() / dimCellPxFloat).toInt();
+    return inputCellScreen;
+}
+
+Point Grid2D::getCellKernelFromPx(const Point& inputPx) const {
+    Point cellScreen = getCellScreenFromPx(inputPx);
+    return getCellKernelFromScreen(cellScreen);
+}
+
+Point Grid2D::getCellGridFromPx(const Point& inputPx) const {
+    Point cellScreen = getCellScreenFromPx(inputPx);
+    return getCellGridFromScreen(cellScreen);
+}
+
+Point Grid2D::getCellKernelFromScreen(const Point& inputCellScreen) const {
+    Point cellKernel = inputCellScreen + dimScreenCells;
+    if (!boundsKernelCells.contains(cellKernel))
+        throw std::invalid_argument("invalid kernel cell");
+    return inputCellScreen + dimScreenCells;
+}
+
+Point Grid2D::getCellScreenFromKernel(const Point& inputCellKernel) const {
+    return inputCellKernel - dimScreenCells;
+}
+
+Point Grid2D::getCellGridFromScreen(const Point& inputCellScreen) const {
+    return inputCellScreen + offsetFromOriginGrid - middleCellScreen;
+}
+
+Point Grid2D::getCellScreenFromGrid(const Point& inputCellGrid) const {
+    return inputCellGrid - offsetFromOriginGrid + middleCellScreen;
+}
+
+Point Grid2D::getCellGridFromKernel(const Point& inputCellKernel) const {
+    Point cellScreen = getCellScreenFromKernel(inputCellKernel);
+    return getCellGridFromScreen(cellScreen);
+}
+
+Point Grid2D::getCellKernelFromGrid(const Point& inputCellGrid) const {
+    Point cellScreen = getCellScreenFromGrid(inputCellGrid);
+    return getCellKernelFromScreen(cellScreen);
+}
+
+Note* Grid2D::getNoteFromScreen(Point point, bool reset = false) {
+    Point cellKernel = getCellKernelFromScreen(point);
+    return getNoteFromKernel(cellKernel, reset);
+}
+
+Note* Grid2D::getNoteFromKernel(const Point& cellKernel, bool reset = false) {
+    if (!boundsKernelCells.contains(cellKernel))
+        throw std::invalid_argument("invalid kernel cell");
+
+    const auto x = static_cast<size_t>(cellKernel.x);
+    const auto y = static_cast<size_t>(cellKernel.y);
+
+    if (reset || !kernel[y][x]) {
+        const Point cellGrid = getCellGridFromKernel(cellKernel);
+        const Fraction ratioToRef = (intervalHorizontal ^ cellGrid.x) * (intervalVertical ^ cellGrid.y);
+        kernel[y][x] = std::make_unique<ChildNote>(noteOrigin, ratioToRef, 0, 0);
+    }
+
+    return kernel[y][x].get();
+}
+
+Note* Grid2D::getNoteFromGrid(const Point& cellGrid, bool reset = false) {
+    Point cellKernel = getCellKernelFromGrid(cellGrid);
+    return getNoteFromKernel(cellKernel, reset);
+}
+
+juce::Colour Grid2D::getColourForCellKernel(const Point& cellKernel) {
+    Note* note = getNoteFromKernel(cellKernel, false);
+    PitchClass pitchClass = note->getPitchClass();
+    Point gridCell = getCellGridFromKernel(cellKernel);
+    bool selected = selectedCellsGrid.find(gridCell) != selectedCellsGrid.end();
+    return getColourForPitchClass(pitchClass, selected);
+}
+
+void Grid2D::transposeGrid() {
+    Point centerOfGravityOffset = calculateCenterOfGravityOffsetCell();
+    Kernel newKernel = createEmptyKernel(dimKernelCells);
+
+    auto widthKernel = static_cast<size_t>(dimKernelCells.x);
+    auto heightKernel = static_cast<size_t>(dimKernelCells.y);
+    for (size_t y = 0; y < heightKernel; ++y)
+        for (size_t x = 0; x < widthKernel; ++x) {
+            Point pOld = Point(static_cast<int>(x), static_cast<int>(y)) + centerOfGravityOffset;
+            if (boundsKernelCells.contains(pOld)) {
+                auto yOld = static_cast<size_t>(pOld.y);
+                auto xOld = static_cast<size_t>(pOld.x);
+                newKernel[y][x] = std::move(kernel[yOld][xOld]);
+            }
+        }
+    kernel = std::move(newKernel);
+
+    offsetFromOriginGrid += centerOfGravityOffset;
+    paintingOffsetPxInitial = (getDimCellPxFloat() * centerOfGravityOffset).roundToInt();
+
+    gridTranspositionAnimator.start();
+}
+
+Point Grid2D::mirrorYPx(Point point) const {
     return {point.x, getHeight() - point.y - 1};
 }
 
-std::unique_ptr<Note> Grid2D::generateNote(juce::Point<int> coordinates) const {
-    auto mirrored = mirrorY(coordinates);
-
-    Fraction ratioToRef(1, 1);
-    for (int x = refCoordinatesCellTarget.x; x < mirrored.x; ++x)
-        ratioToRef = ratioToRef * intervalHorizontal;
-    for (int x = refCoordinatesCellTarget.x; x > mirrored.x; --x)
-        ratioToRef = ratioToRef / intervalHorizontal;
-    for (int y = refCoordinatesCellTarget.y; y < mirrored.y; ++y)
-        ratioToRef = ratioToRef * intervalVertical;
-    for (int y = refCoordinatesCellTarget.y; y > mirrored.y; --y)
-        ratioToRef = ratioToRef / intervalVertical;
-
-    return std::make_unique<ChildNote>(*refNote, ratioToRef, 0, 0);
+Rect Grid2D::mirrorYPx(Rect rect) const {
+    return {rect.getX(), getHeight() - rect.getY() - 1 - rect.getHeight(), rect.getWidth(), rect.getHeight()};
 }
 
-juce::Colour Grid2D::getColourForCoordinates(juce::Point<int> coordinates) const {
-    auto note = generateNote(coordinates);
-    PitchClass pitchClass = note->getPitchClass();
+Point Grid2D::calculateCenterOfGravityOffsetCell() const {
+    if (activeCellsGrid.empty())
+        return {0, 0};
 
-    if (coordinates.y < 0 || coordinates.y >= numRows || coordinates.x < 0 || coordinates.x >= numCols)
-        return getColourForPitchClass(pitchClass, false);
+    Point sum;
+    for (const auto& active : activeCellsGrid)
+        sum += getCellScreenFromGrid(active);
+    PointF centerOfGravityFloat = sum.toFloat() / activeCellsGrid.size();
+    centerOfGravityFloat += {0.51f, 0.51f};
 
-    return getColourForPitchClass(pitchClass, nextCellStates[coordinates.y][coordinates.x]);
-}
+    PointF centerOfGridCell = dimScreenCells.toFloat()/2;
 
-void Grid2D::updateNextActive() {
-    nextActiveNotes.clear();
-    nextActiveNotesOrdered.clear();
-    for (int row = 0; row < numRows; ++row)
-        for (int col = 0; col < numCols; ++col)
-            if (nextCellStates[row][col]) {
-                auto note = generateNote({row, col});
-                nextActiveNotesOrdered.push_back(note.get());
-                nextActiveNotes.push_back(std::move(note));
-            }
-
-    optimiseTransition(currentActiveNotesOrdered, nextActiveNotesOrdered);
-}
-
-juce::Point<int> Grid2D::calculateCenterOfGravityCell() const {
-    std::vector<juce::Point<int>> centers;
-    for (int row = 0; row < numRows; ++row)
-        for (int col = 0; col < numCols; ++col)
-            if (currentCellStates[row][col])
-                centers.push_back(getCellBounds({row, col}).getCentre());
-
-    juce::Point<float> sum;
-    for (const auto& center : centers)
-        sum += center.toFloat();
-
-    juce::Point<float> centerFloat = sum / centers.size();
-    centerFloat -= {0.1f, 0.1f};
-
-    juce::Point<int> center = centerFloat.roundToInt();
-
-    auto cell = getCellFromPx(center);
-
-    return cell;
+    Point offset = (centerOfGravityFloat - centerOfGridCell).roundToInt();
+    return offset;
 }

@@ -13,14 +13,13 @@
 #include "PitchClass.h"
 
 
-class ChildNote;
+struct ChildNote;
 
-class Note {
-public:
+struct Note {
     double frequency;
     int start;
     int end;
-    std::vector<ChildNote*> children;
+    std::unordered_set<ChildNote*> children;
 
     Note(const double freq, const int s, const int e)
         : frequency(freq), start(s), end(e) {}
@@ -29,7 +28,7 @@ public:
      *
      * @param f     Reference frequency in Hz
      */
-    double getDistanceFrom(const double f) const {
+    [[nodiscard]] double getDistanceFrom(const double f) const {
         double ratio = frequency / f;
         double ratio_log = std::log2(ratio);
         return ratio_log * 12;
@@ -39,25 +38,25 @@ public:
      *
      * @param note  Reference note
      */
-    double getDistanceFrom(const Note& note) const {
+    [[nodiscard]] double getDistanceFrom(const Note& note) const {
         return getDistanceFrom(note.frequency);
     }
 
     // Computes the MIDI value if MIDI were continuous.
-    double getPitch() const {
+    [[nodiscard]] double getPitch() const {
         double distanceFromA440 = getDistanceFrom(440);
         double pitch = distanceFromA440 + 69;
         return pitch;
     }
 
     // Computes the continuous pitch class, where A -> 0, Bb -> 1, ...
-    PitchClass getPitchClass() const {
+    [[nodiscard]] PitchClass getPitchClass() const {
         double pitch = getPitch();
         return {pitch};
     }
 
     // Computes the closest MIDI value for this note.
-    int getRoundedMidiValue() const {
+    [[nodiscard]] int getRoundedMidiValue() const {
         double roundedMidiValue = std::round(getPitch());
         if (roundedMidiValue < 0 || roundedMidiValue > 127) {
             throw std::out_of_range("note out of midi range");
@@ -70,7 +69,7 @@ public:
      * @param midiNoteValue     The note from which the offset is calculated
      * @return                  The distance in semitones
      */
-    double getPitchBendInSemitonesWRT(const int midiNoteValue) const {
+    [[nodiscard]] double getPitchBendInSemitonesWRT(const int midiNoteValue) const {
         double offsetInSemitones = getPitch() - static_cast<double>(midiNoteValue);
         return offsetInSemitones;
     }
@@ -79,7 +78,7 @@ public:
      *
      * @param bendRange     The range of the pitchbend in semitones
      */
-    juce::uint16 getPitchBendValue(const double bendRange = .5) const {
+    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange = .5) const {
         int roundedMidiValue = getRoundedMidiValue();
         return getPitchBendValueWRT(roundedMidiValue, bendRange);
     }
@@ -91,7 +90,7 @@ public:
      * @param bendRange         The range of the pitchbend in semitones
      * @return
      */
-    juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = .5) const {
+    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = .5) const {
         double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
         double bendRatio = offsetInSemitones / bendRange;
         double bendValueCont = 8192 + 8192 * bendRatio;
@@ -139,21 +138,25 @@ public:
     }
 };
 
-class ChildNote : public Note {
-public:
-    const Note* parent;
+struct ChildNote : Note {
+    Note* parent;
     Fraction ratio;
     double irratio;
 
-    ChildNote(Note& p, Fraction r, int s, int e)
-    : Note(p.frequency * static_cast<double>(r), s, e), parent(&p), ratio(r), irratio(1) {}
+    ChildNote(Note& p, const Fraction& r, const int s, const int e)
+    : ChildNote(p, r, 1, s, e) {}
 
-    ChildNote(Note& p, double i, int s, int e)
-    : Note(p.frequency * i, s, e), parent(&p), ratio(Fraction(1, 1)), irratio(i) {}
+    ChildNote(Note& p, const double i, const int s, const int e)
+    : ChildNote(p, {1, 1}, i, s, e) {}
 
-    ChildNote(Note& p, Fraction r, double i, int s, int e)
-    : Note(p.frequency * static_cast<double>(r) * i, s, e), parent(&p), ratio(r), irratio(i) {}
+    ChildNote(Note& p, const Fraction& r, const double i, const int s, const int e)
+    : Note(p.frequency * static_cast<double>(r) * i, s, e), parent(&p), ratio(r), irratio(i) {
+        p.children.insert(this);
+    }
 
+    ~ChildNote() override {
+        parent->children.erase(this);
+    }
 
     void recalculate() override {
         frequency = parent->frequency * static_cast<double>(ratio) * irratio;
@@ -185,7 +188,7 @@ public:
 
 class RootNote : public Note {
 public:
-    RootNote(double freq, int s, int e)
+    RootNote(const double freq, const int s, const int e)
         : Note(freq, s, e) {
     }
 

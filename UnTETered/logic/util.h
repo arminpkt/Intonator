@@ -6,8 +6,8 @@
 
 #include <vector>
 
-#include "header-only/Note.h"
-#include "header-only/PitchClass.h"
+#include "Note.h"
+#include "PitchClass.h"
 
 float dist(PitchClass& a, PitchClass& b);
 float dists_sum(const std::vector<PitchClass>& freq_as, const std::vector<PitchClass>& freq_bs);

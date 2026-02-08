@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <iostream>
+
 namespace primes {
     constexpr auto Primes = std::array{
         2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
@@ -107,5 +109,31 @@ public:
             if (primePowers[i] != 0)
                 logv += primePowers[i] * primes::PrimeLogs[i];
         return std::exp(logv);
+    }
+
+    friend Monzo operator*(const int factor, const Monzo& m) {
+        std::array<int, primes::PrimeCount> multiplied_powers{};
+        for (size_t i = 0; i < primes::PrimeCount; ++i)
+            multiplied_powers[i] = factor * m.primePowers[i];
+        return Monzo(multiplied_powers);
+    }
+
+    friend std::ostream& operator<<(std::ostream& out, const Monzo& m) {
+        size_t lastNonZero;
+        for (size_t i = primes::PrimeCount - 1; ; --i)
+            if (m.primePowers[i] != 0) {
+                lastNonZero = i;
+                break;
+            }
+
+        out << "[";
+        for (size_t i = 0; i < lastNonZero; ++i) {
+            out << m.primePowers[i];
+            if (i < lastNonZero - 1)
+                out << ", ";
+        }
+        out << "⟩";
+
+        return out;
     }
 };

@@ -26,6 +26,7 @@ target_sources(UnTETered
         PluginEditor.cpp
         PluginProcessor.cpp
         view/interfaces/Grid2D.cpp
+        view/interfaces/TextInput.cpp
         logic/util.cpp
         PianoRoll.cpp)
 

@@ -4,28 +4,37 @@
 
 #pragma once
 
-#include <MacTypes.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_animation/juce_animation.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <memory>
 
 #include "../../logic/util.h"
-#include "../../logic/header-only/Fraction.h"
-#include "../../logic/header-only/Note.h"
+#include "../../logic/Fraction.h"
+#include "../../logic/Note.h"
 #include "../../PluginProcessor.h"
 
-class Cell: public juce::Component {
-    public:
-    juce::Point<int> coordinates;
-    std::unique_ptr<Note> note;
+using Point = juce::Point<int>;
+using PointF = juce::Point<float>;
+using Rect = juce::Rectangle<int>;
+using RectF = juce::Rectangle<float>;
+using Kernel = std::vector<std::vector<std::unique_ptr<Note>>>;
+
+struct PointHash {
+    std::size_t operator()(const Point& p) const {
+        return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1);
+    }
 };
 
-class Grid2D: public juce::Component
-{
-    public:
-    Grid2D(int rows, int cols, Fraction horizontal, Fraction vertical, float refFreq,
-    UnTETeredAudioProcessor& processor, juce::VBlankAnimatorUpdater& updater);
+using PointSet = std::unordered_set<Point, PointHash>;
+
+static float MAX_FREQ_MIDDLE = 500;
+static float MIN_FREQ_MIDDLE = 100;
+
+class Grid2D: public juce::Component {
+public:
+    Grid2D(const Point& dim, const Fraction& horizontal, const Fraction& vertical, double freqOr,
+    UnTETeredAudioProcessor& proc, juce::VBlankAnimatorUpdater& updater);
     ~Grid2D() override = default;
 
     void paint(juce::Graphics& g) override;
@@ -33,38 +42,53 @@ class Grid2D: public juce::Component
     bool keyPressed(const juce::KeyPress& event) override;
 
     void activateTransition();
+    void calibrateGrid();
+    void octavateGridDown();
+    void octavateGridUp();
 
     static juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected);
+    static Kernel createEmptyKernel(Point dim);
 
-    private:
-    int numRows;
-    int numCols;
-    Fraction intervalHorizontal;
-    Fraction intervalVertical;
-    juce::Point<int> const refCoordinatesCellTarget;
-    juce::Point<int> refCoordinatesCellActual;
-    juce::Point<int> paintingOffsetInitial;
-    juce::Point<int> paintingOffset;
-    std::unique_ptr<Note> refNote;
+private:
+    UnTETeredAudioProcessor& processor;
+    const Point dimScreenCells;
+    const Rect boundsScreenCells;
+    const Point dimKernelCells;
+    const Rect boundsKernelCells;
+    const Fraction intervalHorizontal;
+    const Fraction intervalVertical;
+    RootNote noteOrigin;
+    const Point middleCellScreen;
+    Point offsetFromOriginGrid;
+    std::array<std::pair<PointSet, char>, 91> saves;
 
-    std::vector<std::vector<bool>> currentCellStates;
-    std::vector<std::vector<bool>> nextCellStates;
-    std::vector<std::unique_ptr<Note>> currentActiveNotes;
-    std::vector<std::unique_ptr<Note>> nextActiveNotes;
-    std::vector<Note*> currentActiveNotesOrdered;
-    std::vector<Note*> nextActiveNotesOrdered;
-    UnTETeredAudioProcessor& processorRef;
+    Kernel kernel;
+    PointSet activeCellsGrid;
+    PointSet selectedCellsGrid;
+    std::vector<Note*> activeNotes;
 
     juce::Animator gridTranspositionAnimator;
+    Point paintingOffsetPxInitial;
+    Point paintingOffsetPx;
 
-    juce::Rectangle<int> getCellBounds(Cell cell) const;
-    Cell getCellFromPx(const juce::Point<int>& px) const;
-    // juce::Point<int> mirrorY(juce::Point<int> point) const;
-    // juce::Point<int> mirrorYPx(juce::Point<int> point) const;
-    std::unique_ptr<Note> generateNote(juce::Point<int> coordinates) const;
-    juce::Colour getColourForCoordinates(juce::Point<int> coordinates) const;
-    void updateNextActive();
-    juce::Point<int> calculateCenterOfGravityCell() const;
-
-    std::vector<juce::MidiMessage> midiMessages;
+    Rect getPxBoundsFromCellScreen(const Point& inputCellScreen) const;
+    Rect getPxBoundsFromCellKernel(const Point& inputCellKernel) const;
+    PointF getDimCellPxFloat() const;
+    Point getCellScreenFromPx(const Point& inputPx) const;
+    Point getCellKernelFromPx(const Point& inputPx) const;
+    Point getCellGridFromPx(const Point& inputPx) const;
+    Point getCellKernelFromScreen(const Point& inputCellScreen) const;
+    Point getCellScreenFromKernel(const Point& inputCellKernel) const;
+    Point getCellGridFromScreen(const Point& inputCellScreen) const;
+    Point getCellScreenFromGrid(const Point& inputCellGrid) const;
+    Point getCellGridFromKernel(const Point& inputCellKernel) const;
+    Point getCellKernelFromGrid(const Point& inputCellGrid) const;
+    Note* getNoteFromScreen(Point point, bool cond);
+    Note* getNoteFromKernel(const Point& cellKernel, bool reset);
+    Note* getNoteFromGrid(const Point& cellGrid, bool reset);
+    juce::Colour getColourForCellKernel(const Point& cellKernel);
+    Rect mirrorYPx(Rect rect) const;
+    Point calculateCenterOfGravityOffsetCell() const;
+    void transposeGrid();
+    Point mirrorYPx(Point point) const;
 };

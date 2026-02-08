@@ -7,8 +7,8 @@
 #include <memory>
 #include <vector>
 
-#include "header-only/ChannelPool.h"
-#include "header-only/Note.h"
+#include "ChannelPool.h"
+#include "Note.h"
 
 class NoteRegion {
 public:
