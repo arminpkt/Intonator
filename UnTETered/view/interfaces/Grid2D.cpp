@@ -33,6 +33,8 @@ Grid2D::Grid2D(const Point& dim, const Fraction& horizontal, const Fraction& ver
         kernel = createEmptyKernel(dimKernelCells);
 
         setWantsKeyboardFocus(true);
+
+        pullStateFromProcessorAndRebuild();   // <-- restore on editor open
     }
 
 // deze kan slimmer, eerst alles tekenen, daarna de geselecteerde en actieve cellen veranderen (scheelt niks)
@@ -77,6 +79,7 @@ void Grid2D::mouseDown(const juce::MouseEvent& event) {
         selectedCellsGrid.insert(cellGrid);
 
     repaint();
+    pushStateToProcessor();
 }
 
 bool Grid2D::keyPressed(const juce::KeyPress& key) {
@@ -86,6 +89,7 @@ bool Grid2D::keyPressed(const juce::KeyPress& key) {
     }
     if (key == juce::KeyPress::backspaceKey) {
         selectedCellsGrid.clear();
+        pushStateToProcessor();
         repaint();
         return true;
     }
@@ -97,6 +101,8 @@ bool Grid2D::keyPressed(const juce::KeyPress& key) {
                 saves[code] = {{}, 's'};
                 for (auto& selectedGrid : selectedCellsGrid)
                     saves[code].first.insert(getCellScreenFromGrid(selectedGrid));
+
+                pushStateToProcessor();
             }
             return true;
         }
@@ -105,12 +111,17 @@ bool Grid2D::keyPressed(const juce::KeyPress& key) {
                 saves[code] = {{}, 'a'};
                 for (auto& selectedGrid : selectedCellsGrid)
                     saves[code].first.insert(getCellScreenFromGrid(selectedGrid));
+
+                pushStateToProcessor();
             }
             return true;
         }
         selectedCellsGrid.clear();
         for (auto& save : saves[code].first)
             selectedCellsGrid.insert(getCellGridFromScreen(save));
+
+        pushStateToProcessor();
+
         if (saves[code].second == 's') {
             repaint();
             return true;
@@ -162,6 +173,8 @@ void Grid2D::activateTransition() {
     activeCellsGrid = std::move(selectedCellsGrid);
 
     transposeGrid();
+
+    pushStateToProcessor();
 }
 
 void Grid2D::calibrateGrid() {
@@ -356,4 +369,67 @@ Point Grid2D::calculateCenterOfGravityOffsetCell() const {
 
     Point offset = (centerOfGravityFloat - centerOfGridCell).roundToInt();
     return offset;
+}
+
+void Grid2D::pushStateToProcessor() const
+{
+    processor.updateGridState([this](GridState& s)
+    {
+        s.originFreqHz = noteOrigin.frequency; // adjust if your RootNote API differs
+        s.offsetX = offsetFromOriginGrid.x;
+        s.offsetY = offsetFromOriginGrid.y;
+        s.activeCells = activeCellsGrid;
+        s.selectedCells = selectedCellsGrid;
+
+        // saves: convert PointSet(screen cells) -> vector<Point>
+        for (size_t i = 0; i < s.saves.size(); ++i)
+        {
+            s.saves[i].mode = saves[i].second; // 's' / 'a' / maybe 0
+            s.saves[i].screenCells.clear();
+            s.saves[i].screenCells.reserve(saves[i].first.size());
+            for (const auto& p : saves[i].first)
+                s.saves[i].screenCells.push_back(p);
+        }
+    });
+}
+
+void Grid2D::pullStateFromProcessorAndRebuild()
+{
+    const auto s = processor.getGridState();
+
+    noteOrigin = RootNote(s.originFreqHz, 0, 0); // your ctor
+    offsetFromOriginGrid = { s.offsetX, s.offsetY };
+    activeCellsGrid = s.activeCells;
+    selectedCellsGrid = s.selectedCells;
+
+    // saves: vector<Point> -> PointSet(screen cells)
+    for (size_t i = 0; i < saves.size(); ++i)
+    {
+        saves[i].second = s.saves[i].mode;
+        saves[i].first.clear();
+        for (const auto& p : s.saves[i].screenCells)
+            saves[i].first.insert(p);
+    }
+
+    // rebuild activeNotes from activeCellsGrid if you also persist actives
+    activeNotes.clear();
+    activeNotes.reserve(activeCellsGrid.size());
+    for (const auto& cellGrid : activeCellsGrid)
+        activeNotes.push_back(getNoteFromGrid(cellGrid, true));
+
+    repaint();
+}
+
+void Grid2D::rebuildActiveNotesFromActiveCells(bool resetNotes)
+{
+    activeNotes.clear();
+    activeNotes.reserve(activeCellsGrid.size());
+
+    for (const auto& cellGrid : activeCellsGrid)
+    {
+        // This recreates the Note mapping using your existing logic.
+        // resetNotes should be true if you want kernel notes recalculated.
+        Note* n = getNoteFromGrid(cellGrid, resetNotes);
+        activeNotes.push_back(n);
+    }
 }
