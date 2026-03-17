@@ -6,39 +6,9 @@
 #include <vector>
 #include <functional>
 #include <set>
+#include "view/interfaces/GridState.h"
+#include "view/interfaces/GridStateSerialiser.h"
 
-using Point = juce::Point<int>;
-
-struct PointHash {
-    std::size_t operator()(const Point& p) const {
-        return std::hash<int>{}(p.x) ^ (std::hash<int>{}(p.y) << 1);
-    }
-};
-using PointSet = std::unordered_set<Point, PointHash>;
-
-struct KeyBinding
-{
-    int keyCode = 0;
-    int mods = 0; // bitmask (shift/ctrl/alt/cmd)
-    std::vector<juce::Point<int>> cells; // chord payload as grid cells
-};
-
-struct SaveSlotState
-{
-    char mode = 0;                 // 0 = empty, 's' or 'a'
-    std::vector<Point> screenCells; // your saves store SCREEN cells
-};
-
-struct GridState
-{
-    double originFreqHz = 220.0;
-    int offsetX = 0;
-    int offsetY = 0;
-    PointSet activeCells;
-    PointSet selectedCells;
-
-    std::array<SaveSlotState, 91> saves;
-};
 
 //==============================================================================
 class UnTETeredAudioProcessor final : public juce::AudioProcessor
