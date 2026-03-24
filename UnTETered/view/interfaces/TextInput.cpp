@@ -57,7 +57,7 @@ void TextInput::evaluateAndSendMidi() {
     auto splat = juce::StringArray::fromTokens(fractionsText, ",", "");
     for (auto& s : splat) {
         if (auto fracOptional = Fraction::fromString(s)) {
-            auto note = std::make_unique<ChildNote>(rootNote, fracOptional.value(), 0, 0);
+            auto note = std::make_unique<ChildNote>(&rootNote, fracOptional.value(), 0, 0);
             nextActiveNotes.push_back(std::move(note));
         }
     }

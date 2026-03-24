@@ -5,17 +5,29 @@
 #include "NoteRegion.h"
 #include <algorithm>
 
-void NoteRegion::addNote(float frequency, int start, int end)
-{
-    // Create and store a new RootNote
+void NoteRegion::addRootNote(double frequency, float start, float end) {
     notes.push_back(std::make_unique<RootNote>(frequency, start, end));
-
-    // Automatically recalculate the MIDI messages
-    calculateMidiMessages();
+    // calculateMidiMessages();
 }
 
-void NoteRegion::calculateMidiMessages(const float pitchBendRange)
-{
+void NoteRegion::addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end) {
+    notes.push_back(std::make_unique<ChildNote>(parent, ratio, irratio, start, end));
+    // calculateMidiMessages();
+}
+
+void NoteRegion::addNote(std::unique_ptr<Note>* note) {
+    notes.push_back(std::move(*note));
+}
+
+void NoteRegion::deleteNote(const Note* note) {
+    for (size_t i = 0; i < notes.size(); ++i)
+        if (notes[i].get() == note) {
+            notes.erase(notes.begin() + static_cast<long int>(i));
+            return;
+        }
+}
+
+void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
     midiMessages.clear();
 
     std::unordered_map<juce::MidiMessage*, std::pair<juce::MidiMessage*, juce::MidiMessage*>> midiMessagesMap;
@@ -26,9 +38,9 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange)
         if (!note)
             continue;
 
-        // Convert frequency to MIDI
+        // Get relevant info from note
         const int midiNoteNumber = note->getRoundedMidiValue();
-        const float pitchBendInSemitones = note->getPitchBendInSemitones();
+        const auto pitchBendValue = note->getPitchBendValue(pitchBendRange);
 
         // Create Note On message
         juce::MidiMessage noteOn = juce::MidiMessage::noteOn(1, midiNoteNumber, static_cast<juce::uint8>(100));
@@ -36,7 +48,6 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange)
         midiMessages.push_back(noteOn);
 
         // Create Pitchbend message
-        const auto pitchBendValue = juce::MidiMessage::pitchbendToPitchwheelPos(pitchBendInSemitones, pitchBendRange);
         juce::MidiMessage pitchBend = juce::MidiMessage::pitchWheel(1, pitchBendValue);
         pitchBend.setTimeStamp(note->start);
         midiMessages.push_back(pitchBend);
@@ -51,8 +62,7 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange)
 
     // Sort by timestamp so they play in correct order
     std::sort(midiMessages.begin(), midiMessages.end(),
-        [](const juce::MidiMessage& a, const juce::MidiMessage& b)
-        {
+        [](const juce::MidiMessage& a, const juce::MidiMessage& b) {
             return a.getTimeStamp() < b.getTimeStamp();
         });
 
@@ -76,14 +86,14 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange)
     }
 }
 
-void NoteRegion::useAsParentToCreate(Note* note, Fraction ratio) {
-    auto child = std::make_unique<ChildNote>(*note, ratio, note->start, note->end);
-    note->children.push_back(child.get());
+void NoteRegion::useAsParentToCreate(Note* note, Fraction ratio, float start, float end) {
+    auto child = std::make_unique<ChildNote>(note, ratio, start, end);
+    note->children.insert(child.get());
     notes.push_back(std::move(child));
 }
 
-void NoteRegion::useAsParentToCreate(Note* note, float irratio) {
-    auto child = std::make_unique<ChildNote>(*note, irratio, note->start, note->end);
-    note->children.push_back(child.get());
+void NoteRegion::useAsParentToCreate(Note* note, float irratio, float start, float end) {
+    auto child = std::make_unique<ChildNote>(note, irratio, start, end);
+    note->children.insert(child.get());
     notes.push_back(std::move(child));
 }

@@ -60,9 +60,13 @@ public:
         return Fraction(m);
     }
 
+    std::string toString() const {
+        const auto [numerator, denominator] = getNumeratorAndDenominator();
+        return std::to_string(numerator) + "/" + std::to_string(denominator);
+    }
+
     friend std::ostream& operator<<(std::ostream& os, Fraction& f) {
-        const auto [numerator, denominator] = f.getNumeratorAndDenominator();
-        return os << std::to_string(numerator) << "/" << std::to_string(denominator);
+        return os << f.toString();
     }
 
     Fraction operator/(const int i) const {
@@ -85,5 +89,9 @@ public:
     friend Fraction operator*(const int i, const Fraction& f) {
         const Fraction toMultiply = {i, 1};
         return f * toMultiply;
+    }
+
+    bool operator==(const Fraction& fraction) const {
+        return monzo == fraction.monzo;
     }
 };

@@ -4,10 +4,9 @@
 //==============================================================================
 UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p), animatorUpdater(juce::VBlankAnimatorUpdater(this)) {
-    addAndMakeVisible(textInput);
-    addAndMakeVisible(grid2D);
+    addAndMakeVisible(pianoRoll);
 
-    setSize (400, 400 + TextInput::getHeight());
+    setSize (1200, 400);
 }
 
 UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;
@@ -15,7 +14,5 @@ UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;
 
 void UnTETeredAudioProcessorEditor::resized() {
     auto area = getLocalBounds();
-    textInput.setBounds(area.removeFromTop(TextInput::getHeight()));
-    DBG(area.toString());
-    grid2D.setBounds(area);
+    pianoRoll.setBounds(area);
 }

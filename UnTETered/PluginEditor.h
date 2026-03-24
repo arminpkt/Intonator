@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PianoRoll.h"
+#include "view/interfaces/PianoRoll.h"
 #include "PluginProcessor.h"
 #include "view/interfaces/Grid2D.h"
 #include "view/interfaces/TextInput.h"
@@ -22,5 +22,6 @@ private:
     juce::VBlankAnimatorUpdater animatorUpdater;
     TextInput textInput{processorRef};
     Grid2D grid2D{{10, 10}, {5, 4}, {3, 2}, 220, processorRef, animatorUpdater};
+    PianoRoll pianoRoll{processorRef};
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessorEditor)
 };

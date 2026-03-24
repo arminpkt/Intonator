@@ -13,12 +13,7 @@
 #include "../../logic/Fraction.h"
 #include "../../logic/Note.h"
 #include "../../PluginProcessor.h"
-
-using Point = juce::Point<int>;
-using PointF = juce::Point<float>;
-using Rect = juce::Rectangle<int>;
-using RectF = juce::Rectangle<float>;
-using Kernel = std::vector<std::vector<std::unique_ptr<Note>>>;
+#include "../Types.h"
 
 struct PointHash {
     std::size_t operator()(const Point& p) const {
@@ -46,7 +41,7 @@ public:
     void octavateGridDown();
     void octavateGridUp();
 
-    static juce::Colour getColourForPitchClass(PitchClass pitchClass, bool selected);
+    static juce::Colour getColourForNote(Note* note, bool selected);
     static Kernel createEmptyKernel(Point dim);
 
 private:
