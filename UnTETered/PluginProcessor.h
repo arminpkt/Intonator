@@ -8,6 +8,8 @@
 #include <set>
 #include "view/interfaces/GridState.h"
 #include "view/interfaces/GridStateSerialiser.h"
+#include "view/interfaces/PianoRollState.h"
+#include "view/interfaces/PianoRollStateSerialiser.h"
 
 
 //==============================================================================
@@ -55,6 +57,10 @@ public:
     void setGridState(const GridState& s);
     void updateGridState(std::function<void(GridState&)> fn);
 
+    PianoRollState getPianoRollState() const;
+    void setPianoRollState(const PianoRollState& s);
+    void updatePianoRollState(std::function<void(PianoRollState&)> fn);
+
     //==============================================================================
     juce::MidiBuffer midiBuffer;
 
@@ -67,6 +73,9 @@ private:
 
     mutable juce::CriticalSection gridStateLock;
     GridState gridState;
+
+    mutable juce::CriticalSection pianoRollStateLock;
+    PianoRollState pianoRollState;
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
 };

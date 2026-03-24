@@ -147,6 +147,11 @@ void UnTETeredAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
         root.addChild(GridStateSerialiser::toValueTree(gridState), -1, nullptr);
     }
 
+    {
+        const juce::ScopedLock sl(pianoRollStateLock);
+        root.addChild(PianoRollStateSerialiser::toValueTree(pianoRollState), -1, nullptr);
+    }
+
     if (auto xml = root.createXml())
         copyXmlToBinary(*xml, destData);
 }
@@ -184,6 +189,24 @@ void UnTETeredAudioProcessor::updateGridState(std::function<void(GridState&)> fn
 {
     const juce::ScopedLock sl(gridStateLock);
     fn(gridState);
+}
+
+PianoRollState UnTETeredAudioProcessor::getPianoRollState() const
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    return pianoRollState;
+}
+
+void UnTETeredAudioProcessor::setPianoRollState(const PianoRollState& s)
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    pianoRollState = s;
+}
+
+void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollState&)> fn)
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    fn(pianoRollState);
 }
 
 //==============================================================================
