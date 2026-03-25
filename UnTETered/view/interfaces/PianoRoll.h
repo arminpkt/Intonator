@@ -10,15 +10,16 @@
 
 class PianoRoll : public juce::Component {
 public:
-    float NOTE_HEIGHT_PER_OCTAVE = 1.0f/24.0f;
+    const float NOTE_HEIGHT_PER_OCTAVE = 1.0f/24.0f;
+    const float SCROLL_FACTOR = 60.0f;
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
     ~PianoRoll() override = default;
 
     void paint(juce::Graphics& g) override;
-    void fillRect(Rect& rect, juce::Graphics& g) const;
-    void drawRect(Rect& rect, juce::Graphics& g) const;
-    void drawText(juce::String& text, Rect& bounds, juce::Graphics& g) const;
+    static void fillRect(Rect& rect, juce::Graphics& g);
+    static void drawRect(Rect& rect, juce::Graphics& g);
+    static void drawText(juce::String& text, Rect& bounds, juce::Graphics& g);
     void drawBackground(juce::Graphics& g) const;
     void drawBarLines(juce::Graphics& g) const;
     int getNrOfSubDivs() const;
@@ -28,8 +29,10 @@ public:
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq) ;
     double getFreqFromYPx(int y) const;
+    double getFreqFromYPxF(float y) const;
     int getYPxFromFreq(double freq) const;
-    float getBarExactFromXPx(int px) const;
+    float getBarExactFromXPx(int x) const;
+    float getBarExactFromXPxF(float x) const;
     int getXPxFromBar(float bar) const;
     float getBarSubFromXPx(int px) const;
     int getBarFloorFromXPx(int px) const;
@@ -41,13 +44,15 @@ public:
     void selectNote(Note* note, Point clickedPos);
     void selectPotentialRatio(Fraction ratio);
     void unselectNote();
-    int mirrorYPx(int y) const;
+    float mirrorYPx(float y) const;
     Point mirrorYPx(Point point) const;
     Rect mirrorYPx(Rect rect) const;
 
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseUp(const juce::MouseEvent& _) override;
+    void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
+    void scroll(PointF deltaXY);
     void handleSingleClick(Point px);
     void handleDoubleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;

@@ -41,15 +41,15 @@ void PianoRoll::paint(juce::Graphics& g) {
     drawRectDragged(g);
 }
 
-void PianoRoll::fillRect(Rect& rect, juce::Graphics& g) const {
+void PianoRoll::fillRect(Rect& rect, juce::Graphics& g) {
     g.fillRect(rect);
 }
 
-void PianoRoll::drawRect(Rect& rect, juce::Graphics& g) const {
+void PianoRoll::drawRect(Rect& rect, juce::Graphics& g) {
     g.drawRect(rect);
 }
 
-void PianoRoll::drawText(juce::String& text, Rect& bounds, juce::Graphics& g) const {
+void PianoRoll::drawText(juce::String& text, Rect& bounds, juce::Graphics& g) {
     g.drawSingleLineText(text, bounds.getX() + 5, (bounds).getBottom());
 }
 
@@ -69,15 +69,13 @@ void PianoRoll::drawBarLines(juce::Graphics& g) const {
     g.setColour(juce::Colour::fromRGB(100, 100, 100));
     int firstBar = static_cast<int>((ceil(barLeftScreen) - barLeftScreen - 1) * static_cast<float>(barWidthPx));
     for (int x = firstBar; x < bounds.getWidth(); x += barWidthPx/getNrOfSubDivs()) {
-        Rect rect{x, 0, 1, bounds.getHeight()};
-        fillRect(rect, g);
+        g.drawVerticalLine(x, 0, static_cast<float>(bounds.getHeight()));
     }
 
     g.setColour(juce::Colour::fromRGB(50, 50, 50));
     firstBar = static_cast<int>((ceil(barLeftScreen) - barLeftScreen) * static_cast<float>(barWidthPx));
     for (int x = firstBar; x < bounds.getWidth(); x += barWidthPx) {
-        Rect rect{x, 0, 1, bounds.getHeight()};
-        fillRect(rect, g);
+        g.drawVerticalLine(x, 0, static_cast<float>(bounds.getHeight()));
     }
 }
 
@@ -127,6 +125,10 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
         g.setColour(juce::Colour::fromRGB(205, 205, 205));
         drawRect(boundsSelectedDragged, g);
     }
+
+    for (auto& note : noteRegion.notes) {
+
+    }
 }
 
 void PianoRoll::drawPotentialRatios(juce::Graphics& g) const {
@@ -162,7 +164,12 @@ float PianoRoll::getHueFromFreq(double freq) {
 }
 
 double PianoRoll::getFreqFromYPx(int y) const {
-    double nrOfOctaves = static_cast<double>(y)/static_cast<double>(octaveHeightPx);
+    return getFreqFromYPxF(static_cast<float>(y));
+}
+
+double PianoRoll::getFreqFromYPxF(float y) const {
+    float mirrored = mirrorYPx(y);
+    double nrOfOctaves = static_cast<double>(mirrored)/static_cast<double>(octaveHeightPx);
     double freqFactor = std::pow(2, nrOfOctaves);
     return freqFactor * freqBottomScreen;
 }
@@ -170,11 +177,17 @@ double PianoRoll::getFreqFromYPx(int y) const {
 int PianoRoll::getYPxFromFreq(double freq) const {
     double freqFactor = freq / freqBottomScreen;
     double nrOfOctaves = std::log2(freqFactor);
-    return static_cast<int>(nrOfOctaves * octaveHeightPx);
+    double yPx = nrOfOctaves * octaveHeightPx;
+    float mirrored = mirrorYPx(static_cast<float>(yPx));
+    return static_cast<int>(mirrored);
 }
 
-float PianoRoll::getBarExactFromXPx(int px) const {
-    return barLeftScreen + static_cast<float>(px) / static_cast<float>(barWidthPx);
+float PianoRoll::getBarExactFromXPx(int x) const {
+    return getBarExactFromXPxF(static_cast<float>(x));
+}
+
+float PianoRoll::getBarExactFromXPxF(float x) const {
+    return barLeftScreen + x / static_cast<float>(barWidthPx);
 }
 
 int PianoRoll::getXPxFromBar(float bar) const {
@@ -222,7 +235,7 @@ Rect PianoRoll::getNoteBounds(Note* note) const {
     int noteHeight = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE*static_cast<float>(octaveHeightPx));
     int y = getYPxFromFreq(note->frequency) - noteHeight/2;
     Rect rect{startPx, y, noteWidth, noteHeight};
-    return mirrorYPx(rect);
+    return rect;
 }
 
 std::optional<Rect> PianoRoll::getPotentialRatioBounds(Fraction ratio) const {
@@ -234,7 +247,7 @@ std::optional<Rect> PianoRoll::getPotentialRatioBounds(Fraction ratio) const {
     int noteHeight = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE*static_cast<float>(octaveHeightPx));
     int y = yMid - noteHeight/2;
     Rect rect{0, y, localBounds.getWidth(), noteHeight};
-    return mirrorYPx(rect);
+    return rect;
 }
 
 std::vector<double> PianoRoll::getPotentialFrequencies(Note* note) const {
@@ -269,8 +282,8 @@ void PianoRoll::unselectNote() {
     selectedNotesDragged.clear();
 }
 
-int PianoRoll::mirrorYPx(int y) const {
-    return getHeight() - y;
+float PianoRoll::mirrorYPx(float y) const {
+    return static_cast<float>(getHeight()) - y;
 }
 
 Point PianoRoll::mirrorYPx(Point point) const {
@@ -283,7 +296,7 @@ Rect PianoRoll::mirrorYPx(Rect rect) const {
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     Point posPx = event.getPosition();
-    int nrOfClicks = event.getNumberOfClicks();
+    int nrOfClicks = (event.getNumberOfClicks()-1)%2+1;
     if (nrOfClicks == 1)
         handleSingleClick(posPx);
     if (nrOfClicks == 2)
@@ -323,6 +336,26 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
     repaint();
 }
 
+void PianoRoll::mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) {
+    const PointF deltaXY = {wheel.deltaX, wheel.deltaY};
+    scroll(deltaXY);
+}
+
+void PianoRoll::scroll(const PointF deltaXY) {
+    const PointF scaled = deltaXY * SCROLL_FACTOR;
+    const float xPx = -scaled.getX();
+    const float yPx = mirrorYPx(scaled.getY());
+    const float newBarLeftScreen = getBarExactFromXPxF(xPx);
+    const double newFreqBottomScreen = getFreqFromYPxF(yPx);
+    barLeftScreen = newBarLeftScreen;
+    freqBottomScreen = newFreqBottomScreen;
+    if (barLeftScreen < 0)
+        barLeftScreen = 0;
+    if (freqBottomScreen < 10)
+        freqBottomScreen = 10;
+    repaint();
+}
+
 void PianoRoll::handleSingleClick(Point px) {
     if (auto note = getNoteAt(px))
         selectNote(note, px);
@@ -343,7 +376,7 @@ void PianoRoll::handleDoubleClick(Point px) {
         unselectNote();
         return;
     }
-    auto freq = getFreqFromYPx(mirrorYPx(px.getY()));
+    auto freq = getFreqFromYPx(px.getY());
     noteRegion.addRootNote(freq, barSub, barSub + 1);
 }
 
@@ -363,7 +396,7 @@ void PianoRoll::deleteSelection() {
     }
 
     for (auto& note : selectedNotesDragged) {
-        if (auto asChild = dynamic_cast<ChildNote*>(note)) {
+        if (dynamic_cast<ChildNote*>(note)) {
             noteRegion.deleteNote(note);
             note = nullptr;
         }
