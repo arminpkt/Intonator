@@ -19,7 +19,29 @@ void NoteRegion::addNote(std::unique_ptr<Note>* note) {
     notes.push_back(std::move(*note));
 }
 
-void NoteRegion::deleteNote(const Note* note) {
+void NoteRegion::deleteNote(Note* note) {
+    if (!note)
+        return;
+
+    ChildNote* asChild = nullptr;
+    RootNote* asRoot = nullptr;
+    try {
+        asChild = dynamic_cast<ChildNote*>(note);
+        asRoot = dynamic_cast<RootNote*>(note);
+    }
+    catch (const std::exception& e) {
+        DBG("oop");
+    }
+    if (asChild) {
+        asChild->abandonChildren();
+    }
+    if (asRoot)
+        for (auto& child : asRoot->children) {
+            auto newRoot = std::make_unique<RootNote>(child->frequency, child->start, child->end);
+            newRoot->children = std::move(child->children);
+            notes.push_back(std::move(newRoot));
+        }
+
     for (size_t i = 0; i < notes.size(); ++i)
         if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));

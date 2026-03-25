@@ -18,7 +18,7 @@ public:
     void addRootNote(double frequency, float start, float end);
     void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
     void addNote(std::unique_ptr<Note>* note);
-    void deleteNote(const Note* note);
+    void deleteNote(Note* note);
     void calculateMidiMessages(float pitchBendRange = 2); // not const!
     void useAsParentToCreate(Note* note, Fraction ratio, float start, float end);
     void useAsParentToCreate(Note* note, float irratio, float start, float end);
