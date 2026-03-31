@@ -10,9 +10,19 @@
 #include "ChannelPool.h"
 #include "Note.h"
 
+struct NoteEvent {
+    double startTime;
+    double endTime;
+    juce::MidiMessage noteOn;
+    juce::MidiMessage pitchBend;
+    juce::MidiMessage noteOff;
+    int channel = 0;
+};
+
 class NoteRegion {
 public:
     std::vector<std::unique_ptr<Note>> notes;
+    std::vector<NoteEvent> noteEvents;
     std::vector<juce::MidiMessage> midiMessages;
 
     void addRootNote(double frequency, float start, float end);
