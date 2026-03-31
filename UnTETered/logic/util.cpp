@@ -11,15 +11,16 @@
 #include <utility>
 
 
-float dists_sum(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
+double dists_sum_sq(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
     assert(freq_as.size() == freq_bs.size() && "Vectors must have the same size");
 
-    float sum = 0;
+    double sum_sq = 0;
     for (size_t i = 0; i < freq_as.size(); i++) {
-        sum += dist(freq_as[i], freq_bs[i]);
+        auto d = dist(freq_as[i], freq_bs[i]);
+        sum_sq += d * d;
     }
 
-    return sum;
+    return sum_sq;
 }
 
 void optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
@@ -46,7 +47,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<
 
     // finding the best rotation of bs to match as
     size_t best_rotation = 0;
-    float best_score = std::numeric_limits<float>::infinity();
+    double best_score = std::numeric_limits<double>::infinity();
 
     std::vector<PitchClass> as_firsts, bs_firsts;
     as_firsts.reserve(as_ordered.size());
@@ -59,7 +60,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<
 
     // find best rotation
     for (size_t i = 0; i < bs_ordered.size(); ++i) {
-        float score = dists_sum(as_firsts, bs_firsts);
+        double score = dists_sum_sq(as_firsts, bs_firsts);
         if (score < best_score) {
             best_score = score;
             best_rotation = i;
@@ -91,4 +92,74 @@ void optimiseOctaves(const std::vector<Note*>& as_ordered, std::vector<Note*>& b
 void optimiseTransition(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
     optimiseDestinationOrder(as_ordered, bs_ordered);
     optimiseOctaves(as_ordered, bs_ordered);
+}
+
+std::optional<std::vector<int>> getIntRatios(const std::vector<Note*>& notes) {
+    if (notes.empty())
+        return std::nullopt;
+
+    Note* luca = getLuca(notes);
+    if (!luca)
+        return std::nullopt;
+
+    std::vector<Fraction> ratios{};
+    ratios.reserve(notes.size());
+    for (auto& note : notes)
+        ratios.push_back(note->getRatioToAncestor(luca).value());
+
+    return getIntRatios(ratios);
+}
+
+std::vector<int> getIntRatios(std::vector<Fraction> fractions) {
+    for (size_t i = 0; i < primes::PrimeCount; ++i) {
+        int smallestPower = getSmallestPowerAtIndex(fractions, i);
+        addToPowersAtIndex(fractions, -smallestPower, i);
+    }
+    std::vector<int> intRatios;
+    intRatios.reserve(fractions.size());
+    for (const auto& fraction : fractions)
+        intRatios.push_back(fraction.getNumeratorAndDenominator().first);
+    return intRatios;
+}
+
+int getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t i) {
+    int smallestPower = std::numeric_limits<int>::max();
+    for (const auto& fraction : fractions)
+        if (const int primePower = fraction.getMonzo().primePowers[i]; primePower < smallestPower)
+            smallestPower = primePower;
+    return smallestPower;
+}
+
+void addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t index) {
+    Fraction toMultiply = Fraction{primes::Primes[index], 1} ^ increment;
+    for (auto& fraction : fractions) {
+        fraction = fraction * toMultiply;
+    }
+}
+
+Note* getLuca(const std::vector<Note*>& notes) {
+    if (notes.empty())
+        return nullptr;
+
+    if (notes.size() == 1)
+        return notes[0];
+
+    std::vector<std::vector<Note*>> ancestries{};
+    ancestries.reserve(notes.size());
+    for (auto& note : notes)
+        ancestries.push_back(note->getAncestry());
+
+    for (auto& ancestor : ancestries[0]) {
+        bool universal = true;
+        for (size_t i = 1; i < ancestries.size(); ++i) {
+            const auto& ancestry = ancestries[i];
+            if (!contains(ancestry, ancestor)) {
+                universal = false;
+                break;
+            }
+        }
+        if (universal)
+            return ancestor;
+    }
+    return nullptr;
 }

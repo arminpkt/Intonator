@@ -24,5 +24,6 @@ public:
     void useAsParentToCreate(Note* note, float irratio, float start, float end);
 
 private:
+    void deleteNoteUnsafe(const Note* note);
     ChannelPool channelPool;
 };

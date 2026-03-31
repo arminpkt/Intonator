@@ -19,7 +19,7 @@ struct Note {
     double frequency;
     float start;
     float end;
-    std::unordered_set<ChildNote*> children;
+    std::vector<ChildNote*> children;
 
     Note(const double freq, const int s, const int e)
         : Note(freq, static_cast<float>(s), static_cast<float>(e)) {}
@@ -133,6 +133,8 @@ struct Note {
 
     virtual ~Note() = default;
     virtual void recalculate() = 0;
+    virtual std::vector<Note*> getAncestry() = 0;
+    virtual std::optional<Fraction> getRatioToAncestor(Note* ancestor) = 0;
     virtual Note& operator*=(const Fraction& f) = 0;
     virtual Note& operator/=(const Fraction& f) = 0;
     virtual Note& operator*=(const double& i) = 0;
@@ -144,6 +146,13 @@ struct Note {
     Note& operator/=(const int& i) {
         *this /= Fraction(i, 1);
         return *this;
+    }
+
+    void disown(const ChildNote* toDisown) {
+        for (size_t i = 0; i < children.size(); ++i) {
+            if (children[i] == toDisown)
+                children.erase(children.begin() + static_cast<long int>(i));
+        }
     }
 };
 
@@ -162,20 +171,35 @@ struct ChildNote : Note {
 
     ChildNote(Note* p, const Fraction& r, const double i, const float s, const float e)
     : Note(p->frequency * static_cast<double>(r) * i, s, e), parent(p), ratio(r), irratio(i) {
-        p->children.insert(this);
+        p->children.push_back(this);
     }
 
     ~ChildNote() override {
-        parent->children.erase(this);
+        parent->disown(this);
     }
 
-    void abandonChildren() {
+    void abandonChildren() const {
         for (auto& child : children) {
             child->parent = parent;
             child->ratio = child->ratio * ratio;
-            parent->children.insert(child);
+            parent->children.push_back(child);
         }
-        parent->children.erase(this);
+        parent->disown(this);
+    }
+
+    std::vector<Note*> getAncestry() override {
+        std::vector<Note*> ancestry = {this};
+        std::vector<Note*> parentAncestry = parent->getAncestry();
+        ancestry.insert(ancestry.end(), parentAncestry.begin(), parentAncestry.end());
+        return ancestry;
+    }
+
+    std::optional<Fraction> getRatioToAncestor(Note* ancestor) override {
+        if (ancestor == this)
+            return Fraction{1, 1};
+        if (auto parentRatio = parent->getRatioToAncestor(ancestor))
+            return ratio * parentRatio.value();
+        return std::nullopt;
     }
 
     void recalculate() override {
@@ -215,6 +239,16 @@ public:
     void recalculate() override {
         for (const auto& note : children)
             note->recalculate();
+    }
+
+    std::vector<Note*> getAncestry() override {
+        return {this};
+    }
+
+    std::optional<Fraction> getRatioToAncestor(Note* ancestor) override {
+        if (this == ancestor)
+            return Fraction{1, 1};
+        return std::nullopt;
     }
 
     // Compound assignment
