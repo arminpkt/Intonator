@@ -192,8 +192,8 @@ void Grid2D::octavateGridUp() {
     noteOrigin *= 2;
 }
 
-juce::Colour Grid2D::getColourForPitchClass(PitchClass pitchClass, bool selected) {
-    float hue = static_cast<float>(pitchClass.value) / 12.f;
+juce::Colour Grid2D::getColourForNote(Note* note, bool selected) {
+    float hue = note->getHue();
     auto colour = juce::Colour::fromHSV(hue, 0.4f, 0.7f, 1.0f);
     if (selected)
         colour = colour.withBrightness(0.9f).withSaturation(0.25f);
@@ -305,7 +305,7 @@ Note* Grid2D::getNoteFromKernel(const Point& cellKernel, bool reset = false) {
     if (reset || !kernel[y][x]) {
         const Point cellGrid = getCellGridFromKernel(cellKernel);
         const Fraction ratioToRef = (intervalHorizontal ^ cellGrid.x) * (intervalVertical ^ cellGrid.y);
-        kernel[y][x] = std::make_unique<ChildNote>(noteOrigin, ratioToRef, 0, 0);
+        kernel[y][x] = std::make_unique<ChildNote>(&noteOrigin, ratioToRef, 0, 0);
     }
 
     return kernel[y][x].get();
@@ -318,10 +318,9 @@ Note* Grid2D::getNoteFromGrid(const Point& cellGrid, bool reset = false) {
 
 juce::Colour Grid2D::getColourForCellKernel(const Point& cellKernel) {
     Note* note = getNoteFromKernel(cellKernel, false);
-    PitchClass pitchClass = note->getPitchClass();
     Point gridCell = getCellGridFromKernel(cellKernel);
     bool selected = selectedCellsGrid.find(gridCell) != selectedCellsGrid.end();
-    return getColourForPitchClass(pitchClass, selected);
+    return getColourForNote(note, selected);
 }
 
 void Grid2D::transposeGrid() {

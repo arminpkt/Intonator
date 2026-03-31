@@ -17,11 +17,14 @@ struct ChildNote;
 
 struct Note {
     double frequency;
-    int start;
-    int end;
+    float start;
+    float end;
     std::unordered_set<ChildNote*> children;
 
     Note(const double freq, const int s, const int e)
+        : Note(freq, static_cast<float>(s), static_cast<float>(e)) {}
+
+    Note(const double freq, const float s, const float e)
         : frequency(freq), start(s), end(e) {}
 
     /** Computes the interval between f and this note's frequency in semitones.
@@ -64,7 +67,7 @@ struct Note {
         return static_cast<int>(roundedMidiValue);
     }
 
-    /** Computer the pitchend offset in semitones with respect to the input MIDI note value.
+    /** Computer the pitchbend offset in semitones with respect to the input MIDI note value.
      *
      * @param midiNoteValue     The note from which the offset is calculated
      * @return                  The distance in semitones
@@ -74,11 +77,11 @@ struct Note {
         return offsetInSemitones;
     }
 
-    /** Computes the pitch bend value from the rounded MIDI value for this note.
+    /** Computes the pitchbend value from the rounded MIDI value for this note.
      *
      * @param bendRange     The range of the pitchbend in semitones
      */
-    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange = .5) const {
+    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange = 1) const {
         int roundedMidiValue = getRoundedMidiValue();
         return getPitchBendValueWRT(roundedMidiValue, bendRange);
     }
@@ -90,7 +93,7 @@ struct Note {
      * @param bendRange         The range of the pitchbend in semitones
      * @return
      */
-    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = .5) const {
+    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = 1) const {
         double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
         double bendRatio = offsetInSemitones / bendRange;
         double bendValueCont = 8192 + 8192 * bendRatio;
@@ -118,6 +121,12 @@ struct Note {
         }
     }
 
+    [[nodiscard]] float getHue() const {
+        auto pitchClass = getPitchClass();
+        float hue = static_cast<float>(pitchClass.value) / 12.f;
+        return hue;
+    }
+
     bool operator<(const Note& other) const {
         return frequency < other.frequency;
     }
@@ -143,15 +152,17 @@ struct ChildNote : Note {
     Fraction ratio;
     double irratio;
 
-    ChildNote(Note& p, const Fraction& r, const int s, const int e)
+    ChildNote(Note* p, const Fraction& r) : ChildNote(p, r, p->start, p->end) {}
+
+    ChildNote(Note* p, const Fraction& r, const float s, const float e)
     : ChildNote(p, r, 1, s, e) {}
 
-    ChildNote(Note& p, const double i, const int s, const int e)
+    ChildNote(Note* p, const double i, const float s, const float e)
     : ChildNote(p, {1, 1}, i, s, e) {}
 
-    ChildNote(Note& p, const Fraction& r, const double i, const int s, const int e)
-    : Note(p.frequency * static_cast<double>(r) * i, s, e), parent(&p), ratio(r), irratio(i) {
-        p.children.insert(this);
+    ChildNote(Note* p, const Fraction& r, const double i, const float s, const float e)
+    : Note(p->frequency * static_cast<double>(r) * i, s, e), parent(p), ratio(r), irratio(i) {
+        p->children.insert(this);
     }
 
     ~ChildNote() override {
@@ -188,7 +199,7 @@ struct ChildNote : Note {
 
 class RootNote : public Note {
 public:
-    RootNote(const double freq, const int s, const int e)
+    RootNote(const double freq, const float s, const float e)
         : Note(freq, s, e) {
     }
 

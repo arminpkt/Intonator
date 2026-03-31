@@ -10,15 +10,28 @@
 #include "ChannelPool.h"
 #include "Note.h"
 
+struct NoteEvent {
+    double startTime;
+    double endTime;
+    juce::MidiMessage noteOn;
+    juce::MidiMessage pitchBend;
+    juce::MidiMessage noteOff;
+    int channel = 0;
+};
+
 class NoteRegion {
 public:
     std::vector<std::unique_ptr<Note>> notes;
+    std::vector<NoteEvent> noteEvents;
     std::vector<juce::MidiMessage> midiMessages;
 
-    void addNote(float frequency, int start, int end);
+    void addRootNote(double frequency, float start, float end);
+    void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
+    void addNote(std::unique_ptr<Note>* note);
+    void deleteNote(const Note* note);
     void calculateMidiMessages(float pitchBendRange = 2); // not const!
-    void useAsParentToCreate(Note* note, Fraction ratio);
-    void useAsParentToCreate(Note* note, float irratio);
+    void useAsParentToCreate(Note* note, Fraction ratio, float start, float end);
+    void useAsParentToCreate(Note* note, float irratio, float start, float end);
 
 private:
     ChannelPool channelPool;

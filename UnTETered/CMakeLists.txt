@@ -29,7 +29,8 @@ target_sources(UnTETered
         view/interfaces/TextInput.cpp
         view/interfaces/GridStateSerialiser.cpp
         logic/util.cpp
-        PianoRoll.cpp)
+        logic/noteRegion.cpp
+        view/interfaces/PianoRoll.cpp)
 
 target_compile_definitions(UnTETered
         PUBLIC
