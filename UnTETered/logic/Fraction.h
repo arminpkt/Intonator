@@ -94,4 +94,8 @@ public:
     bool operator==(const Fraction& fraction) const {
         return monzo == fraction.monzo;
     }
+
+    Monzo getMonzo() const {
+        return monzo;
+    }
 };

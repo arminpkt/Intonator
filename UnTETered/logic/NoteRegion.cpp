@@ -23,25 +23,29 @@ void NoteRegion::deleteNote(Note* note) {
     if (!note)
         return;
 
-    ChildNote* asChild = nullptr;
-    RootNote* asRoot = nullptr;
-    try {
-        asChild = dynamic_cast<ChildNote*>(note);
-        asRoot = dynamic_cast<RootNote*>(note);
-    }
-    catch (const std::exception& e) {
-        DBG("oop");
-    }
+    auto* asChild = dynamic_cast<ChildNote*>(note);
+    auto* asRoot = dynamic_cast<RootNote*>(note);
+
     if (asChild) {
         asChild->abandonChildren();
     }
-    if (asRoot)
+
+    if (asRoot) {
         for (auto& child : asRoot->children) {
             auto newRoot = std::make_unique<RootNote>(child->frequency, child->start, child->end);
             newRoot->children = std::move(child->children);
             notes.push_back(std::move(newRoot));
         }
+        for (auto& child : asRoot->children) {
+            deleteNoteUnsafe(child);
+        }
+        asRoot->children.clear();
+    }
 
+    deleteNoteUnsafe(note);
+}
+
+void NoteRegion::deleteNoteUnsafe(const Note* note) {
     for (size_t i = 0; i < notes.size(); ++i)
         if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
@@ -144,13 +148,13 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
 void NoteRegion::useAsParentToCreate(Note* note, Fraction ratio, float start, float end) {
     auto child = std::make_unique<ChildNote>(note, ratio, start, end);
-    note->children.insert(child.get());
+    note->children.push_back(child.get());
     notes.push_back(std::move(child));
 }
 
 void NoteRegion::useAsParentToCreate(Note* note, float irratio, float start, float end) {
     auto child = std::make_unique<ChildNote>(note, irratio, start, end);
-    note->children.insert(child.get());
+    note->children.push_back(child.get());
     notes.push_back(std::move(child));
 }
 
