@@ -522,19 +522,17 @@ void PianoRoll::deleteNote(Note* note) {
 }
 
 void PianoRoll::deleteSelection() {
-    for (auto& note : notesSelected) {
+    for (auto& note : notesSelected)
         if (dynamic_cast<ChildNote*>(note)) {
             deleteNote(note);
             note = nullptr;
-        }
     }
 
-    while (!notesSelected.empty()) {
+    while (!notesSelected.empty())
         if (auto note = notesSelected.back())
             deleteNote(note);
         else
             notesSelected.pop_back();
-    }
 
     notesSelected.clear();
 }
