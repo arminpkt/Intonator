@@ -8,7 +8,34 @@
 #include <set>
 #include "view/interfaces/GridState.h"
 #include "view/interfaces/GridStateSerialiser.h"
+#include "view/interfaces/PianoRollState.h"
+#include "view/interfaces/PianoRollStateSerialiser.h"
+#include "view/interfaces/PianoRollStateHelpers.h"
 
+struct PlaybackSequence
+{
+    std::vector<juce::MidiMessage> messages; // timestamps in bars, not samples
+    double pitchBendRange = 2.0;
+    bool valid = false;
+};
+
+struct TransportState
+{
+    std::atomic<bool>   isPlaying { false };
+    std::atomic<bool>   isRecording { false };
+    std::atomic<double> bpm { 120.0 };
+    std::atomic<double> ppqPosition { 0.0 };
+    std::atomic<int64_t> timeInSamples { 0 };
+    std::atomic<double> sampleRate { 44100.0 };
+    std::atomic<int>    numerator { 4 };
+    std::atomic<int>    denominator { 4 };
+};
+
+struct HostSeekRequest
+{
+    std::atomic<bool> pending { false };
+    std::atomic<double> targetBar { 0.0 };
+};
 
 //==============================================================================
 class UnTETeredAudioProcessor final : public juce::AudioProcessor
@@ -51,14 +78,27 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     //==============================================================================
+    const TransportState& getTransportState();
+    void requestHostSeekToBar(double targetBar) noexcept;
+
+    //==============================================================================
     GridState getGridState() const;
     void setGridState(const GridState& s);
     void updateGridState(std::function<void(GridState&)> fn);
+
+    PianoRollState getPianoRollState() const;
+    void setPianoRollState(const PianoRollState& s);
+    void updatePianoRollState(std::function<void(PianoRollState&)> fn);
 
     //==============================================================================
     juce::MidiBuffer midiBuffer;
 
 private:
+    void setTransportStateFromHost(juce::AudioPlayHead*);
+    void rebuildPlaybackSequence();
+    void flushActiveNotes(juce::MidiBuffer& midiMessages);
+    void playMidi(juce::MidiBuffer& midiMessages, int numSamples);
+
     // Keep track of currently active notes per channel
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
     double currentSamplePosition = 0.0;           // Tracks playback position
@@ -67,6 +107,15 @@ private:
 
     mutable juce::CriticalSection gridStateLock;
     GridState gridState;
+
+    mutable juce::CriticalSection pianoRollStateLock;
+    PianoRollState pianoRollState;
+    TransportState transportState;
+    HostSeekRequest hostSeekRequest;
+
+    mutable juce::CriticalSection playbackLock;
+    PlaybackSequence playbackSequence;
+    std::atomic<bool> playbackDirty { true };
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
 };

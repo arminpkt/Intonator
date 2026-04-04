@@ -169,6 +169,15 @@ struct ChildNote : Note {
         parent->children.erase(this);
     }
 
+    void abandonChildren() {
+        for (auto& child : children) {
+            child->parent = parent;
+            child->ratio = child->ratio * ratio;
+            parent->children.insert(child);
+        }
+        parent->children.erase(this);
+    }
+
     void recalculate() override {
         frequency = parent->frequency * static_cast<double>(ratio) * irratio;
         for (const auto& note : children)
