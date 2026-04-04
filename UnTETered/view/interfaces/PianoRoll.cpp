@@ -329,11 +329,6 @@ void PianoRoll::unselectNote(const Note* note) {
         notesSelected.erase(notesSelected.begin() + static_cast<long int>(index.value()));
 }
 
-/** Mirrors y coordinate interpreted as px value around the axis.
- *
- * @param y     Px value to mirror
- * @param axis  0 = bottom, 1 = top, 0.5 = middle = default
- */
 float PianoRoll::mirrorYPx(float y, float axis) const {
     return static_cast<float>(getHeight()) * 2 * (1 - axis) - y;
 }
@@ -354,7 +349,6 @@ void PianoRoll::setPlayheadPosFromPoint(Point point) {
     float bar = getBarSubFromXPx(point.x);
     playheadBarPos = bar;
 }
-
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     Point posPx = event.getPosition();
@@ -414,10 +408,13 @@ void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFac
         barLeftScreen = getBarExactFromXPx(-mousePos.getX());
     }
     clipScreenEdges();
+    pushStateToProcessor();
 }
 
 void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) {
     draggedRect = Rect{mouseDownPos, currentPos};
+    if (draggedRect->getWidth() == 0)
+        draggedRect->setWidth(1);
     for (auto& note : noteRegion.notes) {
         Note* ptr = note.get();
         Rect boundsNote = getNoteBounds(ptr);
@@ -451,8 +448,8 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
     dragLeftSideSelectedNote = false;
     dragRightSideSelectedNote = false;
     draggedRect.reset();
-    pushStateToProcessor();
     repaint();
+    pushStateToProcessor();
 }
 
 void PianoRoll::mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) {
@@ -469,6 +466,7 @@ void PianoRoll::scroll(const PointF deltaXY) {
     barLeftScreen = newBarLeftScreen;
     freqBottomScreen = newFreqBottomScreen;
     clipScreenEdges();
+    pushStateToProcessor();
     repaint();
 }
 
@@ -477,8 +475,6 @@ void PianoRoll::clipScreenEdges() {
         barLeftScreen = 0;
     if (freqBottomScreen < 10)
         freqBottomScreen = 10;
-
-    pushStateToProcessor();
 }
 
 void PianoRoll::handleSingleClick(const Point px) {
@@ -516,12 +512,12 @@ void PianoRoll::handleDoubleClick(const Point px) {
     }
 
     if (potentialRatioAt) {
-        noteRegion.addChildNote(notesSelected[0], potentialRatioAt.value(), 1, barSub, barSub+1);
+        addChildNote(notesSelected[0], potentialRatioAt.value(), 1, barSub, barSub+1);
         return;
     }
 
     auto freq = getFreqFromYPx(px.getY());
-    noteRegion.addRootNote(freq, barSub, barSub + 1);
+    addRootNote(freq, barSub, barSub + 1);
 }
 
 void PianoRoll::handleShiftSingleClick(const Point px) {
@@ -538,15 +534,27 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     return false;
 }
 
-void PianoRoll::deleteNote(Note* note) {
+void PianoRoll::addRootNote(double frequency, float start, float end) {
+    noteRegion.addRootNote(frequency, start, end);
+    pushStateToProcessor();
+}
+
+void PianoRoll::addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end) {
+    noteRegion.addChildNote(parent, ratio, irratio, start, end);
+    pushStateToProcessor();
+}
+
+void PianoRoll::deleteNote(Note* note, bool unselect) {
+    if (unselect)
+        unselectNote(note);
     noteRegion.deleteNote(note);
-    unselectNote(note);
+    pushStateToProcessor();
 }
 
 void PianoRoll::deleteSelection() {
     for (auto& note : notesSelected)
         if (dynamic_cast<ChildNote*>(note)) {
-            deleteNote(note);
+            deleteNote(note, false);
             note = nullptr;
         }
 
@@ -566,38 +574,31 @@ void PianoRoll::timerCallback() {
     cachedNumerator = transportState.numerator.load(std::memory_order_relaxed);
     cachedDenominator = transportState.denominator.load(std::memory_order_relaxed);
 
-    DBG(cachedPpqPosition + cachedNumerator + cachedDenominator);
     playheadBarPos = static_cast<float>(TimelineHelpers::ppqToBar(cachedPpqPosition, cachedNumerator, cachedDenominator));
-
-    DBG(playheadBarPos);
 
     repaint();
 }
 
-void PianoRoll::pullStateFromProcessorAndRebuild()
-{
+void PianoRoll::pullStateFromProcessorAndRebuild() {
     const auto state = processor.getPianoRollState();
 
-    octaveHeightPx = state.octaveHeightPx;
-    barWidthPx = state.barWidthPx;
+    octaveHeightPxF = state.octaveHeightPxF;
+    barWidthPxF = state.barWidthPxF;
     freqBottomScreen = state.freqBottomScreen;
     barLeftScreen = state.barLeftScreen;
 
     noteRegion = makeNoteRegionFromState(state);
 
-    selectedNote = nullptr;
-    selectedNotesDragged.clear();
-    selectedPotentialRatio.reset();
+    notesSelected.clear();
     draggedRect.reset();
 
     repaint();
 }
 
-void PianoRoll::pushStateToProcessor() const
-{
+void PianoRoll::pushStateToProcessor() const {
     PianoRollState state = makeStateFromNoteRegion(noteRegion);
-    state.octaveHeightPx = octaveHeightPx;
-    state.barWidthPx = barWidthPx;
+    state.octaveHeightPxF = octaveHeightPxF;
+    state.barWidthPxF = barWidthPxF;
     state.freqBottomScreen = freqBottomScreen;
     state.barLeftScreen = barLeftScreen;
 

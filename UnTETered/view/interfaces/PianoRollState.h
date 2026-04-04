@@ -26,8 +26,8 @@ struct StoredPianoNote
 struct PianoRollState
 {
     std::vector<StoredPianoNote> notes;
-    int octaveHeightPx = 120;
-    int barWidthPx = 120;
+    float octaveHeightPxF = 120;
+    float barWidthPxF = 120;
     double freqBottomScreen = 55.0;
     float barLeftScreen = 0.0f;
 };

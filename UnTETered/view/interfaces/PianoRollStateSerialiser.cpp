@@ -33,8 +33,8 @@ juce::ValueTree PianoRollStateSerialiser::toValueTree(const PianoRollState& stat
 {
     juce::ValueTree tree(treeType());
 
-    tree.setProperty(PianoRollStateIds::octaveHeightPx,   state.octaveHeightPx,   nullptr);
-    tree.setProperty(PianoRollStateIds::barWidthPx,       state.barWidthPx,       nullptr);
+    tree.setProperty(PianoRollStateIds::octaveHeightPx,   state.octaveHeightPxF,   nullptr);
+    tree.setProperty(PianoRollStateIds::barWidthPx,       state.barWidthPxF,       nullptr);
     tree.setProperty(PianoRollStateIds::freqBottomScreen, state.freqBottomScreen, nullptr);
     tree.setProperty(PianoRollStateIds::barLeftScreen,    state.barLeftScreen,    nullptr);
 
@@ -66,11 +66,11 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
     if (!tree.isValid() || !tree.hasType(treeType()))
         return state;
 
-    state.octaveHeightPx =
-        static_cast<int>(tree.getProperty(PianoRollStateIds::octaveHeightPx, 120));
+    state.octaveHeightPxF =
+        static_cast<float>(tree.getProperty(PianoRollStateIds::octaveHeightPx, 120));
 
-    state.barWidthPx =
-        static_cast<int>(tree.getProperty(PianoRollStateIds::barWidthPx, 120));
+    state.barWidthPxF =
+        static_cast<float>(tree.getProperty(PianoRollStateIds::barWidthPx, 120));
 
     state.freqBottomScreen =
         static_cast<double>(tree.getProperty(PianoRollStateIds::freqBottomScreen, 55.0));

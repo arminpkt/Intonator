@@ -122,7 +122,7 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
         event.pitchBend.setChannel(channel);
         event.noteOff.setChannel(channel);
 
-        activeChannels.push_back({ event.endTime, channel });
+        activeChannels.emplace_back( event.endTime, channel );
     }
 
     // Flatten all note events into midiMessages

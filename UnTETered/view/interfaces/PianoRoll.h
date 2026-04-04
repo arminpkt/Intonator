@@ -9,7 +9,7 @@
 #include "../../PluginProcessor.h"
 #include "../../logic/TimelineHelpers.h"
 
-class PianoRoll : public juce::Component, private juce::Timer {
+class PianoRoll : public juce::Component, juce::Timer {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 1.0f/20.0f;
     const float SCROLL_FACTOR = 60.0f;
@@ -48,6 +48,12 @@ public:
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected);
     std::optional<size_t> indexOfSelection(const Note* note) const;
     void unselectNote(const Note* note);
+
+    /** Mirrors y coordinate interpreted as px value around the axis.
+     *
+     * @param y     Px value to mirror
+     * @param axis  0 = bottom, 1 = top, 0.5 = middle = default
+     */
     float mirrorYPx(float y, float axis = 0.5f) const;
     int mirrorYPx(int y, float axis = 0.5f) const;
     Point mirrorYPx(Point point, float axis = 0.5f) const;
@@ -69,7 +75,9 @@ public:
     void handleDoubleClick(Point px);
     void handleShiftSingleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;
-    void deleteNote(Note* note);
+    void addRootNote(double frequency, float start, float end);
+    void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
+    void deleteNote(Note* note, bool unselect = true);
     void deleteSelection();
 
     void timerCallback() override;
