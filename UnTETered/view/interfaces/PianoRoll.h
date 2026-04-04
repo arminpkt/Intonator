@@ -7,6 +7,7 @@
 #include "../Types.h"
 #include "../../logic/NoteRegion.h"
 #include "../../PluginProcessor.h"
+#include "../../logic/TimelineHelpers.h"
 
 class PianoRoll : public juce::Component, private juce::Timer {
 public:
@@ -63,10 +64,10 @@ public:
 
     void timerCallback() override;
 
-    static double getQuarterNotesPerBar(int numerator, int denominator);
-    static double ppqToBar(double ppq, int numerator, int denominator);
-
 private:
+    void pullStateFromProcessorAndRebuild();
+    void pushStateToProcessor() const;
+
     UnTETeredAudioProcessor& processor;
     NoteRegion noteRegion;
     int octaveHeightPx = 200;

@@ -34,5 +34,6 @@ public:
     void useAsParentToCreate(Note* note, float irratio, float start, float end);
 
 private:
+    static int midiEventPriority(const juce::MidiMessage& m);
     ChannelPool channelPool;
 };

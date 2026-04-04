@@ -1,12 +1,14 @@
 //
 // Created by Vos on 09/10/2025.
 //
+#include "PianoRollStateHelpers.h"
 
 #include "PianoRoll.h"
 
 PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc) : processor(proc) {
     initialisePotentialRatios();
     setWantsKeyboardFocus(true);
+    pullStateFromProcessorAndRebuild();
     startTimerHz(30);
 }
 
@@ -347,6 +349,7 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
     dragLeftSideSelectedNote = false;
     dragRightSideSelectedNote = false;
     draggedRect.reset();
+    pushStateToProcessor();
     repaint();
 }
 
@@ -367,6 +370,8 @@ void PianoRoll::scroll(const PointF deltaXY) {
         barLeftScreen = 0;
     if (freqBottomScreen < 10)
         freqBottomScreen = 10;
+
+    pushStateToProcessor();
     repaint();
 }
 
@@ -385,15 +390,18 @@ void PianoRoll::handleDoubleClick(Point px) {
     auto barSub = getBarSubFromXPx(px.getX());
     if (selectedPotentialRatio) {
         noteRegion.addChildNote(selectedNote, selectedPotentialRatio.value(), 1, barSub, barSub+1);
+        pushStateToProcessor();
         return;
     }
     if (selectedNote) {
         noteRegion.deleteNote(selectedNote);
         unselectNote();
+        pushStateToProcessor();
         return;
     }
     auto freq = getFreqFromYPx(px.getY());
     noteRegion.addRootNote(freq, barSub, barSub + 1);
+    pushStateToProcessor();
 }
 
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
@@ -406,22 +414,31 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
 }
 
 void PianoRoll::deleteSelection() {
+    bool changed = false;
+
     if (selectedNote) {
         noteRegion.deleteNote(selectedNote);
         unselectNote();
+        changed = true;
     }
 
     for (auto& note : selectedNotesDragged) {
         if (dynamic_cast<ChildNote*>(note)) {
             noteRegion.deleteNote(note);
             note = nullptr;
+            changed = true;
         }
     }
 
     for (auto note : selectedNotesDragged)
-        noteRegion.deleteNote(note);
+        if (note != nullptr) {
+            noteRegion.deleteNote(note);
+            changed = true;
+        }
 
     selectedNotesDragged.clear();
+    if (changed)
+        pushStateToProcessor();
 }
 
 void PianoRoll::timerCallback() {
@@ -432,20 +449,39 @@ void PianoRoll::timerCallback() {
     cachedDenominator = transportState.denominator.load(std::memory_order_relaxed);
 
     DBG(cachedPpqPosition + cachedNumerator + cachedDenominator);
-    playheadBarPos = static_cast<float>(ppqToBar(cachedPpqPosition, cachedNumerator, cachedDenominator));
+    playheadBarPos = static_cast<float>(TimelineHelpers::ppqToBar(cachedPpqPosition, cachedNumerator, cachedDenominator));
 
     DBG(playheadBarPos);
 
     repaint();
 }
 
-double PianoRoll::getQuarterNotesPerBar(int numerator, int denominator) {
-    return denominator > 0
-        ? 4.0 * static_cast<double>(numerator) / static_cast<double>(denominator)
-        : 4.0;
+void PianoRoll::pullStateFromProcessorAndRebuild()
+{
+    const auto state = processor.getPianoRollState();
+
+    octaveHeightPx = state.octaveHeightPx;
+    barWidthPx = state.barWidthPx;
+    freqBottomScreen = state.freqBottomScreen;
+    barLeftScreen = state.barLeftScreen;
+
+    noteRegion = makeNoteRegionFromState(state);
+
+    selectedNote = nullptr;
+    selectedNotesDragged.clear();
+    selectedPotentialRatio.reset();
+    draggedRect.reset();
+
+    repaint();
 }
 
-double PianoRoll::ppqToBar(double ppq, int numerator, int denominator) {
-    const auto qNPerBar = getQuarterNotesPerBar(numerator, denominator);
-    return qNPerBar > 0.0 ? ppq / qNPerBar : 0.0;
+void PianoRoll::pushStateToProcessor() const
+{
+    PianoRollState state = makeStateFromNoteRegion(noteRegion);
+    state.octaveHeightPx = octaveHeightPx;
+    state.barWidthPx = barWidthPx;
+    state.freqBottomScreen = freqBottomScreen;
+    state.barLeftScreen = barLeftScreen;
+
+    processor.setPianoRollState(state);
 }

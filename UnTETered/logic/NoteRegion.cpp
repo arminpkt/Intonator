@@ -133,21 +133,13 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
     // Sort final messages by timestamp
     std::sort(midiMessages.begin(), midiMessages.end(),
-              [](const juce::MidiMessage& a, const juce::MidiMessage& b)
-              {
-                  if (a.getTimeStamp() != b.getTimeStamp())
-                      return a.getTimeStamp() < b.getTimeStamp();
+           [](const juce::MidiMessage& a, const juce::MidiMessage& b)
+           {
+               if (a.getTimeStamp() != b.getTimeStamp())
+                   return a.getTimeStamp() < b.getTimeStamp();
 
-                  // Optional tie-breaker:
-                  // pitch bend before note on before note off at same timestamp
-                  if (a.isPitchWheel() != b.isPitchWheel())
-                      return a.isPitchWheel();
-
-                  if (a.isNoteOn() != b.isNoteOn())
-                      return a.isNoteOn();
-
-                  return false;
-              });
+               return midiEventPriority(a) < midiEventPriority(b);
+           });
 }
 
 void NoteRegion::useAsParentToCreate(Note* note, Fraction ratio, float start, float end) {
@@ -160,4 +152,12 @@ void NoteRegion::useAsParentToCreate(Note* note, float irratio, float start, flo
     auto child = std::make_unique<ChildNote>(note, irratio, start, end);
     note->children.insert(child.get());
     notes.push_back(std::move(child));
+}
+
+int NoteRegion::midiEventPriority(const juce::MidiMessage& m)
+{
+    if (m.isNoteOff())    return 0;
+    if (m.isPitchWheel()) return 1;
+    if (m.isNoteOn())     return 2;
+    return 3;
 }

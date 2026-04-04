@@ -121,14 +121,14 @@ bool UnTETeredAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts
 void UnTETeredAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    if (auto* playHead = getPlayHead()) {
-        setTransportStateFromHost(playHead);
-        //playMidi();
-    }
+    midiMessages.clear();
 
-    for (const auto& midi : midiBuffer)
-        DBG(midi.getMessage().getDescription());
-    std::swap(midiBuffer, midiMessages);
+    auto* playHead = getPlayHead();
+    if (playHead == nullptr)
+        return;
+
+    setTransportStateFromHost(playHead);
+    playMidi(midiMessages, buffer.getNumSamples());
 }
 
 //==============================================================================
@@ -145,17 +145,76 @@ juce::AudioProcessorEditor* UnTETeredAudioProcessor::createEditor()
 //==============================================================================
 void UnTETeredAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    juce::ValueTree root("STATE");
+
+    {
+        const juce::ScopedLock sl(gridStateLock);
+        root.addChild(GridStateSerialiser::toValueTree(gridState), -1, nullptr);
+    }
+
+    {
+        const juce::ScopedLock sl(pianoRollStateLock);
+        root.addChild(PianoRollStateSerialiser::toValueTree(pianoRollState), -1, nullptr);
+    }
+
+    if (auto xml = root.createXml())
+        copyXmlToBinary(*xml, destData);
 }
 
 void UnTETeredAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
+    std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
+    if (!xml)
+        return;
+
+    const auto root = juce::ValueTree::fromXml(*xml);
+    if (!root.isValid())
+        return;
+
+    const auto gridTree = root.getChildWithName(GridStateSerialiser::treeType());
+    if (gridTree.isValid())
+        setGridState(GridStateSerialiser::fromValueTree(gridTree));
+
+    const auto pianoRollTree = root.getChildWithName(PianoRollStateSerialiser::treeType());
+    if (pianoRollTree.isValid())
+        setPianoRollState(PianoRollStateSerialiser::fromValueTree(pianoRollTree));
+}
+
+GridState UnTETeredAudioProcessor::getGridState() const
+{
+    const juce::ScopedLock sl(gridStateLock);
+    return gridState;
+}
+
+void UnTETeredAudioProcessor::setGridState(const GridState& s)
+{
+    const juce::ScopedLock sl(gridStateLock);
+    gridState = s;
+}
+
+void UnTETeredAudioProcessor::updateGridState(std::function<void(GridState&)> fn)
+{
+    const juce::ScopedLock sl(gridStateLock);
+    fn(gridState);
+}
+
+PianoRollState UnTETeredAudioProcessor::getPianoRollState() const
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    return pianoRollState;
+}
+
+void UnTETeredAudioProcessor::setPianoRollState(const PianoRollState& s)
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    pianoRollState = s;
+    playbackDirty.store(true, std::memory_order_release);
+}
+
+void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollState&)> fn)
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    fn(pianoRollState);
 }
 
 const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
@@ -180,6 +239,95 @@ void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* pla
         }
 
         transportState.sampleRate.store(getSampleRate(), std::memory_order_relaxed);
+    }
+}
+
+void UnTETeredAudioProcessor::rebuildPlaybackSequence()
+{
+    PianoRollState stateCopy;
+    {
+        const juce::ScopedLock sl(pianoRollStateLock);
+        stateCopy = pianoRollState;
+    }
+
+    auto region = makeNoteRegionFromState(stateCopy, 2.0f);
+
+    PlaybackSequence newSeq;
+    newSeq.messages = region.midiMessages;
+    newSeq.pitchBendRange = 2.0;
+    newSeq.valid = true;
+
+    {
+        const juce::ScopedLock sl(playbackLock);
+        playbackSequence = std::move(newSeq);
+    }
+
+    playbackDirty.store(false, std::memory_order_release);
+}
+
+void UnTETeredAudioProcessor::flushActiveNotes(juce::MidiBuffer& midiMessages)
+{
+    for (const auto& [channel, noteNumber] : activeNotes)
+        midiMessages.addEvent(juce::MidiMessage::noteOff(channel, noteNumber), 0);
+
+    activeNotes.clear();
+}
+
+void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSamples)
+{
+    if (playbackDirty.load(std::memory_order_acquire))
+        rebuildPlaybackSequence();
+
+    const bool isPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
+    const double bpm = transportState.bpm.load(std::memory_order_relaxed);
+    const double ppq = transportState.ppqPosition.load(std::memory_order_relaxed);
+    const double sr = transportState.sampleRate.load(std::memory_order_relaxed);
+    const int numerator = transportState.numerator.load(std::memory_order_relaxed);
+    const int denominator = transportState.denominator.load(std::memory_order_relaxed);
+
+    if (!isPlaying || bpm <= 0.0 || sr <= 0.0 || denominator <= 0 || numSamples <= 0)
+    {
+        flushActiveNotes(midiMessages);
+        return;
+    }
+
+    const double qnPerBar = 4.0 * static_cast<double>(numerator)
+                          / static_cast<double>(denominator);
+    const double startBar = ppq / qnPerBar;
+
+    const double blockSeconds = static_cast<double>(numSamples) / sr;
+    const double blockQuarterNotes = blockSeconds / (60.0 / bpm);
+    const double blockBars = blockQuarterNotes / qnPerBar;
+    const double endBar = startBar + blockBars;
+
+    PlaybackSequence seqCopy;
+    {
+        const juce::ScopedLock sl(playbackLock);
+        seqCopy = playbackSequence;
+    }
+
+    if (!seqCopy.valid)
+        return;
+
+    for (const auto& msg : seqCopy.messages)
+    {
+        const double eventBar = msg.getTimeStamp();
+        if (eventBar < startBar || eventBar >= endBar)
+            continue;
+
+        const double relBars = eventBar - startBar;
+        const int sampleOffset = juce::jlimit(
+            0,
+            numSamples - 1,
+            static_cast<int>(std::floor(relBars * qnPerBar * (60.0 / bpm) * sr))
+        );
+
+        midiMessages.addEvent(msg, sampleOffset);
+
+        if (msg.isNoteOn())
+            activeNotes.insert({ msg.getChannel(), msg.getNoteNumber() });
+        else if (msg.isNoteOff())
+            activeNotes.erase({ msg.getChannel(), msg.getNoteNumber() });
     }
 }
 

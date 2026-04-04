@@ -27,6 +27,10 @@ target_sources(UnTETered
         PluginProcessor.cpp
         view/interfaces/Grid2D.cpp
         view/interfaces/TextInput.cpp
+        view/interfaces/GridStateSerialiser.cpp
+        view/interfaces/PianoRollStateSerialiser.cpp
+        view/interfaces/PianoRollStateHelpers.cpp
+        logic/NoteRegionSerialiser.cpp
         logic/util.cpp
         logic/noteRegion.cpp
         view/interfaces/PianoRoll.cpp)
