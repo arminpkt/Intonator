@@ -34,12 +34,12 @@ public:
     double getFreqFromYPx(int y) const;
     double getFreqFromYPxF(float y) const;
     int getYPxFromFreq(double freq) const;
-    float getBarExactFromXPx(int x) const;
-    float getBarExactFromXPxF(float x) const;
+    float getBarExactFromXPx(int x, bool ignoreBarLeft = false) const;
+    float getBarExactFromXPxF(float x, bool ignoreBarLeft = false) const;
+    float getBarSubFromXPx(int px, bool ignoreBarLeft = false) const;
+    float getBarSubRoundedFromXPx(int px, bool ignoreBarLeft = false) const;
+    int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
-    float getBarSubFromXPx(int px) const;
-    float getBarSubRoundedFromXPx(int px) const;
-    int getBarFloorFromXPx(int px) const;
     Note* getNoteAt(Point px) const;
     std::optional<Fraction> getPotentialRatioAt(Point px) const;
     Rect getNoteBounds(const Note* note) const;

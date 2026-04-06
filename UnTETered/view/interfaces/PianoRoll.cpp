@@ -215,33 +215,36 @@ int PianoRoll::getYPxFromFreq(double freq) const {
     return static_cast<int>(mirrored);
 }
 
-float PianoRoll::getBarExactFromXPx(int x) const {
-    return getBarExactFromXPxF(static_cast<float>(x));
+float PianoRoll::getBarExactFromXPx(int x, bool ignoreBarLeftScreen) const {
+    return getBarExactFromXPxF(static_cast<float>(x), ignoreBarLeftScreen);
 }
 
-float PianoRoll::getBarExactFromXPxF(float x) const {
-    return barLeftScreen + x / static_cast<float>(barWidthPxF);
+float PianoRoll::getBarExactFromXPxF(float x, bool ignoreBarLeftScreen) const {
+    float ignoring = x / static_cast<float>(barWidthPxF);
+    if (ignoreBarLeftScreen)
+        return ignoring;
+    return barLeftScreen + ignoring;
 }
 
-int PianoRoll::getXPxFromBar(float bar) const {
-    return static_cast<int>((bar - barLeftScreen) * static_cast<float>(barWidthPxF));
-}
-
-float PianoRoll::getBarSubFromXPx(int px) const {
-    float exact = getBarExactFromXPx(px);
+float PianoRoll::getBarSubFromXPx(int px, bool ignoreBarLeftScreen) const {
+    float exact = getBarExactFromXPx(px, ignoreBarLeftScreen);
     auto nrOfSubDivs = static_cast<float>(getNrOfSubDivs());
     return static_cast<float>(static_cast<int>(exact * nrOfSubDivs)) / nrOfSubDivs;
 }
 
-float PianoRoll::getBarSubRoundedFromXPx(int px) const {
-    float exact = getBarExactFromXPx(px);
+float PianoRoll::getBarSubRoundedFromXPx(int px, bool ignoreBarLeftScreen) const {
+    float exact = getBarExactFromXPx(px, ignoreBarLeftScreen);
     auto nrOfSubDivs = static_cast<float>(getNrOfSubDivs());
     return std::round(exact * nrOfSubDivs) / nrOfSubDivs;
 }
 
-int PianoRoll::getBarFloorFromXPx(int px) const {
-    float exact = getBarExactFromXPx(px);
+int PianoRoll::getBarFloorFromXPx(int px, bool ignoreBarLeftScreen) const {
+    float exact = getBarExactFromXPx(px, ignoreBarLeftScreen);
     return static_cast<int>(exact);
+}
+
+int PianoRoll::getXPxFromBar(float bar) const {
+    return static_cast<int>((bar - barLeftScreen) * static_cast<float>(barWidthPxF));
 }
 
 Note* PianoRoll::getNoteAt(Point px) const {
@@ -429,7 +432,7 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
 
 void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) const {
     int dX = currentPos.getX() - mouseDownPos.getX();
-    float dBar = getBarSubRoundedFromXPx(dX);
+    float dBar = getBarSubRoundedFromXPx(dX, true);
     for (size_t i = 0; i < notesSelected.size(); i++) {
         auto noteSelected = notesSelected[i];
         auto [start, end] = selectedNotesStartsEnds[i];
@@ -442,6 +445,7 @@ void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point curr
             noteSelected->end = end + dBar;
         }
     }
+    pushStateToProcessor();
 }
 
 void PianoRoll::mouseUp(const juce::MouseEvent& _) {
