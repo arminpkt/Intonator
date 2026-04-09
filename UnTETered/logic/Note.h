@@ -251,6 +251,11 @@ public:
         return std::nullopt;
     }
 
+    void setFrequency(const double f) {
+        frequency = f;
+        recalculate();
+    }
+
     // Compound assignment
     Note& operator*=(const Fraction& f) override {
         frequency *= static_cast<double>(f);

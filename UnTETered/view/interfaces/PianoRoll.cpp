@@ -196,14 +196,16 @@ float PianoRoll::getHueFromFreq(double freq) {
     return note.getHue();
 }
 
-double PianoRoll::getFreqFromYPx(int y) const {
-    return getFreqFromYPxF(static_cast<float>(y));
+double PianoRoll::getFreqFromYPx(int y, bool ignoreFreqBottomScreen) const {
+    return getFreqFromYPxF(static_cast<float>(y), ignoreFreqBottomScreen);
 }
 
-double PianoRoll::getFreqFromYPxF(float y) const {
+double PianoRoll::getFreqFromYPxF(float y, bool ignoreFreqBottomScreen) const {
     float mirrored = mirrorYPx(y);
     double nrOfOctaves = static_cast<double>(mirrored)/static_cast<double>(octaveHeightPxF);
     double freqFactor = std::pow(2, nrOfOctaves);
+    if (ignoreFreqBottomScreen)
+        return freqFactor;
     return freqFactor * freqBottomScreen;
 }
 
@@ -431,7 +433,12 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
 }
 
 void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) const {
-    int dX = currentPos.getX() - mouseDownPos.getX();
+    moveExtendShrinkHorizontally(currentPos.getX() - mouseDownPos.getX());
+    moveVertically(currentPos);
+    pushStateToProcessor();
+}
+
+void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
     float dBar = getBarSubRoundedFromXPx(dX, true);
     for (size_t i = 0; i < notesSelected.size(); i++) {
         auto noteSelected = notesSelected[i];
@@ -445,7 +452,12 @@ void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point curr
             noteSelected->end = end + dBar;
         }
     }
-    pushStateToProcessor();
+}
+
+void PianoRoll::moveVertically(const Point currentPos) const {
+    if (notesSelected.size() == 1)
+        if (auto asRoot = dynamic_cast<RootNote*>(notesSelected[0]))
+            asRoot->setFrequency(getFreqFromYPx(currentPos.getY()));
 }
 
 void PianoRoll::mouseUp(const juce::MouseEvent& _) {
@@ -549,26 +561,28 @@ void PianoRoll::addChildNote(Note* parent, Fraction ratio, double irratio, float
 }
 
 void PianoRoll::deleteNote(Note* note, bool unselect) {
+    auto replacements = noteRegion.deleteNote(note);
+    for (auto [first, second] : replacements)
+        if (auto index = indexOfSelection(first))
+            notesSelected[index.value()] = second;
     if (unselect)
         unselectNote(note);
-    noteRegion.deleteNote(note);
     pushStateToProcessor();
 }
 
 void PianoRoll::deleteSelection() {
-    for (auto& note : notesSelected)
-        if (dynamic_cast<ChildNote*>(note)) {
-            deleteNote(note, false);
-            note = nullptr;
-        }
-
     while (!notesSelected.empty())
-        if (auto note = notesSelected.back())
-            deleteNote(note);
-        else
-            notesSelected.pop_back();
+        deleteNote(notesSelected.back());
 
-    notesSelected.clear();
+    //     if (dynamic_cast<ChildNote*>(note))
+    //
+    // while (!notesSelected.empty())
+    //     if (auto note = notesSelected.back())
+    //         deleteNote(note);
+    //     else
+    //         notesSelected.pop_back();
+    //
+    // notesSelected.clear();
 }
 
 void PianoRoll::timerCallback() {

@@ -19,30 +19,39 @@ void NoteRegion::addNote(std::unique_ptr<Note>* note) {
     notes.push_back(std::move(*note));
 }
 
-void NoteRegion::deleteNote(Note* note) {
+std::vector<std::pair<Note*, Note*>> NoteRegion::deleteNote(Note* note) {
     if (!note)
-        return;
+        throw std::invalid_argument("Invalid note");
 
     auto* asChild = dynamic_cast<ChildNote*>(note);
     auto* asRoot = dynamic_cast<RootNote*>(note);
 
     if (asChild) {
         asChild->abandonChildren();
+        deleteNoteUnsafe(note);
+        return {};
     }
 
     if (asRoot) {
+        std::vector<std::pair<Note*, Note*>> replacements;
+
         for (auto& child : asRoot->children) {
             auto newRoot = std::make_unique<RootNote>(child->frequency, child->start, child->end);
             newRoot->children = std::move(child->children);
+            for (auto& grandchild : newRoot->children)
+                grandchild->parent = newRoot.get();
             notes.push_back(std::move(newRoot));
+            replacements.emplace_back(child, notes.back().get());
         }
         for (auto& child : asRoot->children) {
             deleteNoteUnsafe(child);
         }
         asRoot->children.clear();
+        deleteNoteUnsafe(note);
+        return replacements;
     }
 
-    deleteNoteUnsafe(note);
+    throw std::invalid_argument("Not a child or root note");
 }
 
 void NoteRegion::deleteNoteUnsafe(const Note* note) {

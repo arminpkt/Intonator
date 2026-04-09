@@ -31,8 +31,8 @@ public:
     void drawPlayhead(juce::Graphics& g) const;
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq) ;
-    double getFreqFromYPx(int y) const;
-    double getFreqFromYPxF(float y) const;
+    double getFreqFromYPx(int y, bool ignoreFreqBottomScreen = false) const;
+    double getFreqFromYPxF(float y, bool ignoreFreqBottomScreen = false) const;
     int getYPxFromFreq(double freq) const;
     float getBarExactFromXPx(int x, bool ignoreBarLeft = false) const;
     float getBarExactFromXPxF(float x, bool ignoreBarLeft = false) const;
@@ -67,6 +67,8 @@ public:
     void mouseMagnify(const juce::MouseEvent& event, float scaleFactor) override;
     void dragRectangle(Point mouseDownPos, Point currentPos);
     void moveExtendShrinkNotes(Point mouseDownPos, Point currentPos) const;
+    void moveExtendShrinkHorizontally(int dX) const;
+    void moveVertically(Point mouseDownPos) const;
     void mouseUp(const juce::MouseEvent& _) override;
     void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
     void scroll(PointF deltaXY);
