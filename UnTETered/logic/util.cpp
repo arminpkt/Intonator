@@ -94,18 +94,24 @@ void optimiseTransition(const std::vector<Note*>& as_ordered, std::vector<Note*>
     optimiseOctaves(as_ordered, bs_ordered);
 }
 
-std::optional<std::vector<int>> getIntRatios(const std::vector<Note*>& notes) {
+std::optional<std::vector<int>> getIntRatios(const std::vector<ChildNote*>& notes) {
     if (notes.empty())
         return std::nullopt;
 
-    Note* luca = getLuca(notes);
-    if (!luca)
+    Note* parentOfFirst = notes[0]->parent;
+    auto asRoot = dynamic_cast<RootNote*>(parentOfFirst);
+
+    if (!asRoot)
         return std::nullopt;
+
+    for (const auto& note : notes)
+        if (note->parent != parentOfFirst)
+            return std::nullopt;
 
     std::vector<Fraction> ratios{};
     ratios.reserve(notes.size());
     for (auto& note : notes)
-        ratios.push_back(note->getRatioToAncestor(luca).value());
+        ratios.push_back(note->ratio);
 
     return getIntRatios(ratios);
 }
@@ -135,31 +141,4 @@ void addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t 
     for (auto& fraction : fractions) {
         fraction = fraction * toMultiply;
     }
-}
-
-Note* getLuca(const std::vector<Note*>& notes) {
-    if (notes.empty())
-        return nullptr;
-
-    if (notes.size() == 1)
-        return notes[0];
-
-    std::vector<std::vector<Note*>> ancestries{};
-    ancestries.reserve(notes.size());
-    for (auto& note : notes)
-        ancestries.push_back(note->getAncestry());
-
-    for (auto& ancestor : ancestries[0]) {
-        bool universal = true;
-        for (size_t i = 1; i < ancestries.size(); ++i) {
-            const auto& ancestry = ancestries[i];
-            if (!contains(ancestry, ancestor)) {
-                universal = false;
-                break;
-            }
-        }
-        if (universal)
-            return ancestor;
-    }
-    return nullptr;
 }

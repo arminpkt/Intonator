@@ -21,17 +21,16 @@ struct NoteEvent {
 
 class NoteRegion {
 public:
-    std::vector<std::unique_ptr<Note>> notes;
+    std::vector<std::unique_ptr<RootNote>> matriarchs;
+    std::vector<std::unique_ptr<ChildNote>> notes;
     std::vector<NoteEvent> noteEvents;
     std::vector<juce::MidiMessage> midiMessages;
 
-    void addRootNote(double frequency, float start, float end);
-    void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
-    void addNote(std::unique_ptr<Note>* note);
-    std::vector<std::pair<Note*, Note*>> deleteNote(Note* note);
+    void addNoteWithoutReference(double frequency, float start, float end);
+    void addNoteWithReference(ChildNote* reference, Fraction ratio, double irratio, float start, float end);
+    void addNoteWithMatriarch(RootNote* matriarch, Fraction ratio, double irratio, double start, double end);
+    void deleteNote(ChildNote* note);
     void calculateMidiMessages(float pitchBendRange = 2); // not const!
-    void useAsParentToCreate(Note* note, Fraction ratio, float start, float end);
-    void useAsParentToCreate(Note* note, float irratio, float start, float end);
 
 private:
     static int midiEventPriority(const juce::MidiMessage& m);

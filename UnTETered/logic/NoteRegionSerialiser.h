@@ -17,6 +17,6 @@ public:
                                     float pitchBendRange = 2.0f);
 
 private:
-    static int findNoteIndex(const std::vector<std::unique_ptr<Note>>& notes,
-                             const Note* target);
+    static int findNoteIndex(const std::vector<std::unique_ptr<RootNote>>& notes,
+                             const RootNote* target);
 };

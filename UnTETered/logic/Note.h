@@ -12,7 +12,6 @@
 #include "Fraction.h"
 #include "PitchClass.h"
 
-
 struct ChildNote;
 
 struct Note {
@@ -101,7 +100,7 @@ struct Note {
         return static_cast<juce::uint16>(roundedBendValue);
     }
 
-    /** Moves this note up or down by octaves to be closest to other.
+    /** Moves this note up or down by octaves to be closest to `other`.
      *
      * @param other     The note to move this note close to
      */
@@ -150,8 +149,10 @@ struct Note {
 
     void disown(const ChildNote* toDisown) {
         for (size_t i = 0; i < children.size(); ++i) {
-            if (children[i] == toDisown)
+            if (children[i] == toDisown) {
                 children.erase(children.begin() + static_cast<long int>(i));
+                return;
+            }
         }
     }
 };
@@ -178,14 +179,14 @@ struct ChildNote : Note {
         parent->disown(this);
     }
 
-    void abandonChildren() const {
-        for (auto& child : children) {
-            child->parent = parent;
-            child->ratio = child->ratio * ratio;
-            parent->children.push_back(child);
-        }
-        parent->disown(this);
-    }
+    // void abandonChildren() const {
+    //     for (auto& child : children) {
+    //         child->parent = parent;
+    //         child->ratio = child->ratio * ratio;
+    //         parent->children.push_back(child);
+    //     }
+    //     parent->disown(this);
+    // }
 
     std::vector<Note*> getAncestry() override {
         std::vector<Note*> ancestry = {this};
@@ -230,8 +231,7 @@ struct ChildNote : Note {
     }
 };
 
-class RootNote : public Note {
-public:
+struct RootNote : Note {
     RootNote(const double freq, const float s, const float e)
         : Note(freq, s, e) {
     }

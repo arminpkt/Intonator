@@ -5,59 +5,33 @@
 #include "NoteRegion.h"
 #include <algorithm>
 
-void NoteRegion::addRootNote(double frequency, float start, float end) {
-    notes.push_back(std::make_unique<RootNote>(frequency, start, end));
-    calculateMidiMessages();
+void NoteRegion::addNoteWithoutReference(double frequency, float start, float end) {
+    matriarchs.push_back(std::make_unique<RootNote>(frequency, 0, 0));
+    addNoteWithMatriarch(matriarchs.back().get(), {1, 1}, 1, start, end);
 }
 
-void NoteRegion::addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end) {
-    notes.push_back(std::make_unique<ChildNote>(parent, ratio, irratio, start, end));
-    calculateMidiMessages();
+void NoteRegion::addNoteWithReference(ChildNote* reference, Fraction ratio, double irratio, float start, float end) {
+    auto asRoot = dynamic_cast<RootNote*>(reference->parent);
+    if (!asRoot)
+        throw std::invalid_argument("parent must be a RootNote");
+
+    Fraction ratioTotal = ratio * reference->ratio;
+    double irratioTotal = irratio * reference->irratio;
+
+    addNoteWithMatriarch(asRoot, ratioTotal, irratioTotal, start, end);
 }
 
-void NoteRegion::addNote(std::unique_ptr<Note>* note) {
-    notes.push_back(std::move(*note));
+
+void NoteRegion::addNoteWithMatriarch(RootNote* matriarch, Fraction ratio, double irratio, double start, double end) {
+    notes.push_back(std::make_unique<ChildNote>(matriarch, ratio, irratio, start, end));
 }
 
-std::vector<std::pair<Note*, Note*>> NoteRegion::deleteNote(Note* note) {
-    if (!note)
-        throw std::invalid_argument("Invalid note");
-
-    auto* asChild = dynamic_cast<ChildNote*>(note);
-    auto* asRoot = dynamic_cast<RootNote*>(note);
-
-    if (asChild) {
-        asChild->abandonChildren();
-        deleteNoteUnsafe(note);
-        return {};
-    }
-
-    if (asRoot) {
-        std::vector<std::pair<Note*, Note*>> replacements;
-
-        for (auto& child : asRoot->children) {
-            auto newRoot = std::make_unique<RootNote>(child->frequency, child->start, child->end);
-            newRoot->children = std::move(child->children);
-            for (auto& grandchild : newRoot->children)
-                grandchild->parent = newRoot.get();
-            notes.push_back(std::move(newRoot));
-            replacements.emplace_back(child, notes.back().get());
-        }
-        for (auto& child : asRoot->children) {
-            deleteNoteUnsafe(child);
-        }
-        asRoot->children.clear();
-        deleteNoteUnsafe(note);
-        return replacements;
-    }
-
-    throw std::invalid_argument("Not a child or root note");
-}
-
-void NoteRegion::deleteNoteUnsafe(const Note* note) {
+void NoteRegion::deleteNote(ChildNote* note) {
+    DBG(note->parent->children.size());
     for (size_t i = 0; i < notes.size(); ++i)
         if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
+            DBG(note->parent->children.size());
             return;
         }
 }
@@ -153,18 +127,6 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
                return midiEventPriority(a) < midiEventPriority(b);
            });
-}
-
-void NoteRegion::useAsParentToCreate(Note* note, Fraction ratio, float start, float end) {
-    auto child = std::make_unique<ChildNote>(note, ratio, start, end);
-    note->children.push_back(child.get());
-    notes.push_back(std::move(child));
-}
-
-void NoteRegion::useAsParentToCreate(Note* note, float irratio, float start, float end) {
-    auto child = std::make_unique<ChildNote>(note, irratio, start, end);
-    note->children.push_back(child.get());
-    notes.push_back(std::move(child));
 }
 
 int NoteRegion::midiEventPriority(const juce::MidiMessage& m)

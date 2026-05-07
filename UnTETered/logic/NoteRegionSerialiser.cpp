@@ -28,8 +28,8 @@ juce::Identifier NoteRegionSerialiser::treeType()
     return NoteRegionIds::region;
 }
 
-int NoteRegionSerialiser::findNoteIndex(const std::vector<std::unique_ptr<Note>>& notes,
-                                        const Note* target)
+int NoteRegionSerialiser::findNoteIndex(const std::vector<std::unique_ptr<RootNote>>& notes,
+                                        const RootNote* target)
 {
     for (int i = 0; i < static_cast<int>(notes.size()); ++i)
     {
@@ -65,7 +65,7 @@ juce::ValueTree NoteRegionSerialiser::toValueTree(const NoteRegion& region)
         {
             noteTree.setProperty(NoteRegionIds::type, NoteRegionIds::childType.toString(), nullptr);
 
-            const int parentIndex = findNoteIndex(region.notes, child->parent);
+            const int parentIndex = findNoteIndex(region.matriarchs, child->parent);
             noteTree.setProperty(NoteRegionIds::parent, parentIndex, nullptr);
 
             const auto [num, den] = child->ratio.getNumeratorAndDenominator();
@@ -105,24 +105,14 @@ NoteRegion NoteRegionSerialiser::fromValueTree(const juce::ValueTree& tree,
         const int start  = static_cast<int>(noteTree.getProperty(NoteRegionIds::start, 0));
         const int end    = static_cast<int>(noteTree.getProperty(NoteRegionIds::end, 0));
 
-        if (type == NoteRegionIds::rootType.toString())
-        {
-            const double frequency =
-                static_cast<double>(noteTree.getProperty(NoteRegionIds::frequency, 440.0));
-
-            region.notes.push_back(std::make_unique<RootNote>(frequency, start, end));
-        }
-        else if (type == NoteRegionIds::childType.toString())
+        if (type == NoteRegionIds::childType.toString())
         {
             // placeholder; replaced in second pass
             region.notes.push_back(nullptr);
         }
         else
         {
-            const double frequency =
-                static_cast<double>(noteTree.getProperty(NoteRegionIds::frequency, 440.0));
-
-            region.notes.push_back(std::make_unique<RootNote>(frequency, start, end));
+            throw std::invalid_argument("Unknown note");
         }
     }
 

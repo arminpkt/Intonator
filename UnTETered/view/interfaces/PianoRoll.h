@@ -25,7 +25,7 @@ public:
     void drawBarLines(juce::Graphics& g) const;
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
-    void drawNote(const Note* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
+    void drawNote(const ChildNote* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
     void drawPotentialRatios(juce::Graphics& g) const;
     void drawRectDragged(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
@@ -40,14 +40,14 @@ public:
     float getBarSubRoundedFromXPx(int px, bool ignoreBarLeft = false) const;
     int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
-    Note* getNoteAt(Point px) const;
+    ChildNote* getNoteAt(Point px) const;
     std::optional<Fraction> getPotentialRatioAt(Point px) const;
-    Rect getNoteBounds(const Note* note) const;
+    Rect getNoteBounds(const ChildNote* note) const;
     std::optional<Rect> getPotentialRatioBounds(Fraction ratio) const;
-    std::vector<double> getPotentialFrequencies(Note* note) const;
-    void selectNote(Note* note, Point clickedPos, bool invertIfSelected);
-    std::optional<size_t> indexOfSelection(const Note* note) const;
-    void unselectNote(const Note* note);
+    std::vector<double> getPotentialFrequencies(ChildNote* note) const;
+    void selectNote(ChildNote* note, Point clickedPos, bool invertIfSelected);
+    std::optional<size_t> indexOfSelection(const ChildNote* note) const;
+    void unselectNote(const ChildNote* note);
 
     /** Mirrors y coordinate interpreted as px value around the axis.
      *
@@ -77,9 +77,9 @@ public:
     void handleDoubleClick(Point px);
     void handleShiftSingleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;
-    void addRootNote(double frequency, float start, float end);
-    void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
-    void deleteNote(Note* note, bool unselect = true);
+    void addNoteWithoutReference(double frequency, float start, float end);
+    void addNoteWithReference(ChildNote* parent, Fraction ratio, double irratio, float start, float end);
+    void deleteNote(ChildNote* note);
     void deleteSelection();
 
     void timerCallback() override;
@@ -96,8 +96,8 @@ private:
     float barLeftScreen = 0;
     float playheadBarPos = 0;
     std::vector<Fraction> potentialRatios;
-    std::vector<Note*> notesSelected;
-    Note* noteHighlighted{};
+    std::vector<ChildNote*> notesSelected;
+    ChildNote* noteHighlighted{};
     std::optional<Fraction> potentialRatioHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
