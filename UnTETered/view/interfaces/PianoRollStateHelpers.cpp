@@ -24,7 +24,7 @@ PianoRollState makeStateFromNoteRegion(const NoteRegion& region)
         if (const auto* child = dynamic_cast<const ChildNote*>(note))
         {
             stored.isChild = true;
-            stored.ratioText = child->ratio.toString();
+            stored.primePowers = child->ratio.getMonzo().primePowers;
             stored.irratio  = child->irratio;
             stored.parentIndex = -1; // fill later after all notes have indices
         }
@@ -92,13 +92,11 @@ NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendR
 
         Note* parent = createdNotes[static_cast<size_t>(stored.parentIndex)];
 
-        auto ratioOpt = Fraction::fromString(stored.ratioText);
-        if (!ratioOpt.has_value())
-            continue;
+        auto ratio = Fraction(Monzo(stored.primePowers));
 
         auto child = std::make_unique<ChildNote>(
             parent,
-            ratioOpt.value(),
+            ratio,
             stored.irratio,
             stored.start,
             stored.end

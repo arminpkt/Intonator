@@ -34,6 +34,5 @@ public:
 
 private:
     static int midiEventPriority(const juce::MidiMessage& m);
-    void deleteNoteUnsafe(const Note* note);
     ChannelPool channelPool;
 };

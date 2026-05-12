@@ -11,10 +11,10 @@ private:
     Monzo monzo;
     mutable std::optional<double> cachedValue;
 
-    explicit Fraction(const Monzo m) : monzo(m) {}
-
 public:
     Fraction(const int numerator, const int denominator) : monzo(numerator, denominator) {}
+    explicit Fraction(const Monzo m) : monzo(m) {}
+
     static std::optional<Fraction> fromString(const juce::String& text) {
         auto trimmed = text.trim();
         auto parts = juce::StringArray::fromTokens(trimmed, "/", "");

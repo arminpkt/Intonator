@@ -29,8 +29,6 @@ namespace primes {
 
 class Monzo {
 private:
-    explicit Monzo(const std::array<int, primes::PrimeCount>& pP) : primePowers(pP) {}
-
     static std::array<int, primes::PrimeCount> extractPrimePowers(int numerator, int denominator) {
         if (numerator <= 0 || denominator <= 0)
             throw std::invalid_argument("numerator and denominator need to be positive");
@@ -67,6 +65,7 @@ public:
     std::array<int, primes::PrimeCount> primePowers;
 
     Monzo(const int numerator, const int denominator) : primePowers(extractPrimePowers(numerator, denominator)) {}
+    explicit Monzo(const std::array<int, primes::PrimeCount>& pP) : primePowers(pP) {}
 
     [[nodiscard]] std::pair<int, int> getNumeratorAndDenominator() const {
         int num = 1;

@@ -19,7 +19,7 @@ struct StoredPianoNote
 
     // for child notes
     int parentIndex = -1;
-    juce::String ratioText = "1/1";
+    std::array<int, primes::PrimeCount> primePowers{};
     double irratio = 1.0;
 };
 
