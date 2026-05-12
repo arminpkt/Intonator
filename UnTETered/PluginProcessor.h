@@ -21,19 +21,19 @@ struct PlaybackSequence
 
 struct TransportState
 {
-    std::atomic<bool>   isPlaying { false };
-    std::atomic<bool>   isRecording { false };
-    std::atomic<double> bpm { 120.0 };
-    std::atomic<double> ppqPosition { 0.0 };
-    std::atomic<int64_t> timeInSamples { 0 };
-    std::atomic<double> sampleRate { 44100.0 };
-    std::atomic<int>    numerator { 4 };
-    std::atomic<int>    denominator { 4 };
+    std::atomic<bool>    isPlaying    { false };
+    std::atomic<bool>    isRecording  { false };
+    std::atomic<double>  bpm          { 120.0 };
+    std::atomic<double>  ppqPosition  { 0.0 };
+    std::atomic<int64_t> timeInSamples{ 0 };
+    std::atomic<double>  sampleRate   { 44100.0 };
+    std::atomic<int>     numerator    { 4 };
+    std::atomic<int>     denominator  { 4 };
 };
 
 struct HostSeekRequest
 {
-    std::atomic<bool> pending { false };
+    std::atomic<bool>   pending   { false };
     std::atomic<double> targetBar { 0.0 };
 };
 
@@ -101,9 +101,10 @@ private:
 
     // Keep track of currently active notes per channel
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
-    double currentSamplePosition = 0.0;           // Tracks playback position
-    double lastHostPosition = 0.0; // in samples
-    int currentEventIndex = 0; // Tracks which MIDI event comes next
+
+    // The bar position we expected to be at the start of this block,
+    // based on where last block ended. Used to detect loops and seeks.
+    double lastExpectedBar = -1.0;
 
     mutable juce::CriticalSection gridStateLock;
     GridState gridState;
