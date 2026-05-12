@@ -30,7 +30,6 @@ target_sources(UnTETered
         view/interfaces/GridStateSerialiser.cpp
         view/interfaces/PianoRollStateSerialiser.cpp
         view/interfaces/PianoRollStateHelpers.cpp
-        logic/NoteRegionSerialiser.cpp
         logic/util.cpp
         logic/noteRegion.cpp
         view/interfaces/PianoRoll.cpp)
