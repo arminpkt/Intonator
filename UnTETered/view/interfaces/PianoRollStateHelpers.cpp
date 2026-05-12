@@ -109,3 +109,21 @@ NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendR
     region.calculateMidiMessages(pitchBendRange);
     return region;
 }
+
+std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var) {
+    std::array<int, primes::PrimeCount> primePowers{};
+
+    for (size_t i = 0; i < primes::PrimeCount; ++i)
+        primePowers[i] = static_cast<int>(var[static_cast<int>(i)]);
+
+    return primePowers;
+}
+
+juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers) {
+    juce::var var;
+
+    for (size_t i = 0; i < primes::PrimeCount; ++i)
+        var[static_cast<int>(i)] = primePowers[i];
+
+    return var;
+}

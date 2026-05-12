@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <juce_core/juce_core.h>
+#include "../../logic/Monzo.h"
 
 struct StoredPianoNote
 {

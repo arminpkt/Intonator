@@ -4,6 +4,8 @@
 
 #include "PianoRollStateSerialiser.h"
 
+#include "PianoRollStateHelpers.h"
+
 namespace PianoRollStateIds
 {
     static const juce::Identifier pianoRoll        { "PIANO_ROLL" };
@@ -20,7 +22,7 @@ namespace PianoRollStateIds
     static const juce::Identifier end              { "end" };
     static const juce::Identifier frequency        { "frequency" };
     static const juce::Identifier parentIndex      { "parentIndex" };
-    static const juce::Identifier ratioText        { "ratioText" };
+    static const juce::Identifier primePowers      { "primePowers" };
     static const juce::Identifier irratio          { "irratio" };
 }
 
@@ -42,13 +44,14 @@ juce::ValueTree PianoRollStateSerialiser::toValueTree(const PianoRollState& stat
 
     for (const auto& n : state.notes)
     {
+        auto primePowers = makeVarFromPrimePowers(n.primePowers);
         juce::ValueTree noteTree(PianoRollStateIds::note);
         noteTree.setProperty(PianoRollStateIds::isChild,     n.isChild,      nullptr);
         noteTree.setProperty(PianoRollStateIds::start,       n.start,        nullptr);
         noteTree.setProperty(PianoRollStateIds::end,         n.end,          nullptr);
         noteTree.setProperty(PianoRollStateIds::frequency,   n.frequency,    nullptr);
         noteTree.setProperty(PianoRollStateIds::parentIndex, n.parentIndex,  nullptr);
-        noteTree.setProperty(PianoRollStateIds::ratioText,   n.ratioText,    nullptr);
+        noteTree.setProperty(PianoRollStateIds::primePowers,    primePowers,    nullptr);
         noteTree.setProperty(PianoRollStateIds::irratio,     n.irratio,      nullptr);
 
         notesTree.addChild(noteTree, -1, nullptr);
@@ -96,7 +99,7 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
             n.end         = static_cast<float>(noteTree.getProperty(PianoRollStateIds::end, 0.0));
             n.frequency   = static_cast<double>(noteTree.getProperty(PianoRollStateIds::frequency, 440.0));
             n.parentIndex = static_cast<int>(noteTree.getProperty(PianoRollStateIds::parentIndex, -1));
-            n.ratioText   = noteTree.getProperty(PianoRollStateIds::ratioText, "1/1").toString();
+            n.primePowers = makePrimePowersFromVar(noteTree.getProperty(PianoRollStateIds::primePowers, {}));
             n.irratio     = static_cast<double>(noteTree.getProperty(PianoRollStateIds::irratio, 1.0));
 
             state.notes.push_back(n);
