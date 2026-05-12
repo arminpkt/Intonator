@@ -11,7 +11,7 @@
 
 class PianoRoll : public juce::Component, juce::Timer {
 public:
-    const float NOTE_HEIGHT_PER_OCTAVE = 1.0f/20.0f;
+    const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
@@ -81,6 +81,8 @@ public:
     void addNoteWithReference(ChildNote* parent, Fraction ratio, double irratio, float start, float end);
     void deleteNote(ChildNote* note);
     void deleteSelection();
+    void copySelectionToClipboard();
+    void pasteClipboard();
 
     void timerCallback() override;
 
@@ -105,6 +107,7 @@ private:
     bool dragRightSideSelectedNote = false;
     bool dragLeftSideSelectedNote = false;
     std::optional<Rect> draggedRect;
+    std::vector<std::unique_ptr<ChildNote>> clipboard;
 
     double cachedPpqPosition = 0.0;
     int cachedNumerator = 4;

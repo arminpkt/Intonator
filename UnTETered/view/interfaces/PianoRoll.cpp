@@ -542,6 +542,24 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
         repaint();
         return true;
     }
+
+    auto code = static_cast<size_t>(key.getKeyCode());
+    if (code >= 65 && code <= 90) {
+        if (key.getKeyCode() == 'C' && key.getModifiers().isCommandDown()) {
+            copySelectionToClipboard();
+            return true;
+        }
+        if (key.getKeyCode() == 'V' && key.getModifiers().isCommandDown()) {
+            pasteClipboard();
+            return true;
+        }
+        if (key.getKeyCode() == 'D' && key.getModifiers().isCommandDown()) {
+            copySelectionToClipboard();
+            pasteClipboard();
+            return true;
+        }
+    }
+
     return false;
 }
 
@@ -564,6 +582,42 @@ void PianoRoll::deleteNote(ChildNote* note) {
 void PianoRoll::deleteSelection() {
     while (!notesSelected.empty())
         deleteNote(notesSelected.back());
+}
+
+void PianoRoll::copySelectionToClipboard() {
+    clipboard.clear();
+    clipboard.reserve(notesSelected.size());
+    for (const auto& note : notesSelected) {
+        auto copy = std::make_unique<ChildNote>(note->parent, note->ratio, note->irratio, note->start, note->end);
+        clipboard.push_back(std::move(copy));
+    }
+}
+
+void PianoRoll::pasteClipboard() {
+    if (clipboard.empty())
+        return;
+
+    auto earliestStart = clipboard.front()->start;
+    for (const auto& note : clipboard)
+        if (note->start < earliestStart)
+            earliestStart = note->start;
+
+    auto latestEnd = clipboard.front()->end;
+    for (const auto& note : clipboard)
+        if (note->end > latestEnd)
+            latestEnd = note->end;
+
+    for (const auto& note : clipboard) {
+        float start = playheadBarPos + note->start - earliestStart;
+        float end = start + note->end - note->start;
+        auto asRoot = dynamic_cast<RootNote*>(note->parent);
+        noteRegion.addNoteWithMatriarch(asRoot, note->ratio, note->irratio, start, end);
+    }
+
+    playheadBarPos += latestEnd - earliestStart;
+    repaint();
+
+    pushStateToProcessor();
 }
 
 void PianoRoll::timerCallback() {
