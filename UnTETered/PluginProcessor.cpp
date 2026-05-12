@@ -155,7 +155,6 @@ void UnTETeredAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void UnTETeredAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    return;
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
     if (!xml)
         return;
