@@ -3,107 +3,88 @@
 //
 
 #include "PianoRollStateHelpers.h"
-
 #include <unordered_map>
 
+// ---------------------------------------------------------------------------
+// NoteRegion  →  PianoRollState
+// ---------------------------------------------------------------------------
 PianoRollState makeStateFromNoteRegion(const NoteRegion& region)
 {
     PianoRollState state;
-    state.notes.reserve(region.notes.size());
 
-    std::unordered_map<const Note*, int> noteIndex;
+    // 1. Serialise every matriarch and build a reverse-lookup map so we can
+    //    find a matriarch's index in O(1) when we process its children below.
+    state.matriarchs.reserve(region.matriarchs.size());
+    std::unordered_map<const RootNote*, int> matriarchIndex;
+    matriarchIndex.reserve(region.matriarchs.size());
+
+    for (const auto& mPtr : region.matriarchs)
+    {
+        matriarchIndex[mPtr.get()] = static_cast<int>(state.matriarchs.size());
+        state.matriarchs.push_back({ mPtr->frequency });
+    }
+
+    // 2. Serialise every drawn note (always a ChildNote in the new layout).
+    state.notes.reserve(region.notes.size());
 
     for (const auto& notePtr : region.notes)
     {
-        const Note* note = notePtr.get();
-        StoredPianoNote stored;
+        const ChildNote* child = notePtr.get();
 
-        stored.start = note->start;
-        stored.end   = note->end;
+        StoredPianoNote sn;
+        sn.start     = child->start;
+        sn.end       = child->end;
+        sn.primePowers = child->ratio.getMonzo().primePowers;
+        sn.irratio   = child->irratio;
 
-        if (const auto* child = dynamic_cast<const ChildNote*>(note))
-        {
-            stored.isChild = true;
-            stored.primePowers = child->ratio.getMonzo().primePowers;
-            stored.irratio  = child->irratio;
-            stored.parentIndex = -1; // fill later after all notes have indices
-        }
-        else
-        {
-            stored.isChild = false;
-            stored.frequency = note->frequency;
-        }
+        // The parent must be one of the matriarchs – cast is safe by design.
+        auto it = matriarchIndex.find(dynamic_cast<RootNote*>(child->parent));
+        if (it != matriarchIndex.end())
+            sn.matriarchIndex = it->second;
+        // If the parent isn't found (shouldn't happen in a well-formed region)
+        // matriarchIndex stays -1 and the note will be skipped on reload.
 
-        noteIndex[note] = static_cast<int>(state.notes.size());
-        state.notes.push_back(stored);
-    }
-
-    for (size_t i = 0; i < region.notes.size(); ++i)
-    {
-        const Note* note = region.notes[i].get();
-        if (const auto* child = dynamic_cast<const ChildNote*>(note))
-        {
-            auto it = noteIndex.find(child->parent);
-            if (it != noteIndex.end())
-                state.notes[i].parentIndex = it->second;
-        }
+        state.notes.push_back(sn);
     }
 
     return state;
 }
 
+// ---------------------------------------------------------------------------
+// PianoRollState  →  NoteRegion
+// ---------------------------------------------------------------------------
 NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange)
 {
     NoteRegion region;
-    std::vector<Note*> createdNotes;
-    createdNotes.reserve(state.notes.size());
 
-    for (const auto& stored : state.notes)
+    // 1. Recreate every matriarch.  start/end are 0 because matriarchs are
+    //    pure reference-frequency objects, not drawable notes.
+    region.matriarchs.reserve(state.matriarchs.size());
+    for (const auto& sm : state.matriarchs)
+        region.matriarchs.push_back(std::make_unique<RootNote>(sm.frequency, 0.0f, 0.0f));
+
+    // 2. Recreate every drawn note as a ChildNote of its stored matriarch.
+    region.notes.reserve(state.notes.size());
+    for (const auto& sn : state.notes)
     {
-        if (!stored.isChild)
+        if (sn.matriarchIndex < 0
+            || sn.matriarchIndex >= static_cast<int>(region.matriarchs.size()))
         {
-            auto root = std::make_unique<RootNote>(
-                stored.frequency,
-                stored.start,
-                stored.end
-            );
-
-            createdNotes.push_back(root.get());
-            region.notes.push_back(std::move(root));
-        }
-        else
-        {
-            createdNotes.push_back(nullptr);
-        }
-    }
-
-    for (size_t i = 0; i < state.notes.size(); ++i)
-    {
-        const auto& stored = state.notes[i];
-        if (!stored.isChild)
-            continue;
-
-        if (stored.parentIndex < 0
-            || stored.parentIndex >= static_cast<int>(createdNotes.size())
-            || createdNotes[static_cast<size_t>(stored.parentIndex)] == nullptr)
-        {
-            continue;
+            throw std::invalid_argument("orphaned note");
         }
 
-        Note* parent = createdNotes[static_cast<size_t>(stored.parentIndex)];
+        RootNote* matriarch =
+            region.matriarchs[static_cast<size_t>(sn.matriarchIndex)].get();
 
-        auto ratio = Fraction(Monzo(stored.primePowers));
+        auto ratio = Fraction(Monzo(sn.primePowers));
 
-        auto child = std::make_unique<ChildNote>(
-            parent,
+        region.notes.push_back(std::make_unique<ChildNote>(
+            matriarch,
             ratio,
-            stored.irratio,
-            stored.start,
-            stored.end
-        );
-
-        createdNotes[i] = child.get();
-        region.notes.push_back(std::move(child));
+            sn.irratio,
+            sn.start,
+            sn.end
+        ));
     }
 
     region.calculateMidiMessages(pitchBendRange);
