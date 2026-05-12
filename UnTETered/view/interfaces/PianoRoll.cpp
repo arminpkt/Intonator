@@ -108,7 +108,8 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
 
             auto boundsChild = getNoteBounds(child);
             g.setColour(juce::Colour::fromRGB(200, 200, 200));
-            juce::String text = child->ratio.toString();
+            auto ratioTotal = child->ratio/noteSelected->ratio;
+            juce::String text = ratioTotal.toString();
             drawText(text, boundsChild, g);
         }
 

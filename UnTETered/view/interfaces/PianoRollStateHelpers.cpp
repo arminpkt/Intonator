@@ -92,19 +92,24 @@ NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendR
 }
 
 std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var) {
+    juce::String csvString = var.toString();
+
+    juce::StringArray parts = juce::StringArray::fromTokens(csvString, ",", "\"");
     std::array<int, primes::PrimeCount> primePowers{};
 
-    for (size_t i = 0; i < primes::PrimeCount; ++i)
-        primePowers[i] = static_cast<int>(var.getArray()->getUnchecked(static_cast<int>(i)));
+    for (int i = 0; i < parts.size(); ++i)
+        primePowers[static_cast<size_t>(i)] = parts[i].getIntValue();
 
     return primePowers;
 }
 
 juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers) {
-    juce::Array<juce::var> array;
+    juce::StringArray stringParts;
+    for (auto& val : primePowers)
+    {
+        stringParts.add(juce::String(val));
+    }
+    juce::String csvString = stringParts.joinIntoString(",");
 
-    for (size_t i = 0; i < primes::PrimeCount; ++i)
-        array.setUnchecked(static_cast<int>(i), juce::var(primePowers[i]));
-
-    return {array};
+    return {csvString};
 }

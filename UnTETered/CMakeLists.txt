@@ -16,10 +16,10 @@ juce_add_plugin(UnTETered
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE
         COPY_PLUGIN_AFTER_BUILD TRUE
         PLUGIN_MANUFACTURER_CODE ACVV
-        PLUGIN_CODE UTET
+        PLUGIN_CODE Into
 
         FORMATS AU VST3 Standalone
-        PRODUCT_NAME "UnTETered2")
+        PRODUCT_NAME "UnTETered")
 
 target_sources(UnTETered
         PRIVATE

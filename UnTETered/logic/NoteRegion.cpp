@@ -27,11 +27,9 @@ void NoteRegion::addNoteWithMatriarch(RootNote* matriarch, Fraction ratio, doubl
 }
 
 void NoteRegion::deleteNote(ChildNote* note) {
-    DBG(note->parent->children.size());
     for (size_t i = 0; i < notes.size(); ++i)
         if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
-            DBG(note->parent->children.size());
             return;
         }
 }

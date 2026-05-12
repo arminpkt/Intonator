@@ -28,7 +28,7 @@ namespace PianoRollStateIds
     static const juce::Identifier start             { "start" };
     static const juce::Identifier end               { "end" };
     static const juce::Identifier matriarchIndex    { "matriarchIndex" };
-    static const juce::Identifier primePowers         { "primePowers" };
+    static const juce::Identifier primePowers       { "primePowers" };
     static const juce::Identifier irratio           { "irratio" };
 }
 
@@ -135,11 +135,11 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
                 continue;
 
             StoredPianoNote n;
-            n.start          = static_cast<float>(noteTree.getProperty(PianoRollStateIds::start,          0.0));
-            n.end            = static_cast<float>(noteTree.getProperty(PianoRollStateIds::end,            0.0));
-            n.matriarchIndex = static_cast<int>  (noteTree.getProperty(PianoRollStateIds::matriarchIndex, -1));
-            n.primePowers = makePrimePowersFromVar(noteTree.getProperty(PianoRollStateIds::primePowers, {}));
-            n.irratio        = static_cast<double>(noteTree.getProperty(PianoRollStateIds::irratio,       1.0));
+            n.start          = static_cast<float>    (noteTree.getProperty(PianoRollStateIds::start,          0.0));
+            n.end            = static_cast<float>    (noteTree.getProperty(PianoRollStateIds::end,            0.0));
+            n.matriarchIndex = static_cast<int>      (noteTree.getProperty(PianoRollStateIds::matriarchIndex, -1));
+            n.primePowers    = makePrimePowersFromVar(noteTree.getProperty(PianoRollStateIds::primePowers,    {}));
+            n.irratio        = static_cast<double>   (noteTree.getProperty(PianoRollStateIds::irratio,        1.0));
 
             state.notes.push_back(n);
         }
