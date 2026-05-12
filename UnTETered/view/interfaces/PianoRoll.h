@@ -11,7 +11,7 @@
 
 class PianoRoll : public juce::Component, juce::Timer {
 public:
-    const float NOTE_HEIGHT_PER_OCTAVE = 1.0f/20.0f;
+    const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
@@ -25,7 +25,7 @@ public:
     void drawBarLines(juce::Graphics& g) const;
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
-    void drawNote(const Note* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
+    void drawNote(const ChildNote* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
     void drawPotentialRatios(juce::Graphics& g) const;
     void drawRectDragged(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
@@ -40,14 +40,14 @@ public:
     float getBarSubRoundedFromXPx(int px, bool ignoreBarLeft = false) const;
     int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
-    Note* getNoteAt(Point px) const;
+    ChildNote* getNoteAt(Point px) const;
     std::optional<Fraction> getPotentialRatioAt(Point px) const;
-    Rect getNoteBounds(const Note* note) const;
+    Rect getNoteBounds(const ChildNote* note) const;
     std::optional<Rect> getPotentialRatioBounds(Fraction ratio) const;
-    std::vector<double> getPotentialFrequencies(Note* note) const;
-    void selectNote(Note* note, Point clickedPos, bool invertIfSelected);
-    std::optional<size_t> indexOfSelection(const Note* note) const;
-    void unselectNote(const Note* note);
+    std::vector<double> getPotentialFrequencies(ChildNote* note) const;
+    void selectNote(ChildNote* note, Point clickedPos, bool invertIfSelected);
+    std::optional<size_t> indexOfSelection(const ChildNote* note) const;
+    void unselectNote(const ChildNote* note);
 
     /** Mirrors y coordinate interpreted as px value around the axis.
      *
@@ -78,8 +78,8 @@ public:
     void handleShiftSingleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;
     void addRootNote(double frequency, float start, float end);
-    void addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end);
-    void deleteNote(Note* note, bool unselect = true);
+    void addChildNote(ChildNote* reference, Fraction ratio, double irratio, float start, float end);
+    void deleteNote(ChildNote* note);
     void deleteSelection();
 
     void timerCallback() override;
@@ -97,7 +97,7 @@ private:
     float playheadBarPos = 0;
     std::vector<Fraction> potentialRatios;
     std::vector<Note*> notesSelected;
-    Note* noteHighlighted{};
+    ChildNote* noteHighlighted{};
     std::optional<Fraction> potentialRatioHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;

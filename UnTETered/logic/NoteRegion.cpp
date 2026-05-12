@@ -17,6 +17,7 @@ void NoteRegion::addChildNote(Note* parent, Fraction ratio, double irratio, floa
 
 void NoteRegion::addNote(std::unique_ptr<Note>* note) {
     notes.push_back(std::move(*note));
+    calculateMidiMessages();
 }
 
 std::vector<std::pair<Note*, Note*>> NoteRegion::deleteNote(Note* note) {
@@ -58,6 +59,7 @@ void NoteRegion::deleteNoteUnsafe(const Note* note) {
     for (size_t i = 0; i < notes.size(); ++i)
         if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
+            calculateMidiMessages();
             return;
         }
 }

@@ -91,48 +91,46 @@ int PianoRoll::getNrOfSubDivs() const {
 }
 
 void PianoRoll::drawNotes(juce::Graphics& g) const {
-    for (auto& note : noteRegion.notes) {
-        auto baseColour = juce::Colour::fromRGB(100, 100, 100);
-        auto edgeColour = juce::Colour::fromRGB(50, 50, 50);
-        drawNote(note.get(), baseColour, edgeColour, g);
-    }
+    auto baseColourStandard = juce::Colour::fromRGB(100, 100, 100);
+    auto edgeColourStandard = juce::Colour::fromRGB(50, 50, 50);
+    for (auto& note : noteRegion.notes)
+        if (auto asChild = dynamic_cast<ChildNote*>(note.get()))
+            drawNote(asChild, baseColourStandard, edgeColourStandard, g);
 
     if (notesSelected.size() == 1) {
         auto noteSelected = notesSelected[0];
-
-        // draw selectedNote over
-        auto baseColour = juce::Colour::fromRGB(50, 200, 50);
-        auto edgeColour = juce::Colour::fromRGB(50, 50, 50);
-        drawNote(noteSelected, baseColour, edgeColour, g);
+        auto asChild = dynamic_cast<ChildNote*>(noteSelected);
+        auto matriarch = asChild->parent;
 
         // draw children over
-        for (auto& child : noteSelected->children) {
+        for (auto& child : matriarch->children) {
             auto baseColourChild = juce::Colour::fromRGB(50, 50, 200);
             auto edgeColourChild = juce::Colour::fromRGB(50, 50, 50);
             drawNote(child, baseColourChild, edgeColourChild, g);
 
             auto boundsChild = getNoteBounds(child);
             g.setColour(juce::Colour::fromRGB(200, 200, 200));
-            juce::String text = child->ratio.toString();
+            auto ratioTotal = child->ratio/asChild->ratio;
+            juce::String text = ratioTotal.toString();
             drawText(text, boundsChild, g);
         }
 
-        if (auto asChild = dynamic_cast<ChildNote*>(noteSelected)) {
-            auto baseColourParent = juce::Colour::fromRGB(200, 50, 50);
-            auto edgeColourParent = juce::Colour::fromRGB(50, 50, 50);
-            drawNote(asChild->parent, baseColourParent, edgeColourParent, g);
-        }
+        // draw selectedNote over
+        auto baseColour = juce::Colour::fromRGB(50, 200, 50);
+        auto edgeColour = juce::Colour::fromRGB(50, 50, 50);
+        drawNote(asChild, baseColour, edgeColour, g);
     }
 
     else if (notesSelected.size() > 1) {
         auto intRatios = getIntRatios(notesSelected);
         for (size_t i = 0; i < notesSelected.size(); ++i) {
             auto noteSelected = notesSelected[i];
+            auto asChild = dynamic_cast<ChildNote*>(noteSelected);
             auto baseColourSelected = juce::Colour::fromRGB(100, 100, 100);
             auto edgeColourSelected = juce::Colour::fromRGB(205, 205, 205);
-            drawNote(noteSelected, baseColourSelected, edgeColourSelected, g);
+            drawNote(asChild, baseColourSelected, edgeColourSelected, g);
             if (intRatios) {
-                auto boundsSelected = getNoteBounds(noteSelected);
+                auto boundsSelected = getNoteBounds(asChild);
                 auto intRatio = intRatios.value()[i];
                 juce::String text = std::to_string(intRatio);
                 g.setColour(juce::Colour::fromRGB(50, 50, 50));
@@ -142,7 +140,7 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
     }
 }
 
-void PianoRoll::drawNote(const Note* note, const juce::Colour baseColour, const juce::Colour edgeColour, juce::Graphics& g) const {
+void PianoRoll::drawNote(const ChildNote* note, const juce::Colour baseColour, const juce::Colour edgeColour, juce::Graphics& g) const {
     Rect bounds = getNoteBounds(note);
     auto colour = baseColour;
     if (note == noteHighlighted)
@@ -249,11 +247,14 @@ int PianoRoll::getXPxFromBar(float bar) const {
     return static_cast<int>((bar - barLeftScreen) * static_cast<float>(barWidthPxF));
 }
 
-Note* PianoRoll::getNoteAt(Point px) const {
+ChildNote* PianoRoll::getNoteAt(Point px) const {
     for (auto& note : noteRegion.notes) {
-        Rect bounds = getNoteBounds(note.get()).expanded(3);
-        if (bounds.contains(px))
-            return note.get();
+        auto asChild = dynamic_cast<ChildNote*>(note.get());
+        if (asChild) {
+            Rect bounds = getNoteBounds(asChild).expanded(3);
+            if (bounds.contains(px))
+                return asChild;
+        }
     }
     return nullptr;
 }
@@ -272,7 +273,7 @@ std::optional<Fraction> PianoRoll::getPotentialRatioAt(Point px) const {
     return std::nullopt;
 }
 
-Rect PianoRoll::getNoteBounds(const Note* note) const {
+Rect PianoRoll::getNoteBounds(const ChildNote* note) const {
     int startPx = getXPxFromBar(note->start);
     int endPx = getXPxFromBar(note->end);
     int noteWidth = (endPx - startPx);
@@ -295,7 +296,7 @@ std::optional<Rect> PianoRoll::getPotentialRatioBounds(Fraction ratio) const {
     return rect;
 }
 
-std::vector<double> PianoRoll::getPotentialFrequencies(Note* note) const {
+std::vector<double> PianoRoll::getPotentialFrequencies(ChildNote* note) const {
     std::vector<double> potentialFreqs;
     potentialFreqs.reserve(potentialRatios.size());
     for (auto& f : potentialRatios)
@@ -303,7 +304,7 @@ std::vector<double> PianoRoll::getPotentialFrequencies(Note* note) const {
     return potentialFreqs;
 }
 
-void PianoRoll::selectNote(Note* note, Point clickedPos, bool invertIfSelected = false) {
+void PianoRoll::selectNote(ChildNote* note, Point clickedPos, bool invertIfSelected = false) {
     if (indexOfSelection(note)) {
         if (invertIfSelected)
             unselectNote(note);
@@ -319,7 +320,7 @@ void PianoRoll::selectNote(Note* note, Point clickedPos, bool invertIfSelected =
         dragLeftSideSelectedNote = true;
 }
 
-std::optional<size_t> PianoRoll::indexOfSelection(const Note* note) const {
+std::optional<size_t> PianoRoll::indexOfSelection(const ChildNote* note) const {
     for (size_t i = 0; i < notesSelected.size(); i++) {
         if (note == notesSelected[i]) {
             return i;
@@ -328,7 +329,7 @@ std::optional<size_t> PianoRoll::indexOfSelection(const Note* note) const {
     return std::nullopt;
 }
 
-void PianoRoll::unselectNote(const Note* note) {
+void PianoRoll::unselectNote(const ChildNote* note) {
     auto index = indexOfSelection(note);
     if (index)
         notesSelected.erase(notesSelected.begin() + static_cast<long int>(index.value()));
@@ -421,14 +422,16 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
     if (draggedRect->getWidth() == 0)
         draggedRect->setWidth(1);
     for (auto& note : noteRegion.notes) {
-        Note* ptr = note.get();
-        Rect boundsNote = getNoteBounds(ptr);
+        auto asChild = dynamic_cast<ChildNote*>(note.get());
+        if (!asChild)
+            continue;
+        Rect boundsNote = getNoteBounds(asChild);
         bool selected = false;
         for (const auto& noteSelected : notesSelected)
-            if (ptr == noteSelected)
+            if (asChild == noteSelected)
                 selected = true;
         if (boundsNote.intersects(draggedRect.value()) && !selected)
-            notesSelected.push_back(ptr);
+            notesSelected.push_back(asChild);
     }
 }
 
@@ -528,7 +531,8 @@ void PianoRoll::handleDoubleClick(const Point px) {
     }
 
     if (potentialRatioAt) {
-        addChildNote(notesSelected[0], potentialRatioAt.value(), 1, barSub, barSub+1);
+        auto asChild = dynamic_cast<ChildNote*>(notesSelected[0]);
+        addChildNote(asChild, potentialRatioAt.value(), 1, barSub, barSub+1);
         return;
     }
 
@@ -552,37 +556,27 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
 
 void PianoRoll::addRootNote(double frequency, float start, float end) {
     noteRegion.addRootNote(frequency, start, end);
+    auto asRoot = dynamic_cast<RootNote*>(noteRegion.notes.back().get());
+    noteRegion.addChildNote(asRoot, {1, 1}, 1, start, end);
     pushStateToProcessor();
 }
 
-void PianoRoll::addChildNote(Note* parent, Fraction ratio, double irratio, float start, float end) {
-    noteRegion.addChildNote(parent, ratio, irratio, start, end);
+void PianoRoll::addChildNote(ChildNote* reference, Fraction ratio, double irratio, float start, float end) {
+    auto matriarch = reference->parent;
+    auto ratioTotal = ratio * reference->ratio;
+    noteRegion.addChildNote(matriarch, ratioTotal, irratio, start, end);
     pushStateToProcessor();
 }
 
-void PianoRoll::deleteNote(Note* note, bool unselect) {
-    auto replacements = noteRegion.deleteNote(note);
-    for (auto [first, second] : replacements)
-        if (auto index = indexOfSelection(first))
-            notesSelected[index.value()] = second;
-    if (unselect)
-        unselectNote(note);
+void PianoRoll::deleteNote(ChildNote* note) {
+    noteRegion.deleteNote(note);
+    unselectNote(note);
     pushStateToProcessor();
 }
 
 void PianoRoll::deleteSelection() {
     while (!notesSelected.empty())
-        deleteNote(notesSelected.back());
-
-    //     if (dynamic_cast<ChildNote*>(note))
-    //
-    // while (!notesSelected.empty())
-    //     if (auto note = notesSelected.back())
-    //         deleteNote(note);
-    //     else
-    //         notesSelected.pop_back();
-    //
-    // notesSelected.clear();
+        deleteNote(dynamic_cast<ChildNote*>(notesSelected.back()));
 }
 
 void PianoRoll::timerCallback() {
