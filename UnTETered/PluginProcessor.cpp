@@ -58,8 +58,7 @@ double UnTETeredAudioProcessor::getTailLengthSeconds() const
 
 int UnTETeredAudioProcessor::getNumPrograms()
 {
-    return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
-                // so this should be at least 1, even if you're not really implementing programs.
+    return 1;
 }
 
 int UnTETeredAudioProcessor::getCurrentProgram()
@@ -84,14 +83,12 @@ void UnTETeredAudioProcessor::changeProgramName (int index, const juce::String& 
 }
 
 //==============================================================================
-void UnTETeredAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void UnTETeredAudioProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)
 {
 }
 
 void UnTETeredAudioProcessor::releaseResources()
 {
-    // When playback stops, you can use this as an opportunity to free up any
-    // spare memory, etc.
 }
 
 bool UnTETeredAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -100,15 +97,10 @@ bool UnTETeredAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts
     juce::ignoreUnused (layouts);
     return true;
   #else
-    // This is the place where you check if the layout is supported.
-    // In this template code we only support mono or stereo.
-    // Some plugin hosts, such as certain GarageBand versions, will only
-    // load plugins that support stereo bus layouts.
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
 
-    // This checks if the input layout matches the output layout
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
@@ -134,7 +126,7 @@ void UnTETeredAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 //==============================================================================
 bool UnTETeredAudioProcessor::hasEditor() const
 {
-    return true; // (change this to false if you choose to not supply an editor)
+    return true;
 }
 
 juce::AudioProcessorEditor* UnTETeredAudioProcessor::createEditor()
@@ -278,16 +270,17 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
     if (playbackDirty.load(std::memory_order_acquire))
         rebuildPlaybackSequence();
 
-    const bool isPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
-    const double bpm = transportState.bpm.load(std::memory_order_relaxed);
-    const double ppq = transportState.ppqPosition.load(std::memory_order_relaxed);
-    const double sr = transportState.sampleRate.load(std::memory_order_relaxed);
-    const int numerator = transportState.numerator.load(std::memory_order_relaxed);
-    const int denominator = transportState.denominator.load(std::memory_order_relaxed);
+    const bool   isPlaying  = transportState.isPlaying.load(std::memory_order_relaxed);
+    const double bpm        = transportState.bpm.load(std::memory_order_relaxed);
+    const double ppq        = transportState.ppqPosition.load(std::memory_order_relaxed);
+    const double sr         = transportState.sampleRate.load(std::memory_order_relaxed);
+    const int    numerator  = transportState.numerator.load(std::memory_order_relaxed);
+    const int    denominator= transportState.denominator.load(std::memory_order_relaxed);
 
     if (!isPlaying || bpm <= 0.0 || sr <= 0.0 || denominator <= 0 || numSamples <= 0)
     {
         flushActiveNotes(midiMessages);
+        lastExpectedBar = -1.0; // reset so next play-press is treated as a fresh start
         return;
     }
 
@@ -295,10 +288,30 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
                           / static_cast<double>(denominator);
     const double startBar = ppq / qnPerBar;
 
-    const double blockSeconds = static_cast<double>(numSamples) / sr;
+    const double blockSeconds      = static_cast<double>(numSamples) / sr;
     const double blockQuarterNotes = blockSeconds / (60.0 / bpm);
-    const double blockBars = blockQuarterNotes / qnPerBar;
-    const double endBar = startBar + blockBars;
+    const double blockBars         = blockQuarterNotes / qnPerBar;
+    const double endBar            = startBar + blockBars;
+
+    // -----------------------------------------------------------------------
+    // Loop / seek detection
+    //
+    // If the host position jumped backward from where we expected to be, any
+    // notes that were playing at the loop point will never receive their
+    // noteOff (those messages are now in the "past"). Send noteOffs for all
+    // active notes now, before processing the new block.
+    //
+    // The tolerance of half a block guards against tiny floating-point
+    // rounding differences between consecutive blocks during normal playback.
+    // -----------------------------------------------------------------------
+    const bool positionJumpedBack = (lastExpectedBar >= 0.0)
+                                 && (startBar < lastExpectedBar - 0.5 * blockBars);
+    if (positionJumpedBack)
+        flushActiveNotes(midiMessages);
+
+    lastExpectedBar = endBar;
+
+    // -----------------------------------------------------------------------
 
     PlaybackSequence seqCopy;
     {
@@ -337,7 +350,6 @@ void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept {
 }
 
 //==============================================================================
-// This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
     return new UnTETeredAudioProcessor();
