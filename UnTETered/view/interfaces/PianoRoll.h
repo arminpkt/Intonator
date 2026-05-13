@@ -13,6 +13,7 @@ class PianoRoll : public juce::Component, juce::Timer {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
+    const int ORIENTATION_BAR_HEIGHT = 20;
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
     ~PianoRoll() override = default;
@@ -20,14 +21,15 @@ public:
     void paint(juce::Graphics& g) override;
     static void fillRect(const Rect& rect, juce::Graphics& g);
     static void drawRect(const Rect& rect, juce::Graphics& g);
-    static void drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g);
-    void drawBackground(juce::Graphics& g) const;
-    void drawBarLines(juce::Graphics& g) const;
+    static void drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g, juce::Justification justification);
+    void drawBackground(juce::Graphics& g, const Rect& bounds) const;
+    void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubdivisions) const;
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
-    void drawNote(const ChildNote* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
+    void drawNote(const Note* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
     void drawPotentialRatios(juce::Graphics& g) const;
     void drawRectDragged(juce::Graphics& g) const;
+    void drawOrientationBar(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq) ;
@@ -40,14 +42,14 @@ public:
     float getBarSubRoundedFromXPx(int px, bool ignoreBarLeft = false) const;
     int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
-    ChildNote* getNoteAt(Point px) const;
+    Note* getNoteAt(Point px);
     std::optional<Fraction> getPotentialRatioAt(Point px) const;
-    Rect getNoteBounds(const ChildNote* note) const;
+    Rect getNoteBounds(const Note* note) const;
     std::optional<Rect> getPotentialRatioBounds(Fraction ratio) const;
-    std::vector<double> getPotentialFrequencies(ChildNote* note) const;
-    void selectNote(ChildNote* note, Point clickedPos, bool invertIfSelected);
-    std::optional<size_t> indexOfSelection(const ChildNote* note) const;
-    void unselectNote(const ChildNote* note);
+    std::vector<double> getPotentialFrequencies(Note* note) const;
+    void selectNote(Note* note, Point clickedPos, bool invertIfSelected);
+    std::optional<size_t> indexOfSelection(const Note* note) const;
+    void unselectNote(const Note* note);
 
     /** Mirrors y coordinate interpreted as px value around the axis.
      *
@@ -78,11 +80,13 @@ public:
     void handleShiftSingleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;
     void addNoteWithoutReference(double frequency, float start, float end);
-    void addNoteWithReference(ChildNote* parent, Fraction ratio, double irratio, float start, float end);
-    void deleteNote(ChildNote* note);
+    void addNoteWithReference(Note* ref, Fraction ratio, double irratio, float start, float end);
+    void deleteNote(Note* note);
     void deleteSelection();
     void copySelectionToClipboard();
     void pasteClipboard();
+    Rect getNoteCanvasBounds() const;
+    Rect getOrientationBarBounds() const;
 
     void timerCallback() override;
 
@@ -98,8 +102,8 @@ private:
     float barLeftScreen = 0;
     float playheadBarPos = 0;
     std::vector<Fraction> potentialRatios;
-    std::vector<ChildNote*> notesSelected;
-    ChildNote* noteHighlighted{};
+    std::vector<Note*> notesSelected;
+    Note* noteHighlighted{};
     std::optional<Fraction> potentialRatioHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
@@ -107,7 +111,7 @@ private:
     bool dragRightSideSelectedNote = false;
     bool dragLeftSideSelectedNote = false;
     std::optional<Rect> draggedRect;
-    std::vector<std::unique_ptr<ChildNote>> clipboard;
+    std::vector<Note> clipboard;
 
     double cachedPpqPosition = 0.0;
     int cachedNumerator = 4;

@@ -15,12 +15,6 @@
 #include "../../PluginProcessor.h"
 #include "../Types.h"
 
-//using Point = juce::Point<int>;
-using PointF = juce::Point<float>;
-using Rect = juce::Rectangle<int>;
-using RectF = juce::Rectangle<float>;
-using Kernel = std::vector<std::vector<std::unique_ptr<Note>>>;
-
 static float MAX_FREQ_MIDDLE = 500;
 static float MIN_FREQ_MIDDLE = 100;
 
@@ -38,6 +32,7 @@ public:
     void calibrateGrid();
     void octavateGridDown();
     void octavateGridUp();
+    void updateKernel() const;
 
     static juce::Colour getColourForNote(Note* note, bool selected);
     static Kernel createEmptyKernel(Point dim);
@@ -50,7 +45,7 @@ private:
     const Rect boundsKernelCells;
     const Fraction intervalHorizontal;
     const Fraction intervalVertical;
-    RootNote noteOrigin;
+    double refFreq;
     const Point middleCellScreen;
     Point offsetFromOriginGrid;
     std::array<std::pair<PointSet, char>, 91> saves;

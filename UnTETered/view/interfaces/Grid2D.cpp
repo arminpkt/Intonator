@@ -14,7 +14,7 @@ Grid2D::Grid2D(const Point& dim, const Fraction& horizontal, const Fraction& ver
         const double freqOr, UnTETeredAudioProcessor& proc, juce::VBlankAnimatorUpdater& updater) :
     processor(proc), dimScreenCells(dim), boundsScreenCells(0, 0, dim.x, dim.y),
     dimKernelCells(3*dim), boundsKernelCells(0, 0, 3*dim.x, 3*dim.y),
-    intervalHorizontal(horizontal), intervalVertical(vertical), noteOrigin(RootNote(freqOr, 0, 0)),
+    intervalHorizontal(horizontal), intervalVertical(vertical), refFreq(freqOr),
     middleCellScreen((dim-Point{1, 1})/2), offsetFromOriginGrid(Point(0, 0)),
     gridTranspositionAnimator(
         juce::ValueAnimatorBuilder{}
@@ -37,7 +37,6 @@ Grid2D::Grid2D(const Point& dim, const Fraction& horizontal, const Fraction& ver
         pullStateFromProcessorAndRebuild();   // <-- restore on editor open
     }
 
-// deze kan slimmer, eerst alles tekenen, daarna de geselecteerde en actieve cellen veranderen (scheelt niks)
 void Grid2D::paint(juce::Graphics& g) {
     auto bounds = getLocalBounds();
     auto [xCellKernelMin, yCellKernelMin] = getCellKernelFromPx({0, 0});
@@ -178,18 +177,26 @@ void Grid2D::activateTransition() {
 }
 
 void Grid2D::calibrateGrid() {
-    while (getNoteFromScreen(middleCellScreen, true)->frequency > MAX_FREQ_MIDDLE)
+    while (getNoteFromScreen(middleCellScreen, true)->getFrequency() > MAX_FREQ_MIDDLE)
         octavateGridDown();
-    while (getNoteFromScreen(middleCellScreen, true)->frequency < MIN_FREQ_MIDDLE)
+    while (getNoteFromScreen(middleCellScreen, true)->getFrequency() < MIN_FREQ_MIDDLE)
         octavateGridUp();
 }
 
 void Grid2D::octavateGridDown() {
-    noteOrigin /= 2;
+    refFreq /= 2;
+    updateKernel();
 }
 
 void Grid2D::octavateGridUp() {
-    noteOrigin *= 2;
+    refFreq *= 2;
+    updateKernel();
+}
+
+void Grid2D::updateKernel() const {
+    for (auto& row : kernel)
+        for (auto& note : row)
+            note->referenceFrequency = refFreq;
 }
 
 juce::Colour Grid2D::getColourForNote(Note* note, bool selected) {
@@ -305,7 +312,7 @@ Note* Grid2D::getNoteFromKernel(const Point& cellKernel, bool reset = false) {
     if (reset || !kernel[y][x]) {
         const Point cellGrid = getCellGridFromKernel(cellKernel);
         const Fraction ratioToRef = (intervalHorizontal ^ cellGrid.x) * (intervalVertical ^ cellGrid.y);
-        kernel[y][x] = std::make_unique<ChildNote>(&noteOrigin, ratioToRef, 0, 0);
+        kernel[y][x] = std::make_unique<Note>(refFreq, ratioToRef, 1, 0, 0);
     }
 
     return kernel[y][x].get();
@@ -374,7 +381,7 @@ void Grid2D::pushStateToProcessor() const
 {
     processor.updateGridState([this](GridState& s)
     {
-        s.originFreqHz = noteOrigin.frequency; // adjust if your RootNote API differs
+        s.originFreqHz = refFreq; // adjust if your RootNote API differs
         s.offsetX = offsetFromOriginGrid.x;
         s.offsetY = offsetFromOriginGrid.y;
         s.activeCells = activeCellsGrid;
@@ -396,7 +403,7 @@ void Grid2D::pullStateFromProcessorAndRebuild()
 {
     const auto s = processor.getGridState();
 
-    noteOrigin = RootNote(s.originFreqHz, 0, 0); // your ctor
+    refFreq = s.originFreqHz;
     offsetFromOriginGrid = { s.offsetX, s.offsetY };
     activeCellsGrid = s.activeCells;
     selectedCellsGrid = s.selectedCells;

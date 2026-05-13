@@ -8,8 +8,6 @@
 
 #include "util.h"
 
-#include <utility>
-
 
 double dists_sum_sq(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
     assert(freq_as.size() == freq_bs.size() && "Vectors must have the same size");
@@ -94,18 +92,12 @@ void optimiseTransition(const std::vector<Note*>& as_ordered, std::vector<Note*>
     optimiseOctaves(as_ordered, bs_ordered);
 }
 
-std::optional<std::vector<int>> getIntRatios(const std::vector<ChildNote*>& notes) {
+std::optional<std::vector<int>> getIntRatios(const std::vector<Note*>& notes) {
     if (notes.empty())
         return std::nullopt;
 
-    Note* parentOfFirst = notes[0]->parent;
-    auto asRoot = dynamic_cast<RootNote*>(parentOfFirst);
-
-    if (!asRoot)
-        return std::nullopt;
-
     for (const auto& note : notes)
-        if (note->parent != parentOfFirst)
+        if (!note->isFamiliarWith(notes[0]))
             return std::nullopt;
 
     std::vector<Fraction> ratios{};
@@ -141,4 +133,30 @@ void addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t 
     for (auto& fraction : fractions) {
         fraction = fraction * toMultiply;
     }
+}
+
+std::tuple<int, int, int, int, int, int> getTLBRWH(Rect r) {
+    auto topLeft = r.getTopLeft();
+    auto bottomRight = r.getBottomRight();
+    return {
+        topLeft.getY(),
+        topLeft.getX(),
+        bottomRight.getY(),
+        bottomRight.getX(),
+        r.getWidth(),
+        r.getHeight()
+    };
+}
+
+std::tuple<float, float, float, float, float, float> getTLBRWH(RectF r) {
+    auto topLeft = r.getTopLeft();
+    auto bottomRight = r.getBottomRight();
+    return {
+        topLeft.getY(),
+        topLeft.getX(),
+        bottomRight.getY(),
+        bottomRight.getX(),
+        r.getWidth(),
+        r.getHeight()
+    };
 }

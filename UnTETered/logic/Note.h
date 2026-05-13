@@ -12,28 +12,24 @@
 #include "Fraction.h"
 #include "PitchClass.h"
 
-struct ChildNote;
-
 struct Note {
-    double frequency;
+    double referenceFrequency;
+    Fraction ratio;
+    double irratio;
     float start;
     float end;
-    std::vector<ChildNote*> children;
 
-    Note(const double freq, const int s, const int e)
-        : Note(freq, static_cast<float>(s), static_cast<float>(e)) {}
-
-    Note(const double freq, const float s, const float e)
-        : frequency(freq), start(s), end(e) {}
+    Note(const double ref, Fraction r, double i, const float s, const float e)
+        : referenceFrequency(ref), ratio(r), irratio(i), start(s), end(e) {}
 
     /** Computes the interval between f and this note's frequency in semitones.
      *
      * @param f     Reference frequency in Hz
      */
     [[nodiscard]] double getDistanceFrom(const double f) const {
-        double ratio = frequency / f;
-        double ratio_log = std::log2(ratio);
-        return ratio_log * 12;
+        double ratioToF = getFrequency() / f;
+        double ratioLog = std::log2(ratioToF);
+        return ratioLog * 12;
     }
 
     /** Computes the interval between the input's frequency and this note's frequency in semitones.
@@ -41,7 +37,7 @@ struct Note {
      * @param note  Reference note
      */
     [[nodiscard]] double getDistanceFrom(const Note& note) const {
-        return getDistanceFrom(note.frequency);
+        return getDistanceFrom(note.getFrequency());
     }
 
     // Computes the MIDI value if MIDI were continuous.
@@ -126,155 +122,42 @@ struct Note {
         return hue;
     }
 
-    bool operator<(const Note& other) const {
-        return frequency < other.frequency;
+    [[nodiscard]] double getFrequency() const {
+        return static_cast<double>(ratio) * referenceFrequency;
     }
 
-    virtual ~Note() = default;
-    virtual void recalculate() = 0;
-    virtual std::vector<Note*> getAncestry() = 0;
-    virtual std::optional<Fraction> getRatioToAncestor(Note* ancestor) = 0;
-    virtual Note& operator*=(const Fraction& f) = 0;
-    virtual Note& operator/=(const Fraction& f) = 0;
-    virtual Note& operator*=(const double& i) = 0;
-    virtual Note& operator/=(const double& i) = 0;
+    bool isFamiliarWith(const Note* note) const {
+        DBG(note->referenceFrequency);
+        DBG(referenceFrequency);
+        return std::abs(note->referenceFrequency - referenceFrequency) < 0.000001;
+    }
+
+    bool operator<(const Note& other) const {
+        return getFrequency() < other.getFrequency();
+    }
+
+    Note& operator*=(const Fraction& f) {
+        ratio = ratio * f;
+        return *this;
+    }
+    Note& operator/=(const Fraction& f) {
+        ratio = ratio / f;
+        return *this;
+    }
+    Note& operator*=(const double& i) {
+        irratio *= i;
+        return *this;
+    }
+    Note& operator/=(const double& i) {
+        irratio /= i;
+        return *this;
+    }
     Note& operator*=(const int& i) {
         *this *= Fraction(i, 1);
         return *this;
     }
     Note& operator/=(const int& i) {
         *this /= Fraction(i, 1);
-        return *this;
-    }
-
-    void disown(const ChildNote* toDisown) {
-        for (size_t i = 0; i < children.size(); ++i) {
-            if (children[i] == toDisown) {
-                children.erase(children.begin() + static_cast<long int>(i));
-                return;
-            }
-        }
-    }
-};
-
-struct ChildNote : Note {
-    Note* parent;
-    Fraction ratio;
-    double irratio;
-
-    ChildNote(Note* p, const Fraction& r) : ChildNote(p, r, p->start, p->end) {}
-
-    ChildNote(Note* p, const Fraction& r, const float s, const float e)
-    : ChildNote(p, r, 1, s, e) {}
-
-    ChildNote(Note* p, const double i, const float s, const float e)
-    : ChildNote(p, {1, 1}, i, s, e) {}
-
-    ChildNote(Note* p, const Fraction& r, const double i, const float s, const float e)
-    : Note(p->frequency * static_cast<double>(r) * i, s, e), parent(p), ratio(r), irratio(i) {
-        p->children.push_back(this);
-    }
-
-    ~ChildNote() override {
-        parent->disown(this);
-    }
-
-    // void abandonChildren() const {
-    //     for (auto& child : children) {
-    //         child->parent = parent;
-    //         child->ratio = child->ratio * ratio;
-    //         parent->children.push_back(child);
-    //     }
-    //     parent->disown(this);
-    // }
-
-    std::vector<Note*> getAncestry() override {
-        std::vector<Note*> ancestry = {this};
-        std::vector<Note*> parentAncestry = parent->getAncestry();
-        ancestry.insert(ancestry.end(), parentAncestry.begin(), parentAncestry.end());
-        return ancestry;
-    }
-
-    std::optional<Fraction> getRatioToAncestor(Note* ancestor) override {
-        if (ancestor == this)
-            return Fraction{1, 1};
-        if (auto parentRatio = parent->getRatioToAncestor(ancestor))
-            return ratio * parentRatio.value();
-        return std::nullopt;
-    }
-
-    void recalculate() override {
-        frequency = parent->frequency * static_cast<double>(ratio) * irratio;
-        for (const auto& note : children)
-            note->recalculate();
-    }
-
-    Note& operator*=(const Fraction& f) override {
-        ratio = ratio * f;
-        recalculate();
-        return *this;
-    }
-    Note& operator/=(const Fraction& f) override {
-        ratio = ratio / f;
-        recalculate();
-        return *this;
-    }
-    Note& operator*=(const double& i) override {
-        irratio *= i;
-        recalculate();
-        return *this;
-    }
-    Note& operator/=(const double& i) override {
-        irratio /= i;
-        recalculate();
-        return *this;
-    }
-};
-
-struct RootNote : Note {
-    RootNote(const double freq, const float s, const float e)
-        : Note(freq, s, e) {
-    }
-
-    void recalculate() override {
-        for (const auto& note : children)
-            note->recalculate();
-    }
-
-    std::vector<Note*> getAncestry() override {
-        return {this};
-    }
-
-    std::optional<Fraction> getRatioToAncestor(Note* ancestor) override {
-        if (this == ancestor)
-            return Fraction{1, 1};
-        return std::nullopt;
-    }
-
-    void setFrequency(const double f) {
-        frequency = f;
-        recalculate();
-    }
-
-    // Compound assignment
-    Note& operator*=(const Fraction& f) override {
-        frequency *= static_cast<double>(f);
-        recalculate();
-        return *this;
-    }
-    Note& operator/=(const Fraction& f) override {
-        frequency /= static_cast<double>(f);
-        recalculate();
-        return *this;
-    }
-    Note& operator*=(const double& i) override {
-        frequency *= i;
-        recalculate();
-        return *this;
-    }
-    Note& operator/=(const double& i) override {
-        frequency /= i;
-        recalculate();
         return *this;
     }
 };

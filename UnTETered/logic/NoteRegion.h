@@ -21,15 +21,14 @@ struct NoteEvent {
 
 class NoteRegion {
 public:
-    std::vector<std::unique_ptr<RootNote>> matriarchs;
-    std::vector<std::unique_ptr<ChildNote>> notes;
+    std::vector<Note> notes;
     std::vector<NoteEvent> noteEvents;
     std::vector<juce::MidiMessage> midiMessages;
 
     void addNoteWithoutReference(double frequency, float start, float end);
-    void addNoteWithReference(ChildNote* reference, Fraction ratio, double irratio, float start, float end);
-    void addNoteWithMatriarch(RootNote* matriarch, Fraction ratio, double irratio, double start, double end);
-    void deleteNote(ChildNote* note);
+    void addNoteWithRefNote(Note* reference, Fraction ratio, double irratio, float start, float end);
+    void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end);
+    void deleteNote(Note* note);
     void calculateMidiMessages(float pitchBendRange = 2); // not const!
 
 private:

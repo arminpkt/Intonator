@@ -6,29 +6,22 @@
 #include <algorithm>
 
 void NoteRegion::addNoteWithoutReference(double frequency, float start, float end) {
-    matriarchs.push_back(std::make_unique<RootNote>(frequency, 0, 0));
-    addNoteWithMatriarch(matriarchs.back().get(), {1, 1}, 1, start, end);
+    addNoteWithRefFreq(frequency, {1, 1}, 1, start, end);
 }
 
-void NoteRegion::addNoteWithReference(ChildNote* reference, Fraction ratio, double irratio, float start, float end) {
-    auto asRoot = dynamic_cast<RootNote*>(reference->parent);
-    if (!asRoot)
-        throw std::invalid_argument("parent must be a RootNote");
-
+void NoteRegion::addNoteWithRefNote(Note* reference, Fraction ratio, double irratio, float start, float end) {
     Fraction ratioTotal = ratio * reference->ratio;
     double irratioTotal = irratio * reference->irratio;
-
-    addNoteWithMatriarch(asRoot, ratioTotal, irratioTotal, start, end);
+    addNoteWithRefFreq(reference->referenceFrequency, ratioTotal, irratioTotal, start, end);
 }
 
-
-void NoteRegion::addNoteWithMatriarch(RootNote* matriarch, Fraction ratio, double irratio, double start, double end) {
-    notes.push_back(std::make_unique<ChildNote>(matriarch, ratio, irratio, start, end));
+void NoteRegion::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end) {
+    notes.emplace_back(refFreq, ratio, irratio, start, end);
 }
 
-void NoteRegion::deleteNote(ChildNote* note) {
+void NoteRegion::deleteNote(Note* note) {
     for (size_t i = 0; i < notes.size(); ++i)
-        if (notes[i].get() == note) {
+        if (&notes[i] == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
             return;
         }
@@ -40,27 +33,23 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
     noteEvents.reserve(notes.size());
 
     // Build one NoteEvent per note
-    for (const auto& notePtr : notes)
+    for (const auto& note : notes)
     {
-        const Note* note = notePtr.get();
-        if (!note)
-            continue;
-
-        const int midiNoteNumber = note->getRoundedMidiValue();
-        const int pitchBendValue = note->getPitchBendValue(pitchBendRange);
+        const int midiNoteNumber = note.getRoundedMidiValue();
+        const int pitchBendValue = note.getPitchBendValue(pitchBendRange);
 
         NoteEvent event
         {
-            note->start,
-            note->end,
+            note.start,
+            note.end,
             juce::MidiMessage::noteOn(1, midiNoteNumber, static_cast<juce::uint8>(100)),
             juce::MidiMessage::pitchWheel(1, pitchBendValue),
             juce::MidiMessage::noteOff(1, midiNoteNumber)
         };
 
-        event.noteOn.setTimeStamp(note->start);
-        event.pitchBend.setTimeStamp(note->start);
-        event.noteOff.setTimeStamp(note->end);
+        event.noteOn.setTimeStamp(note.start);
+        event.pitchBend.setTimeStamp(note.start);
+        event.noteOff.setTimeStamp(note.end);
 
         noteEvents.push_back(std::move(event));
     }
