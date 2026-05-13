@@ -32,7 +32,9 @@ target_sources(UnTETered
         view/interfaces/PianoRollStateHelpers.cpp
         logic/util.cpp
         logic/noteRegion.cpp
-        view/interfaces/PianoRoll.cpp)
+        view/interfaces/PianoRoll.cpp
+        view/interfaces/PianoRollSettingsBar.cpp
+)
 
 target_compile_definitions(UnTETered
         PUBLIC

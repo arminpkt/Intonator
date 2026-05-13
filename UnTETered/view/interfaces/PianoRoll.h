@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "PianoRollSettingsBar.h"
 #include "../Types.h"
 #include "../../logic/NoteRegion.h"
 #include "../../PluginProcessor.h"
@@ -13,7 +14,8 @@ class PianoRoll : public juce::Component, juce::Timer {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
-    const int ORIENTATION_BAR_HEIGHT = 20;
+    const int SETTINGS_BAR_HEIGHT = 40;
+    const int ORIENTATION_BAR_HEIGHT = 15;
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
     ~PianoRoll() override = default;
@@ -32,10 +34,12 @@ public:
     void drawRectDragged(juce::Graphics& g) const;
     void drawOrientationBar(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
+    void drawSettingsBackground(juce::Graphics& g) const;
+    void resized() override;
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq) ;
-    double getFreqFromYPx(int y, bool ignoreFreqBottomScreen = false) const;
-    double getFreqFromYPxF(float y, bool ignoreFreqBottomScreen = false) const;
+    double getFreqFromYPx(int y) const;
+    double getFreqFromYPxF(float y) const;
     int getYPxFromFreq(double freq) const;
     float getBarExactFromXPx(int x, bool ignoreBarLeft = false) const;
     float getBarExactFromXPxF(float x, bool ignoreBarLeft = false) const;
@@ -71,7 +75,7 @@ public:
     void dragRectangle(Point mouseDownPos, Point currentPos);
     void moveExtendShrinkNotes(Point mouseDownPos, Point currentPos) const;
     void moveExtendShrinkHorizontally(int dX) const;
-    void moveVertically(Point mouseDownPos) const;
+    void moveVertically(int currentY, int mouseDownY) const;
     void mouseUp(const juce::MouseEvent& _) override;
     void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
     void scroll(PointF deltaXY);
@@ -89,6 +93,8 @@ public:
     void narrowGrid();
     void widenGrid();
     void tripletGrid();
+    Rect getCanvasBounds() const;
+    Rect getSettingsBarBounds() const;
     Rect getNoteCanvasBounds() const;
     Rect getOrientationBarBounds() const;
 
@@ -99,6 +105,7 @@ private:
     void pushStateToProcessor() const;
 
     UnTETeredAudioProcessor& processor;
+    PianoRollSettingsBar settingsBar{PianoRollSettingsBar::locked};
     NoteRegion noteRegion;
     float octaveHeightPxF = 200;
     float barWidthPxF = 100;
@@ -111,6 +118,7 @@ private:
     std::optional<Fraction> potentialRatioHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
+    std::vector<double> selectedNotesRefFreqs;
     bool clickedNote = false;
     bool dragRightSideSelectedNote = false;
     bool dragLeftSideSelectedNote = false;

@@ -127,8 +127,6 @@ struct Note {
     }
 
     bool isFamiliarWith(const Note* note) const {
-        DBG(note->referenceFrequency);
-        DBG(referenceFrequency);
         return std::abs(note->referenceFrequency - referenceFrequency) < 0.000001;
     }
 

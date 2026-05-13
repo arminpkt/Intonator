@@ -12,6 +12,7 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc) : processor(proc) {
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
     startTimerHz(30);
+    addAndMakeVisible(settingsBar);
 }
 
 void PianoRoll::initialisePotentialRatios() {
@@ -46,6 +47,7 @@ void PianoRoll::paint(juce::Graphics& g) {
     drawRectDragged(g);
     drawOrientationBar(g);
     drawPlayhead(g);
+    drawSettingsBackground(g);
 }
 
 void PianoRoll::fillRect(const Rect& rect, juce::Graphics& g) {
@@ -93,7 +95,7 @@ void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSub
     g.setColour(juce::Colour::fromRGB(50, 50, 50));
     firstBar = (ceil(barLeftScreen) - barLeftScreen) * static_cast<float>(barWidthPxF);
     for (float x = firstBar; x < w; x += barWidthPxF) // NOLINT(*-flp30-c)
-        g.drawVerticalLine(static_cast<int>(x), t - static_cast<float>(ORIENTATION_BAR_HEIGHT), b);
+        g.drawVerticalLine(static_cast<int>(x), t, b);
 }
 
 Fraction PianoRoll::getSubDivsFraction() const {
@@ -216,12 +218,20 @@ void PianoRoll::drawOrientationBar(juce::Graphics& g) const {
 }
 
 void PianoRoll::drawPlayhead(juce::Graphics &g) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getLocalBounds());
+    auto [t, l, b, r, w, h] = getTLBRWH(getCanvasBounds());
     auto playheadX = getXPxFromBar(playheadBarPos);
     g.setColour(juce::Colour::fromRGB(255, 255, 255));
     g.drawVerticalLine(playheadX, static_cast<float>(t), static_cast<float>(b));
 }
 
+void PianoRoll::drawSettingsBackground(juce::Graphics &g) const {
+    g.setColour(juce::Colour::fromRGB(50, 50, 50));
+    g.fillRect(getSettingsBarBounds());
+}
+
+void PianoRoll::resized() {
+    settingsBar.setBounds(getSettingsBarBounds());
+}
 
 float PianoRoll::getHueFromYPx(int y) const {
     double freq = getFreqFromYPx(y);
@@ -233,16 +243,14 @@ float PianoRoll::getHueFromFreq(double freq) {
     return note.getHue();
 }
 
-double PianoRoll::getFreqFromYPx(int y, bool ignoreFreqBottomScreen) const {
-    return getFreqFromYPxF(static_cast<float>(y), ignoreFreqBottomScreen);
+double PianoRoll::getFreqFromYPx(int y) const {
+    return getFreqFromYPxF(static_cast<float>(y));
 }
 
-double PianoRoll::getFreqFromYPxF(float y, bool ignoreFreqBottomScreen) const {
+double PianoRoll::getFreqFromYPxF(float y) const {
     float mirrored = mirrorYPx(y);
     double nrOfOctaves = static_cast<double>(mirrored)/static_cast<double>(octaveHeightPxF);
     double freqFactor = std::pow(2, nrOfOctaves);
-    if (ignoreFreqBottomScreen)
-        return freqFactor;
     return freqFactor * freqBottomScreen;
 }
 
@@ -463,7 +471,7 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
 
 void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) const {
     moveExtendShrinkHorizontally(currentPos.getX() - mouseDownPos.getX());
-    moveVertically(currentPos);
+    moveVertically(currentPos.getY(), mouseDownPos.getY());
     pushStateToProcessor();
 }
 
@@ -483,8 +491,15 @@ void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
     }
 }
 
-void PianoRoll::moveVertically(const Point currentPos) const {
-    //TODO
+void PianoRoll::moveVertically(const int currentY, const int mouseDownY) const {
+    if (settingsBar.getFreedomY() == PianoRollSettingsBar::continuous) {
+        double freqFactor = getFreqFromYPx(currentY) / getFreqFromYPx(mouseDownY);
+        for (size_t i = 0; i < notesSelected.size(); i++) {
+            auto noteSelected = notesSelected[i];
+            double refFreq = selectedNotesRefFreqs[i];
+            noteSelected->referenceFrequency = refFreq * freqFactor;
+        }
+    }
 }
 
 void PianoRoll::mouseUp(const juce::MouseEvent& _) {
@@ -529,6 +544,12 @@ void PianoRoll::handleSingleClick(const Point px) {
         selectedNotesStartsEnds.reserve(notesSelected.size());
         for (const auto& noteSelected : notesSelected)
             selectedNotesStartsEnds.emplace_back(noteSelected->start, noteSelected->end);
+
+        selectedNotesRefFreqs.clear();
+        selectedNotesRefFreqs.reserve(notesSelected.size());
+        for (const auto& noteSelected : notesSelected)
+            selectedNotesRefFreqs.push_back(noteSelected->referenceFrequency);
+
         clickedNote = true;
         return;
     }
@@ -676,17 +697,27 @@ void PianoRoll::tripletGrid() {
         gridTripletted = !gridTripletted;
 }
 
-Rect PianoRoll::getNoteCanvasBounds() const {
+Rect PianoRoll::getCanvasBounds() const {
     auto bounds = getLocalBounds();
+    bounds.removeFromTop(SETTINGS_BAR_HEIGHT);
+    return bounds;
+}
+
+Rect PianoRoll::getSettingsBarBounds() const {
+    auto bounds = getLocalBounds();
+    return bounds.removeFromTop(SETTINGS_BAR_HEIGHT);
+}
+
+Rect PianoRoll::getNoteCanvasBounds() const {
+    auto bounds = getCanvasBounds();
     bounds.removeFromTop(ORIENTATION_BAR_HEIGHT);
     return bounds;
 }
 
 Rect PianoRoll::getOrientationBarBounds() const {
-    auto bounds = getLocalBounds();
+    auto bounds = getCanvasBounds();
     return bounds.removeFromTop(ORIENTATION_BAR_HEIGHT);
 }
-
 
 void PianoRoll::timerCallback() {
     const auto& transportState = processor.getTransportState();
