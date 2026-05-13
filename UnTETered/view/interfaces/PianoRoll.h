@@ -23,7 +23,8 @@ public:
     static void drawRect(const Rect& rect, juce::Graphics& g);
     static void drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g, juce::Justification justification);
     void drawBackground(juce::Graphics& g, const Rect& bounds) const;
-    void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubdivisions) const;
+    void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const;
+    Fraction getSubDivsFraction() const;
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
     void drawNote(const Note* note, juce::Colour baseColour, juce::Colour edgeColour, juce::Graphics& g) const;
@@ -85,6 +86,9 @@ public:
     void deleteSelection();
     void copySelectionToClipboard();
     void pasteClipboard();
+    void narrowGrid();
+    void widenGrid();
+    void tripletGrid();
     Rect getNoteCanvasBounds() const;
     Rect getOrientationBarBounds() const;
 
@@ -112,6 +116,8 @@ private:
     bool dragLeftSideSelectedNote = false;
     std::optional<Rect> draggedRect;
     std::vector<Note> clipboard;
+    Fraction extraGridResolution{1, 1};
+    bool gridTripletted = false;
 
     double cachedPpqPosition = 0.0;
     int cachedNumerator = 4;

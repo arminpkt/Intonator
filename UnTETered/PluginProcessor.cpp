@@ -211,9 +211,9 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
 
 const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
 
-void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* playHead) {
-    if (playHead) {
-        if (auto pos = playHead->getPosition()) {
+void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph) {
+    if (ph) {
+        if (auto pos = ph->getPosition()) {
             transportState.isPlaying.store(pos->getIsPlaying(), std::memory_order_relaxed);
             transportState.isRecording.store(pos->getIsRecording(), std::memory_order_relaxed);
 

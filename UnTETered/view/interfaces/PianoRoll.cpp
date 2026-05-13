@@ -78,12 +78,12 @@ void PianoRoll::drawBackground(juce::Graphics& g, const Rect& bounds) const {
     }
 }
 
-void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubdivisions) const {
+void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const {
     auto [t, l, b, r, w, h] = getTLBRWH(bounds.toFloat());
     float firstBar = (ceil(barLeftScreen) - barLeftScreen - 1) * static_cast<float>(barWidthPxF);
 
     // draw subdivision lines
-    if (drawSubdivisions) {
+    if (drawSubDivs) {
         g.setColour(juce::Colour::fromRGB(100, 100, 100));
         for (float x = firstBar; x < w; x += barWidthPxF/static_cast<float>(getNrOfSubDivs())) // NOLINT(*-flp30-c)
             g.drawVerticalLine(static_cast<int>(x), t, b);
@@ -96,8 +96,17 @@ void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSub
         g.drawVerticalLine(static_cast<int>(x), t - static_cast<float>(ORIENTATION_BAR_HEIGHT), b);
 }
 
+Fraction PianoRoll::getSubDivsFraction() const {
+    auto num = cachedNumerator > 0 ? cachedNumerator : 4;
+    auto subDivs = num * extraGridResolution;
+    if (gridTripletted)
+        subDivs = subDivs * Fraction{3, 2};
+    return subDivs;
+}
+
 int PianoRoll::getNrOfSubDivs() const {
-    return cachedNumerator > 0 ? cachedNumerator : 4;
+    auto f = getSubDivsFraction();
+    return f.getNumeratorAndDenominator().first;
 }
 
 void PianoRoll::drawNotes(juce::Graphics& g) const {
@@ -202,7 +211,7 @@ void PianoRoll::drawOrientationBar(juce::Graphics& g) const {
     for (int bar = initial; bar <= last; ++bar) {
         auto x = getXPxFromBar(static_cast<float>(bar));
         Rect textBounds = orientationBarBounds.withX(x).withWidth(static_cast<int>(barWidthPxF));
-        drawText(juce::String(bar), textBounds, g);
+        drawText(juce::String(bar + 1), textBounds, g);
     }
 }
 
@@ -390,7 +399,6 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event) {
         handleSingleClick(posPx);
     else if (nrOfClicks == 2)
         handleDoubleClick(posPx);
-    repaint();
 }
 
 void PianoRoll::mouseDrag(const juce::MouseEvent& event) {
@@ -407,8 +415,6 @@ void PianoRoll::mouseDrag(const juce::MouseEvent& event) {
     // moving/extending/shrinking notes
     else
         moveExtendShrinkNotes(mouseDownPos, currentPos);
-
-    repaint();
 }
 
 void PianoRoll::mouseMove(const juce::MouseEvent& event) {
@@ -419,8 +425,6 @@ void PianoRoll::mouseMove(const juce::MouseEvent& event) {
         noteHighlighted = noteAt;
     else if (auto potentialRatioAt = getPotentialRatioAt(position))
         potentialRatioHighlighted = potentialRatioAt;
-
-    repaint();
 }
 
 void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFactor) {
@@ -487,7 +491,6 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
     dragLeftSideSelectedNote = false;
     dragRightSideSelectedNote = false;
     draggedRect.reset();
-    repaint();
     pushStateToProcessor();
 }
 
@@ -506,7 +509,6 @@ void PianoRoll::scroll(const PointF deltaXY) {
     freqBottomScreen = newFreqBottomScreen;
     clipScreenEdges();
     pushStateToProcessor();
-    repaint();
 }
 
 void PianoRoll::clipScreenEdges() {
@@ -567,7 +569,6 @@ void PianoRoll::handleShiftSingleClick(const Point px) {
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     if (key == juce::KeyPress::backspaceKey) {
         deleteSelection();
-        repaint();
         return true;
     }
 
@@ -584,6 +585,21 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
         if (key.getKeyCode() == 'D' && key.getModifiers().isCommandDown()) {
             copySelectionToClipboard();
             pasteClipboard();
+            return true;
+        }
+    }
+
+    if (code >= 49 && code <= 58) {
+        if (key.getKeyCode() == '1' && key.getModifiers().isCommandDown()) {
+            narrowGrid();
+            return true;
+        }
+        if (key.getKeyCode() == '2' && key.getModifiers().isCommandDown()) {
+            widenGrid();
+            return true;
+        }
+        if (key.getKeyCode() == '3' && key.getModifiers().isCommandDown()) {
+            tripletGrid();
             return true;
         }
     }
@@ -641,9 +657,23 @@ void PianoRoll::pasteClipboard() {
     }
 
     playheadBarPos += latestEnd - earliestStart;
-    repaint();
 
     pushStateToProcessor();
+}
+
+void PianoRoll::narrowGrid() {
+    if (getSubDivsFraction().getMonzo().primePowers[0] < 7)
+        extraGridResolution = extraGridResolution * 2;
+}
+
+void PianoRoll::widenGrid() {
+    if (getSubDivsFraction().getMonzo().primePowers[0] > 0)
+        extraGridResolution = extraGridResolution / 2;
+}
+
+void PianoRoll::tripletGrid() {
+    if (gridTripletted || getSubDivsFraction().getMonzo().primePowers[0] > 0)
+        gridTripletted = !gridTripletted;
 }
 
 Rect PianoRoll::getNoteCanvasBounds() const {
@@ -682,8 +712,6 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 
     notesSelected.clear();
     draggedRect.reset();
-
-    repaint();
 }
 
 void PianoRoll::pushStateToProcessor() const {
