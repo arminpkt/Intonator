@@ -21,7 +21,7 @@ struct NoteEvent {
 
 class NoteRegion {
 public:
-    std::vector<Note> notes;
+    std::vector<std::unique_ptr<Note>> notes;
     std::vector<NoteEvent> noteEvents;
     std::vector<juce::MidiMessage> midiMessages;
 

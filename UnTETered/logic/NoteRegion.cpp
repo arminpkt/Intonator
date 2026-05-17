@@ -16,12 +16,12 @@ void NoteRegion::addNoteWithRefNote(Note* reference, Fraction ratio, double irra
 }
 
 void NoteRegion::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end) {
-    notes.emplace_back(refFreq, ratio, irratio, start, end);
+    notes.push_back(std::make_unique<Note>(refFreq, ratio, irratio, start, end));
 }
 
 void NoteRegion::deleteNote(Note* note) {
     for (size_t i = 0; i < notes.size(); ++i)
-        if (&notes[i] == note) {
+        if (notes[i].get() == note) {
             notes.erase(notes.begin() + static_cast<long int>(i));
             return;
         }
@@ -35,21 +35,21 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
     // Build one NoteEvent per note
     for (const auto& note : notes)
     {
-        const int midiNoteNumber = note.getRoundedMidiValue();
-        const int pitchBendValue = note.getPitchBendValue(pitchBendRange);
+        const int midiNoteNumber = note->getRoundedMidiValue();
+        const int pitchBendValue = note->getPitchBendValue(pitchBendRange);
 
         NoteEvent event
         {
-            note.start,
-            note.end,
+            note->start,
+            note->end,
             juce::MidiMessage::noteOn(1, midiNoteNumber, static_cast<juce::uint8>(100)),
             juce::MidiMessage::pitchWheel(1, pitchBendValue),
             juce::MidiMessage::noteOff(1, midiNoteNumber)
         };
 
-        event.noteOn.setTimeStamp(note.start);
-        event.pitchBend.setTimeStamp(note.start);
-        event.noteOff.setTimeStamp(note.end);
+        event.noteOn.setTimeStamp(note->start);
+        event.pitchBend.setTimeStamp(note->start);
+        event.noteOff.setTimeStamp(note->end);
 
         noteEvents.push_back(std::move(event));
     }

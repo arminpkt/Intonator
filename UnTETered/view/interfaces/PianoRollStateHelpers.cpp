@@ -17,11 +17,11 @@ PianoRollState makeStateFromNoteRegion(const NoteRegion& region)
     for (const auto& notePtr : region.notes)
     {
         StoredPianoNote sn;
-        sn.ref       = notePtr.referenceFrequency;
-        sn.start     = notePtr.start;
-        sn.end       = notePtr.end;
-        sn.primePowers = notePtr.ratio.getMonzo().primePowers;
-        sn.irratio   = notePtr.irratio;
+        sn.ref       = notePtr->referenceFrequency;
+        sn.start     = notePtr->start;
+        sn.end       = notePtr->end;
+        sn.primePowers = notePtr->ratio.getMonzo().primePowers;
+        sn.irratio   = notePtr->irratio;
 
         state.notes.push_back(sn);
     }
@@ -39,16 +39,15 @@ NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendR
     region.notes.reserve(state.notes.size());
     for (const auto& sn : state.notes)
     {
-
         auto ratio = Fraction(Monzo(sn.primePowers));
 
-        region.notes.emplace_back(
+        region.notes.push_back(std::make_unique<Note>(
             sn.ref,
             ratio,
             sn.irratio,
             sn.start,
             sn.end
-        );
+        ));
     }
 
     region.calculateMidiMessages(pitchBendRange);

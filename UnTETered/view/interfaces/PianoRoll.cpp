@@ -7,7 +7,12 @@
 
 #include "../../logic/util.h"
 
-PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc) : processor(proc) {
+PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
+    : processor(proc),
+      settingsBar(PianoRollSettingsBar(
+          [this] { handleLockYChanged(); },
+          [this] { handleReferenceChanged(); },
+          [this] { handlePotentialRatiosChanged(); })) {
     initialisePotentialRatios();
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
@@ -37,6 +42,9 @@ void PianoRoll::initialisePotentialRatios() {
         {4, 7},
         {8, 9},
     };
+    settingsBar.setLockY(locked);
+    settingsBar.setReference(selectedNote);
+    settingsBar.setPotentialRatios(potentialRatios);
 }
 
 void PianoRoll::paint(juce::Graphics& g) {
@@ -58,10 +66,7 @@ void PianoRoll::drawRect(const Rect& rect, juce::Graphics& g) {
     g.drawRect(rect);
 }
 
-void PianoRoll::drawText(
-    const juce::String& text,
-    const Rect& bounds,
-    const juce::Graphics& g,
+void PianoRoll::drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g,
     juce::Justification justification = juce::Justification::centredLeft
     ) {
     auto actualBounds = bounds.withTrimmedLeft(4).withTrimmedRight(4).withTrimmedTop(2).withTrimmedBottom(2);
@@ -86,13 +91,13 @@ void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSub
 
     // draw subdivision lines
     if (drawSubDivs) {
-        g.setColour(juce::Colour::fromRGB(100, 100, 100));
-        for (float x = firstBar; x < w; x += barWidthPxF/static_cast<float>(getNrOfSubDivs())) // NOLINT(*-flp30-c)
+        g.setColour(SUB_DIV_LINE_COLOUR);
+        for (float x = firstBar; x < w; x += barWidthPxF / static_cast<float>(getNrOfSubDivs())) // NOLINT(*-flp30-c)
             g.drawVerticalLine(static_cast<int>(x), t, b);
     }
 
     // draw bar lines
-    g.setColour(juce::Colour::fromRGB(50, 50, 50));
+    g.setColour(BAR_LINE_COLOUR);
     firstBar = (ceil(barLeftScreen) - barLeftScreen) * static_cast<float>(barWidthPxF);
     for (float x = firstBar; x < w; x += barWidthPxF) // NOLINT(*-flp30-c)
         g.drawVerticalLine(static_cast<int>(x), t, b);
@@ -112,77 +117,74 @@ int PianoRoll::getNrOfSubDivs() const {
 }
 
 void PianoRoll::drawNotes(juce::Graphics& g) const {
-    for (auto& note : noteRegion.notes) {
-        auto baseColour = juce::Colour::fromRGB(100, 100, 100);
-        auto edgeColour = juce::Colour::fromRGB(50, 50, 50);
-        drawNote(&note, baseColour, edgeColour, g);
-    }
+    for (auto& note : noteRegion.notes)
+        drawNote(note.get(), NOTE_BASE_COLOUR, NOTE_OUTLINE_COLOUR, g);
 
+    // draw locked reference note over
+    if (referenceSetting == lockNote)
+        drawNote(lockedNoteReference, SELECTED_BASE_COLOUR.withMultipliedSaturation(.5), SELECTED_OUTLINE_COLOUR, g);
+
+    // draw selected note and family over
     if (notesSelected.size() == 1) {
         auto noteSelected = notesSelected[0];
 
         // draw family over
         for (auto& note : noteRegion.notes) {
-            if (&note == noteSelected || !note.isFamiliarWith(noteSelected))
+            if (note.get() == noteSelected || !note->isFamiliarWith(noteSelected))
                 continue;
 
-            auto baseColourChild = juce::Colour::fromRGB(50, 50, 200);
-            auto edgeColourChild = juce::Colour::fromRGB(50, 50, 50);
-            drawNote(&note, baseColourChild, edgeColourChild, g);
+            drawNote(note.get(), FAMILY_BASE_COLOUR, FAMILY_OUTLINE_COLOUR, g);
 
-            auto boundsChild = getNoteBounds(&note);
-            g.setColour(juce::Colour::fromRGB(200, 200, 200));
-            auto ratioTotal = note.ratio/noteSelected->ratio;
+            auto boundsChild = getNoteBounds(note.get());
+            g.setColour(FAMILY_RATIO_TEXT_COLOUR);
+            auto ratioTotal = note->ratio / noteSelected->ratio;
             juce::String text = ratioTotal.toString();
             drawText(text, boundsChild, g);
         }
 
         // draw selectedNote over
-        auto baseColour = juce::Colour::fromRGB(50, 200, 50);
-        auto edgeColour = juce::Colour::fromRGB(50, 50, 50);
-        drawNote(noteSelected, baseColour, edgeColour, g);
+        drawNote(noteSelected, SELECTED_BASE_COLOUR, SELECTED_OUTLINE_COLOUR, g);
     }
 
-    else if (notesSelected.size() > 1) {
+    // draw multiple selected notes over
+    if (notesSelected.size() > 1) {
         auto intRatios = getIntRatios(notesSelected);
         for (size_t i = 0; i < notesSelected.size(); ++i) {
             auto noteSelected = notesSelected[i];
-            auto baseColourSelected = juce::Colour::fromRGB(100, 100, 100);
-            auto edgeColourSelected = juce::Colour::fromRGB(205, 205, 205);
-            drawNote(noteSelected, baseColourSelected, edgeColourSelected, g);
+            drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
             if (intRatios) {
                 auto boundsSelected = getNoteBounds(noteSelected);
                 auto intRatio = intRatios.value()[i];
                 juce::String text = std::to_string(intRatio);
-                g.setColour(juce::Colour::fromRGB(50, 50, 50));
+                g.setColour(INT_RATIO_TEXT_COLOUR);
                 drawText(text, boundsSelected, g);
             }
         }
     }
 }
 
-void PianoRoll::drawNote(const Note* note, const juce::Colour baseColour, const juce::Colour edgeColour, juce::Graphics& g) const {
+void PianoRoll::drawNote(const Note* note, const juce::Colour& baseColour, const juce::Colour& outlineColour, juce::Graphics& g) const {
     Rect noteBounds = getNoteBounds(note);
     auto colour = baseColour;
     if (note == noteHighlighted)
         colour = colour.brighter();
     g.setColour(colour);
     fillRect(noteBounds, g);
-    g.setColour(edgeColour);
+    g.setColour(outlineColour);
     drawRect(noteBounds, g);
 }
 
 void PianoRoll::drawPotentialRatios(juce::Graphics& g) const {
-    if (notesSelected.size() != 1)
+    if (!referenceExists())
         return;
     for (auto& ratio : potentialRatios) {
         auto bounds = getPotentialRatioBounds(ratio).value();
-        auto baseColour = juce::Colour::fromRGBA(50, 50, 50, 128);
+        auto baseColour = POTENTIAL_RATIO_BASE_COLOUR;
         if (potentialRatioHighlighted && ratio == potentialRatioHighlighted.value())
             baseColour = baseColour.brighter();
         g.setColour(baseColour);
         fillRect(bounds, g);
-        g.setColour(juce::Colour::fromRGB(50, 50, 50));
+        g.setColour(POTENTIAL_RATIO_TEXT_COLOUR);
         juce::String text = ratio.toString();
         drawText(text, bounds, g);
         drawText(text, bounds, g, juce::Justification::centredRight);
@@ -191,9 +193,9 @@ void PianoRoll::drawPotentialRatios(juce::Graphics& g) const {
 
 void PianoRoll::drawRectDragged(juce::Graphics& g) const {
     if (draggedRect) {
-        g.setColour(juce::Colour::fromRGBA(50, 50, 50, 50));
+        g.setColour(DRAGGED_RECT_BASE_COLOUR);
         g.fillRect(draggedRect.value());
-        g.setColour(juce::Colour::fromRGB(150, 200, 150));
+        g.setColour(DRAGGED_RECT_OUTLINE_COLOUR);
         g.drawRect(draggedRect.value());
     }
 }
@@ -204,7 +206,7 @@ void PianoRoll::drawOrientationBar(juce::Graphics& g) const {
     drawBarLines(g, orientationBarBounds, false);
 
     auto [t, l, b, r, w, h] = getTLBRWH(orientationBarBounds.toFloat());
-    g.setColour(juce::Colour::fromRGB(50, 50, 50));
+    g.setColour(BAR_LINE_COLOUR);
     g.drawHorizontalLine(static_cast<int>(b), l, r);
 
     int initial = static_cast<int>(std::floor(barLeftScreen));
@@ -220,12 +222,12 @@ void PianoRoll::drawOrientationBar(juce::Graphics& g) const {
 void PianoRoll::drawPlayhead(juce::Graphics &g) const {
     auto [t, l, b, r, w, h] = getTLBRWH(getCanvasBounds());
     auto playheadX = getXPxFromBar(playheadBarPos);
-    g.setColour(juce::Colour::fromRGB(255, 255, 255));
+    g.setColour(PLAYHEAD_COLOUR);
     g.drawVerticalLine(playheadX, static_cast<float>(t), static_cast<float>(b));
 }
 
 void PianoRoll::drawSettingsBackground(juce::Graphics &g) const {
-    g.setColour(juce::Colour::fromRGB(50, 50, 50));
+    g.setColour(SETTINGS_BACKGROUND_COLOUR);
     g.fillRect(getSettingsBarBounds());
 }
 
@@ -296,15 +298,19 @@ int PianoRoll::getXPxFromBar(float bar) const {
 
 Note* PianoRoll::getNoteAt(Point px) {
     for (auto& note : noteRegion.notes) {
-        Rect bounds = getNoteBounds(&note).expanded(3);
+        Rect bounds = getNoteBounds(note.get()).expanded(3);
         if (bounds.contains(px))
-            return &note;
+            return note.get();
     }
     return nullptr;
 }
 
+bool PianoRoll::referenceExists() const {
+    return getReferenceRefFreqRatioIrratio().has_value();
+}
+
 std::optional<Fraction> PianoRoll::getPotentialRatioAt(Point px) const {
-    if (notesSelected.size() != 1)
+    if (!referenceExists())
         return std::nullopt;
     for (auto& ratio : potentialRatios) {
         auto boundsOpt = getPotentialRatioBounds(ratio);
@@ -328,16 +334,49 @@ Rect PianoRoll::getNoteBounds(const Note* note) const {
 }
 
 std::optional<Rect> PianoRoll::getPotentialRatioBounds(Fraction ratio) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
-    if (notesSelected.size() != 1)
+    if (!referenceExists())
         return std::nullopt;
-    auto selectedNote = notesSelected[0];
-    double freqPotential = selectedNote->getFrequency() * static_cast<double>(ratio);
+
+    auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
+
+    auto refFreq = getReferenceFrequency().value();
+
+    double freqPotential = refFreq * static_cast<double>(ratio);
     int yMid = getYPxFromFreq(freqPotential);
     int noteHeight = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE*static_cast<float>(octaveHeightPxF));
     int y = yMid - noteHeight/2;
     Rect rect{l, y, r, noteHeight};
     return rect;
+}
+
+std::optional<std::tuple<double, Fraction, double>> PianoRoll::getReferenceRefFreqRatioIrratio() const {
+        if (referenceSetting == lockNote)
+            return std::make_tuple(
+                lockedNoteReference->referenceFrequency,
+                lockedNoteReference->ratio,
+                lockedNoteReference->irratio
+                );
+        if (referenceSetting == customRef) {
+            auto [lockedRefFreq, lockedRatio, lockedIrratio] = customReference.value();
+            return std::make_tuple(lockedRefFreq, lockedRatio, lockedIrratio);
+        }
+        if (notesSelected.size() == 1) {
+            auto noteSelected = notesSelected[0];
+            return std::make_tuple(
+                noteSelected->referenceFrequency,
+                noteSelected->ratio,
+                noteSelected->irratio
+                );
+        }
+    return {};
+}
+
+std::optional<double> PianoRoll::getReferenceFrequency() const {
+    auto refFreqRatioIrratio = getReferenceRefFreqRatioIrratio();
+    if (!refFreqRatioIrratio)
+        return {};
+    auto [refFreq, ratio, irratio] = refFreqRatioIrratio.value();
+    return refFreq * static_cast<double>(ratio) * irratio;
 }
 
 std::vector<double> PianoRoll::getPotentialFrequencies(Note* note) const {
@@ -414,7 +453,7 @@ void PianoRoll::mouseDrag(const juce::MouseEvent& event) {
     Point currentPos = event.getPosition();
 
     // dragging rectangle to select
-    if (!clickedNote || event.mods.isShiftDown()) {
+    if (!noteClicked || event.mods.isShiftDown()) {
         if (!event.mods.isShiftDown())
             notesSelected.clear();
         dragRectangle(mouseDownPos, currentPos);
@@ -459,19 +498,19 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
     if (draggedRect->getWidth() == 0)
         draggedRect->setWidth(1);
     for (auto& note : noteRegion.notes) {
-        Rect boundsNote = getNoteBounds(&note);
+        Rect boundsNote = getNoteBounds(note.get());
         bool selected = false;
         for (const auto& noteSelected : notesSelected)
-            if (&note == noteSelected)
+            if (note.get() == noteSelected)
                 selected = true;
         if (boundsNote.intersects(draggedRect.value()) && !selected)
-            notesSelected.push_back(&note);
+            notesSelected.push_back(note.get());
     }
 }
 
 void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) const {
     moveExtendShrinkHorizontally(currentPos.getX() - mouseDownPos.getX());
-    moveVertically(currentPos.getY(), mouseDownPos.getY());
+    moveVertically(currentPos, mouseDownPos);
     pushStateToProcessor();
 }
 
@@ -491,13 +530,41 @@ void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
     }
 }
 
-void PianoRoll::moveVertically(const int currentY, const int mouseDownY) const {
-    if (settingsBar.getFreedomY() == PianoRollSettingsBar::continuous) {
-        double freqFactor = getFreqFromYPx(currentY) / getFreqFromYPx(mouseDownY);
+void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos) const {
+    if (lockYSetting == continuous) {
+        double freqFactor = getFreqFromYPx(currentPos.getY()) / getFreqFromYPx(mouseDownPos.getY());
         for (size_t i = 0; i < notesSelected.size(); i++) {
             auto noteSelected = notesSelected[i];
             double refFreq = selectedNotesRefFreqs[i];
             noteSelected->referenceFrequency = refFreq * freqFactor;
+        }
+        return;
+    }
+
+    // Snapping only makes sense if the note in reference to which we snap isn't being moved
+    if (lockYSetting == snap) {
+        // If the reference IS the selected note, of course this doesn't work
+        if (referenceSetting == selectedNote)
+            return;
+
+        // If the reference is a locked note, we have to check that it's not in our selection
+        if (referenceSetting == lockNote)
+            for (auto& selected : notesSelected)
+                if (selected == lockedNoteReference)
+                    return;
+
+        auto potentialRatio = getPotentialRatioAt(currentPos);
+        if (!potentialRatio)
+            return;
+        auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
+        double refFreqFactor = refFreq / noteClicked->referenceFrequency;
+        Fraction ratioFactor = ratio / noteClicked->ratio;
+        double irratioFactor = irratio / noteClicked->irratio;
+
+        for (auto& note : notesSelected) {
+            note->referenceFrequency *= refFreqFactor;
+            note->ratio = note->ratio * ratioFactor * potentialRatio.value();
+            note->irratio = note->irratio * irratioFactor;
         }
     }
 }
@@ -550,10 +617,10 @@ void PianoRoll::handleSingleClick(const Point px) {
         for (const auto& noteSelected : notesSelected)
             selectedNotesRefFreqs.push_back(noteSelected->referenceFrequency);
 
-        clickedNote = true;
+        noteClicked = note;
         return;
     }
-    clickedNote = false;
+    noteClicked = nullptr;
 
     if (!getPotentialRatioAt(px)) {
         notesSelected.clear();
@@ -574,7 +641,8 @@ void PianoRoll::handleDoubleClick(const Point px) {
     }
 
     if (potentialRatioAt) {
-        addNoteWithReference(notesSelected[0], potentialRatioAt.value(), 1, barSub, barSub+1);
+        auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
+        addNoteWithRefFreq(refFreq, ratio * potentialRatioAt.value(), irratio, barSub, barSub+1);
         return;
     }
 
@@ -588,44 +656,78 @@ void PianoRoll::handleShiftSingleClick(const Point px) {
 }
 
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
+    auto code = static_cast<size_t>(key.getKeyCode());
+
     if (key == juce::KeyPress::backspaceKey) {
         deleteSelection();
         return true;
     }
 
-    auto code = static_cast<size_t>(key.getKeyCode());
-    if (code >= 65 && code <= 90) {
-        if (key.getKeyCode() == 'C' && key.getModifiers().isCommandDown()) {
-            copySelectionToClipboard();
-            return true;
-        }
-        if (key.getKeyCode() == 'V' && key.getModifiers().isCommandDown()) {
-            pasteClipboard();
-            return true;
-        }
-        if (key.getKeyCode() == 'D' && key.getModifiers().isCommandDown()) {
-            copySelectionToClipboard();
-            pasteClipboard();
-            return true;
-        }
+    if (code == static_cast<size_t>(juce::KeyPress::upKey) && key.getModifiers().isAltDown()) {
+        for (auto& noteSelected : notesSelected)
+            noteSelected->ratio = noteSelected->ratio * 2;
+        return true;
+    }
+    if (code == static_cast<size_t>(juce::KeyPress::downKey) && key.getModifiers().isAltDown()) {
+        for (auto& noteSelected : notesSelected)
+            noteSelected->ratio = noteSelected->ratio / 2;
+        return true;
     }
 
-    if (code >= 49 && code <= 58) {
-        if (key.getKeyCode() == '1' && key.getModifiers().isCommandDown()) {
-            narrowGrid();
-            return true;
-        }
-        if (key.getKeyCode() == '2' && key.getModifiers().isCommandDown()) {
-            widenGrid();
-            return true;
-        }
-        if (key.getKeyCode() == '3' && key.getModifiers().isCommandDown()) {
-            tripletGrid();
-            return true;
-        }
+    if (code == 'C' && key.getModifiers().isCommandDown()) {
+        copySelectionToClipboard();
+        return true;
+    }
+    if (code == 'V' && key.getModifiers().isCommandDown()) {
+        pasteClipboard();
+        return true;
+    }
+    if (code == 'D' && key.getModifiers().isCommandDown()) {
+        duplicate();
+        return true;
+    }
+    if (code == 'A' && key.getModifiers().isCommandDown()) {
+        selectAll();
+        return true;
+    }
+
+    if (code == '1' && key.getModifiers().isCommandDown()) {
+        narrowGrid();
+        return true;
+    }
+    if (code == '2' && key.getModifiers().isCommandDown()) {
+        widenGrid();
+        return true;
+    }
+    if (code == '3' && key.getModifiers().isCommandDown()) {
+        tripletGrid();
+        return true;
+    }
+
+    if (code == 'L') {
+        incrementLockYSetting();
+        return true;
+    }
+    if (code == 'R') {
+        incrementReferenceSetting();
+        return true;
     }
 
     return false;
+}
+
+void PianoRoll::incrementLockYSetting() {
+    LockY newLockYSetting = static_cast<LockY>((lockYSetting + 1) % 3);
+    settingsBar.setLockY(newLockYSetting);
+}
+
+void PianoRoll::incrementReferenceSetting() {
+    if (referenceSetting == lockNote && notesSelected.size() == 1 && notesSelected[0] != lockedNoteReference) {
+        lockedNoteReference = notesSelected[0];
+        return;
+    }
+    Reference newReferenceSetting = static_cast<Reference>((referenceSetting + 1) % 2);
+    settingsBar.setReference(newReferenceSetting);
 }
 
 void PianoRoll::addNoteWithoutReference(double frequency, float start, float end) {
@@ -633,14 +735,16 @@ void PianoRoll::addNoteWithoutReference(double frequency, float start, float end
     pushStateToProcessor();
 }
 
-void PianoRoll::addNoteWithReference(Note* ref, Fraction ratio, double irratio, float start, float end) {
-    noteRegion.addNoteWithRefNote(ref, ratio, irratio, start, end);
+void PianoRoll::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end) {
+    noteRegion.addNoteWithRefFreq(refFreq, ratio, irratio, start, end);
     pushStateToProcessor();
 }
 
 void PianoRoll::deleteNote(Note* note) {
     noteRegion.deleteNote(note);
     unselectNote(note);
+    if (note == lockedNoteReference && referenceSetting == lockNote)
+        settingsBar.setReference(selectedNote);
     pushStateToProcessor();
 }
 
@@ -653,7 +757,13 @@ void PianoRoll::copySelectionToClipboard() {
     clipboard.clear();
     clipboard.reserve(notesSelected.size());
     for (const auto& note : notesSelected) {
-        clipboard.push_back(*note);
+        clipboard.push_back(std::make_unique<Note>(
+            note->referenceFrequency,
+            note->ratio,
+            note->irratio,
+            note->start,
+            note->end
+            ));
     }
 }
 
@@ -661,25 +771,52 @@ void PianoRoll::pasteClipboard() {
     if (clipboard.empty())
         return;
 
-    auto earliestStart = clipboard.front().start;
+    auto earliestStart = clipboard.front()->start;
     for (const auto& note : clipboard)
-        if (note.start < earliestStart)
-            earliestStart = note.start;
+        if (note->start < earliestStart)
+            earliestStart = note->start;
 
-    auto latestEnd = clipboard.front().end;
+    auto latestEnd = clipboard.front()->end;
     for (const auto& note : clipboard)
-        if (note.end > latestEnd)
-            latestEnd = note.end;
+        if (note->end > latestEnd)
+            latestEnd = note->end;
 
     for (const auto& note : clipboard) {
-        float start = playheadBarPos + note.start - earliestStart;
-        float end = start + note.end - note.start;
-        noteRegion.addNoteWithRefFreq(note.referenceFrequency, note.ratio, note.irratio, start, end);
+        float start = playheadBarPos + note->start - earliestStart;
+        float end = start + note->end - note->start;
+        noteRegion.addNoteWithRefFreq(note->referenceFrequency, note->ratio, note->irratio, start, end);
     }
 
     playheadBarPos += latestEnd - earliestStart;
 
     pushStateToProcessor();
+}
+
+void PianoRoll::duplicate() {
+    auto earliestStart = notesSelected.front()->start;
+    for (const auto& note : notesSelected)
+        if (note->start < earliestStart)
+            earliestStart = note->start;
+
+    auto latestEnd = notesSelected.front()->end;
+    for (const auto& note : notesSelected)
+        if (note->end > latestEnd)
+            latestEnd = note->end;
+
+    for (const auto& note : notesSelected) {
+        float start = latestEnd + note->start - earliestStart;
+        float end = start + note->end - note->start;
+        noteRegion.addNoteWithRefFreq(note->referenceFrequency, note->ratio, note->irratio, start, end);
+    }
+
+    pushStateToProcessor();
+}
+
+void PianoRoll::selectAll() {
+    notesSelected.clear();
+    notesSelected.reserve(noteRegion.notes.size());
+    for (auto& note : noteRegion.notes)
+        notesSelected.push_back(note.get());
 }
 
 void PianoRoll::narrowGrid() {
@@ -717,6 +854,35 @@ Rect PianoRoll::getNoteCanvasBounds() const {
 Rect PianoRoll::getOrientationBarBounds() const {
     auto bounds = getCanvasBounds();
     return bounds.removeFromTop(ORIENTATION_BAR_HEIGHT);
+}
+
+void PianoRoll::handleLockYChanged() {
+    lockYSetting = settingsBar.getLockY();
+}
+
+void PianoRoll::handleReferenceChanged() {
+    switch (settingsBar.getReference()) {
+        case selectedNote:
+            break;
+
+        case lockNote:
+            if (notesSelected.size() == 1) {
+                auto note = notesSelected[0];
+                lockedNoteReference = note;
+            }
+            else
+                settingsBar.setReference(selectedNote);
+            break;
+
+        case customRef:
+            throw std::invalid_argument("not implemented");
+            break;
+    }
+    referenceSetting = settingsBar.getReference();
+}
+
+void PianoRoll::handlePotentialRatiosChanged() {
+    potentialRatios = settingsBar.getPotentialRatios();
 }
 
 void PianoRoll::timerCallback() {
