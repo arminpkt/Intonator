@@ -97,6 +97,8 @@ public:
 
     void updatePianoRollState(std::function<void(PianoRollState&)> fn);
 
+    void addPreviewMessage(const juce::MidiMessage& msg);
+
     //==============================================================================
     juce::MidiBuffer midiBuffer;
 
@@ -106,11 +108,7 @@ private:
     void flushActiveNotes(juce::MidiBuffer& midiMessages);
     void playMidi(juce::MidiBuffer& midiMessages, int numSamples);
 
-    // Keep track of currently active notes per channel
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
-
-    // The bar position we expected to be at the start of this block,
-    // based on where last block ended. Used to detect loops and seeks.
     double lastExpectedBar = -1.0;
 
     mutable juce::CriticalSection gridStateLock;
@@ -124,6 +122,10 @@ private:
     mutable juce::CriticalSection playbackLock;
     PlaybackSequence playbackSequence;
     std::atomic<bool> playbackDirty { true };
+
+    mutable juce::CriticalSection previewMessagesLock;
+    std::vector<juce::MidiMessage> pendingPreviewMessages;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
 };

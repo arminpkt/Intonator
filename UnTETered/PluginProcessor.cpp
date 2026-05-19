@@ -19,10 +19,7 @@ UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
 }
 
 //==============================================================================
-const juce::String UnTETeredAudioProcessor::getName() const
-{
-    return JucePlugin_Name;
-}
+const juce::String UnTETeredAudioProcessor::getName() const { return JucePlugin_Name; }
 
 bool UnTETeredAudioProcessor::acceptsMidi() const
 {
@@ -51,69 +48,54 @@ bool UnTETeredAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double UnTETeredAudioProcessor::getTailLengthSeconds() const
-{
-    return 0.0;
-}
+double UnTETeredAudioProcessor::getTailLengthSeconds() const { return 0.0; }
+int    UnTETeredAudioProcessor::getNumPrograms()              { return 1; }
+int    UnTETeredAudioProcessor::getCurrentProgram()           { return 0; }
+void   UnTETeredAudioProcessor::setCurrentProgram(int index)  { juce::ignoreUnused(index); }
 
-int UnTETeredAudioProcessor::getNumPrograms()
+const juce::String UnTETeredAudioProcessor::getProgramName(int index)
 {
-    return 1;
-}
-
-int UnTETeredAudioProcessor::getCurrentProgram()
-{
-    return 0;
-}
-
-void UnTETeredAudioProcessor::setCurrentProgram (int index)
-{
-    juce::ignoreUnused (index);
-}
-
-const juce::String UnTETeredAudioProcessor::getProgramName (int index)
-{
-    juce::ignoreUnused (index);
+    juce::ignoreUnused(index);
     return {};
 }
 
-void UnTETeredAudioProcessor::changeProgramName (int index, const juce::String& newName)
+void UnTETeredAudioProcessor::changeProgramName(int index, const juce::String& newName)
 {
-    juce::ignoreUnused (index, newName);
+    juce::ignoreUnused(index, newName);
 }
 
 //==============================================================================
-void UnTETeredAudioProcessor::prepareToPlay (double /*sampleRate*/, int /*samplesPerBlock*/)
-{
-}
+void UnTETeredAudioProcessor::prepareToPlay(double /*sampleRate*/, int /*samplesPerBlock*/) {}
+void UnTETeredAudioProcessor::releaseResources() {}
 
-void UnTETeredAudioProcessor::releaseResources()
-{
-}
-
-bool UnTETeredAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool UnTETeredAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
-    juce::ignoreUnused (layouts);
+    juce::ignoreUnused(layouts);
     return true;
   #else
     if (layouts.getMainOutputChannelSet() != juce::AudioChannelSet::mono()
      && layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
         return false;
-
    #if ! JucePlugin_IsSynth
     if (layouts.getMainOutputChannelSet() != layouts.getMainInputChannelSet())
         return false;
    #endif
-
     return true;
   #endif
 }
 
-void UnTETeredAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
-                                              juce::MidiBuffer& midiMessages)
+void UnTETeredAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
+                                           juce::MidiBuffer& midiMessages)
 {
     midiMessages.clear();
+
+    {
+        const juce::ScopedLock sl(previewMessagesLock);
+        for (const auto& msg : pendingPreviewMessages)
+            midiMessages.addEvent(msg, 0);
+        pendingPreviewMessages.clear();
+    }
 
     auto* playHead = getPlayHead();
     if (playHead == nullptr)
@@ -124,44 +106,36 @@ void UnTETeredAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 }
 
 //==============================================================================
-bool UnTETeredAudioProcessor::hasEditor() const
-{
-    return true;
-}
+bool UnTETeredAudioProcessor::hasEditor() const { return true; }
 
 juce::AudioProcessorEditor* UnTETeredAudioProcessor::createEditor()
 {
-    return new UnTETeredAudioProcessorEditor (*this);
+    return new UnTETeredAudioProcessorEditor(*this);
 }
 
 //==============================================================================
-void UnTETeredAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
+void UnTETeredAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
     juce::ValueTree root("STATE");
-
     {
         const juce::ScopedLock sl(gridStateLock);
         root.addChild(GridStateSerialiser::toValueTree(gridState), -1, nullptr);
     }
-
     {
         const juce::ScopedLock sl(pianoRollStateLock);
         root.addChild(PianoRollStateSerialiser::toValueTree(pianoRollState), -1, nullptr);
     }
-
     if (auto xml = root.createXml())
         copyXmlToBinary(*xml, destData);
 }
 
-void UnTETeredAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void UnTETeredAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
-    if (!xml)
-        return;
+    if (!xml) return;
 
     const auto root = juce::ValueTree::fromXml(*xml);
-    if (!root.isValid())
-        return;
+    if (!root.isValid()) return;
 
     const auto gridTree = root.getChildWithName(GridStateSerialiser::treeType());
     if (gridTree.isValid())
@@ -172,6 +146,7 @@ void UnTETeredAudioProcessor::setStateInformation (const void* data, int sizeInB
         setPianoRollState(PianoRollStateSerialiser::fromValueTree(pianoRollTree));
 }
 
+//==============================================================================
 GridState UnTETeredAudioProcessor::getGridState() const
 {
     const juce::ScopedLock sl(gridStateLock);
@@ -200,7 +175,6 @@ void UnTETeredAudioProcessor::setPianoRollState(const PianoRollState& s)
 {
     const juce::ScopedLock sl(pianoRollStateLock);
     pianoRollState = s;
-    // Note data changed — the MIDI sequence must be rebuilt.
     playbackDirty.store(true, std::memory_order_release);
 }
 
@@ -222,29 +196,30 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
     fn(pianoRollState);
 }
 
+void UnTETeredAudioProcessor::addPreviewMessage(const juce::MidiMessage& msg)
+{
+    const juce::ScopedLock sl(previewMessagesLock);
+    pendingPreviewMessages.push_back(msg);
+}
+
+//==============================================================================
 const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
 
-void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph) {
-    if (ph) {
-        if (auto pos = ph->getPosition()) {
-            transportState.isPlaying.store(pos->getIsPlaying(), std::memory_order_relaxed);
-            transportState.isRecording.store(pos->getIsRecording(), std::memory_order_relaxed);
-
-            if (auto bpm = pos->getBpm())
-                transportState.bpm.store(*bpm, std::memory_order_relaxed);
-            if (auto ppq = pos->getPpqPosition())
-                transportState.ppqPosition.store(*ppq, std::memory_order_relaxed);
-            if (auto samples = pos->getTimeInSamples())
-                transportState.timeInSamples.store(*samples, std::memory_order_relaxed);
-
-            if (auto sig = pos->getTimeSignature()) {
-                transportState.numerator.store(sig->numerator, std::memory_order_relaxed);
-                transportState.denominator.store(sig->denominator, std::memory_order_relaxed);
-            }
+void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph)
+{
+    if (!ph) return;
+    if (auto pos = ph->getPosition()) {
+        transportState.isPlaying.store(pos->getIsPlaying(), std::memory_order_relaxed);
+        transportState.isRecording.store(pos->getIsRecording(), std::memory_order_relaxed);
+        if (auto bpm     = pos->getBpm())             transportState.bpm.store(*bpm, std::memory_order_relaxed);
+        if (auto ppq     = pos->getPpqPosition())     transportState.ppqPosition.store(*ppq, std::memory_order_relaxed);
+        if (auto samples = pos->getTimeInSamples())   transportState.timeInSamples.store(*samples, std::memory_order_relaxed);
+        if (auto sig     = pos->getTimeSignature()) {
+            transportState.numerator.store(sig->numerator, std::memory_order_relaxed);
+            transportState.denominator.store(sig->denominator, std::memory_order_relaxed);
         }
-
-        transportState.sampleRate.store(getSampleRate(), std::memory_order_relaxed);
     }
+    transportState.sampleRate.store(getSampleRate(), std::memory_order_relaxed);
 }
 
 void UnTETeredAudioProcessor::rebuildPlaybackSequence()
@@ -254,19 +229,15 @@ void UnTETeredAudioProcessor::rebuildPlaybackSequence()
         const juce::ScopedLock sl(pianoRollStateLock);
         stateCopy = pianoRollState;
     }
-
     auto region = makeNoteRegionFromState(stateCopy, 2.0f);
-
     PlaybackSequence newSeq;
-    newSeq.messages = region.midiMessages;
+    newSeq.messages      = region.midiMessages;
     newSeq.pitchBendRange = 2.0;
-    newSeq.valid = true;
-
+    newSeq.valid          = true;
     {
         const juce::ScopedLock sl(playbackLock);
         playbackSequence = std::move(newSeq);
     }
-
     playbackDirty.store(false, std::memory_order_release);
 }
 
@@ -274,7 +245,6 @@ void UnTETeredAudioProcessor::flushActiveNotes(juce::MidiBuffer& midiMessages)
 {
     for (const auto& [channel, noteNumber] : activeNotes)
         midiMessages.addEvent(juce::MidiMessage::noteOff(channel, noteNumber), 0);
-
     activeNotes.clear();
 }
 
@@ -283,40 +253,27 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
     if (playbackDirty.load(std::memory_order_acquire))
         rebuildPlaybackSequence();
 
-    const bool   isPlaying  = transportState.isPlaying.load(std::memory_order_relaxed);
-    const double bpm        = transportState.bpm.load(std::memory_order_relaxed);
-    const double ppq        = transportState.ppqPosition.load(std::memory_order_relaxed);
-    const double sr         = transportState.sampleRate.load(std::memory_order_relaxed);
-    const int    numerator  = transportState.numerator.load(std::memory_order_relaxed);
-    const int    denominator= transportState.denominator.load(std::memory_order_relaxed);
+    const bool   isPlaying   = transportState.isPlaying.load(std::memory_order_relaxed);
+    const double bpm         = transportState.bpm.load(std::memory_order_relaxed);
+    const double ppq         = transportState.ppqPosition.load(std::memory_order_relaxed);
+    const double sr          = transportState.sampleRate.load(std::memory_order_relaxed);
+    const int    numerator   = transportState.numerator.load(std::memory_order_relaxed);
+    const int    denominator = transportState.denominator.load(std::memory_order_relaxed);
 
     if (!isPlaying || bpm <= 0.0 || sr <= 0.0 || denominator <= 0 || numSamples <= 0)
     {
         flushActiveNotes(midiMessages);
-        lastExpectedBar = -1.0; // reset so next play-press is treated as a fresh start
+        lastExpectedBar = -1.0;
         return;
     }
 
-    const double qnPerBar = 4.0 * static_cast<double>(numerator)
-                          / static_cast<double>(denominator);
+    const double qnPerBar = 4.0 * static_cast<double>(numerator) / static_cast<double>(denominator);
     const double startBar = ppq / qnPerBar;
-
     const double blockSeconds      = static_cast<double>(numSamples) / sr;
     const double blockQuarterNotes = blockSeconds / (60.0 / bpm);
     const double blockBars         = blockQuarterNotes / qnPerBar;
     const double endBar            = startBar + blockBars;
 
-    // -----------------------------------------------------------------------
-    // Loop / seek detection
-    //
-    // If the host position jumped backward from where we expected to be, any
-    // notes that were playing at the loop point will never receive their
-    // noteOff (those messages are now in the "past"). Send noteOffs for all
-    // active notes now, before processing the new block.
-    //
-    // The tolerance of half a block guards against tiny floating-point
-    // rounding differences between consecutive blocks during normal playback.
-    // -----------------------------------------------------------------------
     const bool positionJumpedBack = (lastExpectedBar >= 0.0)
                                  && (startBar < lastExpectedBar - 0.5 * blockBars);
     if (positionJumpedBack)
@@ -324,42 +281,34 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
 
     lastExpectedBar = endBar;
 
-    // -----------------------------------------------------------------------
-
     PlaybackSequence seqCopy;
     {
         const juce::ScopedLock sl(playbackLock);
         seqCopy = playbackSequence;
     }
-
-    if (!seqCopy.valid)
-        return;
+    if (!seqCopy.valid) return;
 
     for (const auto& msg : seqCopy.messages)
     {
         const double eventBar = msg.getTimeStamp();
-        if (eventBar < startBar || eventBar >= endBar)
-            continue;
+        if (eventBar < startBar || eventBar >= endBar) continue;
 
         const double relBars = eventBar - startBar;
         const int sampleOffset = juce::jlimit(
-            0,
-            numSamples - 1,
-            static_cast<int>(std::floor(relBars * qnPerBar * (60.0 / bpm) * sr))
-        );
+            0, numSamples - 1,
+            static_cast<int>(std::floor(relBars * qnPerBar * (60.0 / bpm) * sr)));
 
         midiMessages.addEvent(msg, sampleOffset);
 
-        if (msg.isNoteOn())
-            activeNotes.insert({ msg.getChannel(), msg.getNoteNumber() });
-        else if (msg.isNoteOff())
-            activeNotes.erase({ msg.getChannel(), msg.getNoteNumber() });
+        if (msg.isNoteOn())  activeNotes.insert({ msg.getChannel(), msg.getNoteNumber() });
+        else if (msg.isNoteOff()) activeNotes.erase({ msg.getChannel(), msg.getNoteNumber() });
     }
 }
 
-void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept {
+void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept
+{
     hostSeekRequest.targetBar.store(targetBar, std::memory_order_relaxed);
-    hostSeekRequest.pending.store(true , std::memory_order_relaxed);
+    hostSeekRequest.pending.store(true,        std::memory_order_relaxed);
 }
 
 //==============================================================================

@@ -38,8 +38,8 @@ public:
     const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
+    ~PianoRoll() override;
     void initialisePotentialRatios();
-    ~PianoRoll() override = default;
 
 private:
     void paint(juce::Graphics& g) override;
@@ -56,14 +56,8 @@ private:
     void drawRectDragged(juce::Graphics& g) const;
     void drawOrientationBar(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
-
-    // Draws the paste cursor triangle in the orientation bar.
     void drawPasteCursorHandle(juce::Graphics& g) const;
-
-    // Draws the blinking paste cursor line in the note canvas.
-    // Only called while the user is dragging the cursor in the orientation bar.
     void drawPasteCursorLine(juce::Graphics& g) const;
-
     void drawSettingsBackground(juce::Graphics& g) const;
     void resized() override;
     float getHueFromYPx(int y) const;
@@ -132,6 +126,7 @@ private:
     void handleLockYChanged();
     void handleReferenceChanged();
     void handlePotentialRatiosChanged();
+    void handleMonitoringChanged();
 
     void timerCallback() override;
 
@@ -148,6 +143,25 @@ private:
     bool undoSnapshotTakenForCurrentDrag = false;
     bool noteWasDraggedThisGesture = false;
 
+    static constexpr int PREVIEW_CHANNEL_START  = 13;
+    static constexpr int PREVIEW_CHANNEL_COUNT  = 4;
+    static constexpr int PREVIEW_DURATION_TICKS = 10; // 1 s at 30 Hz
+
+    struct ActivePreview {
+        int midiNote;
+        int channel;
+        int countdown;
+    };
+
+    void startNotePreview(const Note* note);
+
+    void stopAllPreviews();
+
+    bool monitoringEnabled = false;
+    std::vector<ActivePreview> activePreviews;
+    std::unordered_set<Note*> previewedDuringCurrentDrag;
+
+    // -------------------------------------------------------------------------
     UnTETeredAudioProcessor& processor;
     NoteRegion noteRegion;
 
@@ -160,11 +174,10 @@ private:
     float barWidthPxF = 100;
     double freqBottomScreen = 200;
     float barLeftScreen = 0;
-    float playheadBarPos = 0;
 
+    float playheadBarPos    = 0;
     float pasteCursorBarPos = 0;
-    bool isDraggingPasteCursor = false;
-
+    bool  isDraggingPasteCursor = false;
     float blinkPhase = 0.0f;
 
     std::vector<Note*> notesSelected;
@@ -177,13 +190,13 @@ private:
     std::vector<double> selectedNotesRefFreqs;
     Note* noteClicked{};
     bool dragRightSideSelectedNote = false;
-    bool dragLeftSideSelectedNote = false;
+    bool dragLeftSideSelectedNote  = false;
     std::optional<Rect> draggedRect;
     std::vector<std::unique_ptr<Note>> clipboard;
     Fraction extraGridResolution{1, 1};
     bool gridTripletted = false;
 
     double cachedPpqPosition = 0.0;
-    int cachedNumerator = 4;
-    int cachedDenominator = 4;
+    int    cachedNumerator   = 4;
+    int    cachedDenominator = 4;
 };

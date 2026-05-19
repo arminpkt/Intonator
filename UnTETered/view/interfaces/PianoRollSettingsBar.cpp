@@ -9,12 +9,16 @@
 PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleLock,
     std::function<void()> handleRef,
-    std::function<void()> handleFrac
-    ) : handleLockYChange(std::move(handleLock)), handleReferenceChange(std::move(handleRef)),
-        handlePotentialRatiosChange(std::move(handleFrac)) {
+    std::function<void()> handleFrac,
+    std::function<void()> handleMonitoring
+    ) : handleLockYChange(std::move(handleLock)),
+        handleReferenceChange(std::move(handleRef)),
+        handlePotentialRatiosChange(std::move(handleFrac)),
+        handleMonitoringChange(std::move(handleMonitoring)) {
     initialiseLockY();
     initialiseReference();
     initialisePotentialRatios();
+    initialiseMonitoring();
 }
 
 void PianoRollSettingsBar::initialiseLockY() {
@@ -31,7 +35,6 @@ void PianoRollSettingsBar::initialiseReference() {
     referenceComboBox.setColour(juce::ComboBox::backgroundColourId, COMBOBOX_BACKGROUND_COLOUR);
     referenceComboBox.addItem("select", selectedNote+1);
     referenceComboBox.addItem("fixed", lockNote+1);
-    // referenceSetting.addItem("cstm", customRef+1);
     referenceComboBox.onChange = handleReferenceChange;
 }
 
@@ -39,6 +42,12 @@ void PianoRollSettingsBar::initialisePotentialRatios() {
     addAndMakeVisible(potentialRatiosField);
     potentialRatiosField.setColour(juce::TextEditor::backgroundColourId, COMBOBOX_BACKGROUND_COLOUR);
     potentialRatiosField.onTextChange = handlePotentialRatiosChange;
+}
+
+void PianoRollSettingsBar::initialiseMonitoring() {
+    addAndMakeVisible(monitoringToggle);
+    monitoringToggle.setToggleState(false, juce::dontSendNotification);
+    monitoringToggle.onClick = handleMonitoringChange;
 }
 
 LockY PianoRollSettingsBar::getLockY() const {
@@ -51,6 +60,10 @@ Reference PianoRollSettingsBar::getReference() const {
 
 std::vector<Fraction> PianoRollSettingsBar::getPotentialRatios() const {
     return potentialRatiosField.getFractions();
+}
+
+bool PianoRollSettingsBar::isMonitoringEnabled() const {
+    return monitoringToggle.getToggleState();
 }
 
 void PianoRollSettingsBar::setLockY(const LockY lockY) {
@@ -71,5 +84,8 @@ void PianoRollSettingsBar::resized() {
     bounds.removeFromLeft(MARGIN);
     referenceComboBox.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
+    // Monitoring toggle sits at the right end.
+    monitoringToggle.setBounds(bounds.removeFromRight(80));
+    bounds.removeFromRight(MARGIN);
     potentialRatiosField.setBounds(bounds);
 }
