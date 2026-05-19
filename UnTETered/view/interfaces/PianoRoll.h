@@ -33,8 +33,10 @@ public:
     const juce::Colour DRAGGED_RECT_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 50);
     const juce::Colour DRAGGED_RECT_OUTLINE_COLOUR = {150, 200, 150};
     const juce::Colour PLAYHEAD_COLOUR = {255, 255, 255};
+    const juce::Colour PASTE_CURSOR_COLOUR = {255, 160, 30};
     const juce::Colour SETTINGS_BACKGROUND_COLOUR = {70, 70, 70};
     const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
+
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     void initialisePotentialRatios();
     ~PianoRoll() override = default;
@@ -54,10 +56,18 @@ private:
     void drawRectDragged(juce::Graphics& g) const;
     void drawOrientationBar(juce::Graphics& g) const;
     void drawPlayhead(juce::Graphics& g) const;
+
+    // Draws the paste cursor triangle in the orientation bar.
+    void drawPasteCursorHandle(juce::Graphics& g) const;
+
+    // Draws the blinking paste cursor line in the note canvas.
+    // Only called while the user is dragging the cursor in the orientation bar.
+    void drawPasteCursorLine(juce::Graphics& g) const;
+
     void drawSettingsBackground(juce::Graphics& g) const;
     void resized() override;
     float getHueFromYPx(int y) const;
-    static float getHueFromFreq(double freq) ;
+    static float getHueFromFreq(double freq);
     double getFreqFromYPx(int y) const;
     double getFreqFromYPxF(float y) const;
     int getYPxFromFreq(double freq) const;
@@ -75,21 +85,14 @@ private:
     std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
     std::optional<double> getReferenceFrequency() const;
     std::vector<double> getPotentialFrequencies(Note* note) const;
-    void selectNote(Note* note, Point clickedPos, bool invertIfSelected);
+    void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
     void unselectNote(const Note* note);
 
-    /** Mirrors y coordinate interpreted as px value around the axis.
-     *
-     * @param y     Px value to mirror
-     * @param axis  0 = bottom, 1 = top, 0.5 = middle = default
-     */
     float mirrorYPx(float y, float axis = 0.5f) const;
     int mirrorYPx(int y, float axis = 0.5f) const;
     Point mirrorYPx(Point point, float axis = 0.5f) const;
     Rect mirrorYPx(Rect rect, float axis = 0.5f) const;
-
-    void setPlayheadPosFromPoint(Point);
 
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
@@ -114,6 +117,7 @@ private:
     void deleteNote(Note* note);
     void deleteSelection();
     void copySelectionToClipboard();
+    void cutSelection();
     void pasteClipboard();
     void duplicate();
     void selectAll();
@@ -132,21 +136,16 @@ private:
     void timerCallback() override;
 
     void pullStateFromProcessorAndRebuild();
-
     void pushNoteStateToProcessor() const;
     void pushViewportToProcessor() const;
 
     static constexpr int MAX_UNDO_STEPS = 50;
-
     std::vector<std::vector<StoredPianoNote>> undoStack;
     std::vector<std::vector<StoredPianoNote>> redoStack;
-
     void pushUndoSnapshot();
     void undo();
     void redo();
-
     bool undoSnapshotTakenForCurrentDrag = false;
-
     bool noteWasDraggedThisGesture = false;
 
     UnTETeredAudioProcessor& processor;
@@ -162,6 +161,11 @@ private:
     double freqBottomScreen = 200;
     float barLeftScreen = 0;
     float playheadBarPos = 0;
+
+    float pasteCursorBarPos = 0;
+    bool isDraggingPasteCursor = false;
+
+    float blinkPhase = 0.0f;
 
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
