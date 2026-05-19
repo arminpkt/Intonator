@@ -200,7 +200,20 @@ void UnTETeredAudioProcessor::setPianoRollState(const PianoRollState& s)
 {
     const juce::ScopedLock sl(pianoRollStateLock);
     pianoRollState = s;
+    // Note data changed — the MIDI sequence must be rebuilt.
     playbackDirty.store(true, std::memory_order_release);
+}
+
+void UnTETeredAudioProcessor::setPianoRollViewState(float octaveHeightPxF,
+                                                     float barWidthPxF,
+                                                     double freqBottomScreen,
+                                                     float barLeftScreen)
+{
+    const juce::ScopedLock sl(pianoRollStateLock);
+    pianoRollState.octaveHeightPxF  = octaveHeightPxF;
+    pianoRollState.barWidthPxF      = barWidthPxF;
+    pianoRollState.freqBottomScreen = freqBottomScreen;
+    pianoRollState.barLeftScreen    = barLeftScreen;
 }
 
 void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollState&)> fn)

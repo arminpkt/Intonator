@@ -87,7 +87,14 @@ public:
     void updateGridState(std::function<void(GridState&)> fn);
 
     PianoRollState getPianoRollState() const;
+
     void setPianoRollState(const PianoRollState& s);
+
+    void setPianoRollViewState(float octaveHeightPxF,
+                               float barWidthPxF,
+                               double freqBottomScreen,
+                               float barLeftScreen);
+
     void updatePianoRollState(std::function<void(PianoRollState&)> fn);
 
     //==============================================================================

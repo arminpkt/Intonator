@@ -490,7 +490,8 @@ void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFac
         barLeftScreen = getBarExactFromXPx(-mousePos.getX());
     }
     clipScreenEdges();
-    pushStateToProcessor();
+    // Viewport-only change: don't trigger a MIDI sequence rebuild.
+    pushViewportToProcessor();
 }
 
 void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) {
@@ -508,10 +509,23 @@ void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) 
     }
 }
 
-void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) const {
+void PianoRoll::moveExtendShrinkNotes(const Point mouseDownPos, const Point currentPos) {
+    // Take exactly one undo snapshot at the start of the drag gesture,
+    // not on every pixel — the final committed state is pushed in mouseUp.
+    if (!undoSnapshotTakenForCurrentDrag) {
+        pushUndoSnapshot();
+        undoSnapshotTakenForCurrentDrag = true;
+    }
+
     moveExtendShrinkHorizontally(currentPos.getX() - mouseDownPos.getX());
     moveVertically(currentPos, mouseDownPos);
-    pushStateToProcessor();
+
+    // Mark that notes were actually moved so mouseUp knows to push.
+    noteWasDraggedThisGesture = true;
+
+    // Do NOT call pushNoteStateToProcessor() here — doing so on every drag
+    // pixel causes a full MIDI-sequence rebuild per mouse-move event.
+    // The push (and therefore the rebuild) happens once in mouseUp.
 }
 
 void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
@@ -573,7 +587,16 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
     dragLeftSideSelectedNote = false;
     dragRightSideSelectedNote = false;
     draggedRect.reset();
-    pushStateToProcessor();
+
+    // Only push to the processor (triggering a MIDI rebuild) if notes were
+    // actually moved or resized during this gesture.
+    if (noteWasDraggedThisGesture) {
+        pushNoteStateToProcessor();
+        noteWasDraggedThisGesture = false;
+    }
+
+    // Reset per-gesture undo flag.
+    undoSnapshotTakenForCurrentDrag = false;
 }
 
 void PianoRoll::mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) {
@@ -590,7 +613,8 @@ void PianoRoll::scroll(const PointF deltaXY) {
     barLeftScreen = newBarLeftScreen;
     freqBottomScreen = newFreqBottomScreen;
     clipScreenEdges();
-    pushStateToProcessor();
+    // Viewport-only change: don't trigger a MIDI sequence rebuild.
+    pushViewportToProcessor();
 }
 
 void PianoRoll::clipScreenEdges() {
@@ -618,6 +642,9 @@ void PianoRoll::handleSingleClick(const Point px) {
             selectedNotesRefFreqs.push_back(noteSelected->referenceFrequency);
 
         noteClicked = note;
+        // Reset drag-tracking flags for the new gesture.
+        undoSnapshotTakenForCurrentDrag = false;
+        noteWasDraggedThisGesture = false;
         return;
     }
     noteClicked = nullptr;
@@ -658,19 +685,34 @@ void PianoRoll::handleShiftSingleClick(const Point px) {
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     auto code = static_cast<size_t>(key.getKeyCode());
 
+    // -------------------------------------------------------------------------
+    // Undo / Redo
+    // -------------------------------------------------------------------------
+    if (code == 'Z' && key.getModifiers().isCommandDown()) {
+        if (key.getModifiers().isShiftDown())
+            redo();
+        else
+            undo();
+        return true;
+    }
+
     if (key == juce::KeyPress::backspaceKey) {
         deleteSelection();
         return true;
     }
 
     if (code == static_cast<size_t>(juce::KeyPress::upKey) && key.getModifiers().isAltDown()) {
+        pushUndoSnapshot();
         for (auto& noteSelected : notesSelected)
             noteSelected->ratio = noteSelected->ratio * 2;
+        pushNoteStateToProcessor();
         return true;
     }
     if (code == static_cast<size_t>(juce::KeyPress::downKey) && key.getModifiers().isAltDown()) {
+        pushUndoSnapshot();
         for (auto& noteSelected : notesSelected)
             noteSelected->ratio = noteSelected->ratio / 2;
+        pushNoteStateToProcessor();
         return true;
     }
 
@@ -731,26 +773,42 @@ void PianoRoll::incrementReferenceSetting() {
 }
 
 void PianoRoll::addNoteWithoutReference(double frequency, float start, float end) {
+    pushUndoSnapshot();
     noteRegion.addNoteWithoutReference(frequency, start, end);
-    pushStateToProcessor();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end) {
+    pushUndoSnapshot();
     noteRegion.addNoteWithRefFreq(refFreq, ratio, irratio, start, end);
-    pushStateToProcessor();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::deleteNote(Note* note) {
+    pushUndoSnapshot();
     noteRegion.deleteNote(note);
     unselectNote(note);
     if (note == lockedNoteReference && referenceSetting == lockNote)
         settingsBar.setReference(selectedNote);
-    pushStateToProcessor();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::deleteSelection() {
-    while (!notesSelected.empty())
-        deleteNote(notesSelected.back());
+    if (notesSelected.empty())
+        return;
+
+    // One snapshot covers the entire multi-note deletion.
+    pushUndoSnapshot();
+
+    while (!notesSelected.empty()) {
+        auto* note = notesSelected.back();
+        noteRegion.deleteNote(note);
+        if (note == lockedNoteReference && referenceSetting == lockNote)
+            settingsBar.setReference(selectedNote);
+        notesSelected.pop_back();
+    }
+
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::copySelectionToClipboard() {
@@ -781,6 +839,8 @@ void PianoRoll::pasteClipboard() {
         if (note->end > latestEnd)
             latestEnd = note->end;
 
+    pushUndoSnapshot();
+
     for (const auto& note : clipboard) {
         float start = playheadBarPos + note->start - earliestStart;
         float end = start + note->end - note->start;
@@ -789,7 +849,7 @@ void PianoRoll::pasteClipboard() {
 
     playheadBarPos += latestEnd - earliestStart;
 
-    pushStateToProcessor();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::duplicate() {
@@ -803,13 +863,15 @@ void PianoRoll::duplicate() {
         if (note->end > latestEnd)
             latestEnd = note->end;
 
+    pushUndoSnapshot();
+
     for (const auto& note : notesSelected) {
         float start = latestEnd + note->start - earliestStart;
         float end = start + note->end - note->start;
         noteRegion.addNoteWithRefFreq(note->referenceFrequency, note->ratio, note->irratio, start, end);
     }
 
-    pushStateToProcessor();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::selectAll() {
@@ -911,12 +973,86 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     draggedRect.reset();
 }
 
-void PianoRoll::pushStateToProcessor() const {
-    PianoRollState state = makeStateFromNoteRegion(noteRegion);
-    state.octaveHeightPxF = octaveHeightPxF;
-    state.barWidthPxF = barWidthPxF;
-    state.freqBottomScreen = freqBottomScreen;
-    state.barLeftScreen = barLeftScreen;
+// -----------------------------------------------------------------------------
+// Undo / Redo
+// -----------------------------------------------------------------------------
 
+void PianoRoll::pushUndoSnapshot() {
+    // Capture only the note state — viewport changes are intentionally excluded
+    // from undo history (scrolling/zooming is not undoable).
+    auto snapshot = makeStateFromNoteRegion(noteRegion).notes;
+
+    undoStack.push_back(std::move(snapshot));
+
+    if (undoStack.size() > static_cast<size_t>(MAX_UNDO_STEPS))
+        undoStack.erase(undoStack.begin());
+
+    // Any new action invalidates the redo branch.
+    redoStack.clear();
+}
+
+void PianoRoll::undo() {
+    if (undoStack.empty())
+        return;
+
+    // Save current note state for redo.
+    redoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
+
+    // Restore the previous note state.
+    PianoRollState state;
+    state.notes          = std::move(undoStack.back());
+    state.octaveHeightPxF = octaveHeightPxF;
+    state.barWidthPxF    = barWidthPxF;
+    state.freqBottomScreen = freqBottomScreen;
+    state.barLeftScreen  = barLeftScreen;
+    undoStack.pop_back();
+
+    noteRegion = makeNoteRegionFromState(state);
+    notesSelected.clear();
+
+    pushNoteStateToProcessor();
+}
+
+void PianoRoll::redo() {
+    if (redoStack.empty())
+        return;
+
+    // Save current note state for undo.
+    undoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
+
+    // Restore the redo state.
+    PianoRollState state;
+    state.notes          = std::move(redoStack.back());
+    state.octaveHeightPxF = octaveHeightPxF;
+    state.barWidthPxF    = barWidthPxF;
+    state.freqBottomScreen = freqBottomScreen;
+    state.barLeftScreen  = barLeftScreen;
+    redoStack.pop_back();
+
+    noteRegion = makeNoteRegionFromState(state);
+    notesSelected.clear();
+
+    pushNoteStateToProcessor();
+}
+
+// -----------------------------------------------------------------------------
+// Processor push helpers
+// -----------------------------------------------------------------------------
+
+void PianoRoll::pushNoteStateToProcessor() const {
+    PianoRollState state = makeStateFromNoteRegion(noteRegion);
+    state.octaveHeightPxF  = octaveHeightPxF;
+    state.barWidthPxF      = barWidthPxF;
+    state.freqBottomScreen = freqBottomScreen;
+    state.barLeftScreen    = barLeftScreen;
+
+    // setPianoRollState sets playbackDirty = true, triggering a MIDI rebuild.
     processor.setPianoRollState(state);
+}
+
+void PianoRoll::pushViewportToProcessor() const {
+    // Writes only zoom/scroll values — does NOT set playbackDirty, so no
+    // MIDI sequence rebuild occurs just because the user scrolled.
+    processor.setPianoRollViewState(octaveHeightPxF, barWidthPxF,
+                                    freqBottomScreen, barLeftScreen);
 }

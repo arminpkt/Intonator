@@ -96,7 +96,7 @@ private:
     void mouseMove(const juce::MouseEvent& event) override;
     void mouseMagnify(const juce::MouseEvent& event, float scaleFactor) override;
     void dragRectangle(Point mouseDownPos, Point currentPos);
-    void moveExtendShrinkNotes(Point mouseDownPos, Point currentPos) const;
+    void moveExtendShrinkNotes(Point mouseDownPos, Point currentPos);
     void moveExtendShrinkHorizontally(int dX) const;
     void moveVertically(Point currentPos, Point mouseDownPos) const;
     void mouseUp(const juce::MouseEvent& _) override;
@@ -132,7 +132,22 @@ private:
     void timerCallback() override;
 
     void pullStateFromProcessorAndRebuild();
-    void pushStateToProcessor() const;
+
+    void pushNoteStateToProcessor() const;
+    void pushViewportToProcessor() const;
+
+    static constexpr int MAX_UNDO_STEPS = 50;
+
+    std::vector<std::vector<StoredPianoNote>> undoStack;
+    std::vector<std::vector<StoredPianoNote>> redoStack;
+
+    void pushUndoSnapshot();
+    void undo();
+    void redo();
+
+    bool undoSnapshotTakenForCurrentDrag = false;
+
+    bool noteWasDraggedThisGesture = false;
 
     UnTETeredAudioProcessor& processor;
     NoteRegion noteRegion;
