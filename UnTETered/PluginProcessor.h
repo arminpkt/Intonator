@@ -97,7 +97,7 @@ public:
 
     void updatePianoRollState(std::function<void(PianoRollState&)> fn);
 
-    void addPreviewMessage(const juce::MidiMessage& msg);
+    void addPreviewMessages(std::initializer_list<juce::MidiMessage> msgs);
 
     //==============================================================================
     juce::MidiBuffer midiBuffer;

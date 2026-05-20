@@ -196,10 +196,11 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
     fn(pianoRollState);
 }
 
-void UnTETeredAudioProcessor::addPreviewMessage(const juce::MidiMessage& msg)
+void UnTETeredAudioProcessor::addPreviewMessages(std::initializer_list<juce::MidiMessage> msgs)
 {
     const juce::ScopedLock sl(previewMessagesLock);
-    pendingPreviewMessages.push_back(msg);
+    for (const auto& msg : msgs)
+        pendingPreviewMessages.push_back(msg);
 }
 
 //==============================================================================

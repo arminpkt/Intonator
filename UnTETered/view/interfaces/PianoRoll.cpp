@@ -390,23 +390,21 @@ void PianoRoll::startNotePreview(const Note* note) {
             [](const ActivePreview& a, const ActivePreview& b) {
                 return a.countdown < b.countdown;
             });
-        processor.addPreviewMessage(
-            juce::MidiMessage::noteOff(oldest->channel, oldest->midiNote));
+        processor.addPreviewMessages({juce::MidiMessage::noteOff(oldest->channel, oldest->midiNote)});
         channel = oldest->channel;
         activePreviews.erase(oldest);
     }
 
-    processor.addPreviewMessage(juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue()));
-    processor.addPreviewMessage(juce::MidiMessage::noteOn(channel,
-                                                          note->getRoundedMidiValue(),
-                                                          static_cast<juce::uint8>(100)));
+    processor.addPreviewMessages({juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue()),
+                                        juce::MidiMessage::noteOn(channel,
+                                        note->getRoundedMidiValue(),static_cast<juce::uint8>(100))});
 
     activePreviews.push_back({ note->getRoundedMidiValue(), channel, PREVIEW_DURATION_TICKS });
 }
 
 void PianoRoll::stopAllPreviews() {
     for (const auto& p : activePreviews)
-        processor.addPreviewMessage(juce::MidiMessage::noteOff(p.channel, p.midiNote));
+        processor.addPreviewMessages({juce::MidiMessage::noteOff(p.channel, p.midiNote)});
     activePreviews.clear();
 }
 
@@ -840,7 +838,7 @@ void PianoRoll::timerCallback() {
     // Tick down each active preview independently; send note-off when it expires.
     for (auto it = activePreviews.begin(); it != activePreviews.end(); ) {
         if (--(it->countdown) <= 0) {
-            processor.addPreviewMessage(juce::MidiMessage::noteOff(it->channel, it->midiNote));
+            processor.addPreviewMessages({juce::MidiMessage::noteOff(it->channel, it->midiNote)});
             it = activePreviews.erase(it);
         } else {
             ++it;
