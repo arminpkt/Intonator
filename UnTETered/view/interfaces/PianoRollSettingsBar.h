@@ -31,6 +31,7 @@ public:
     void setLockY(LockY lockY);
     void setReference(Reference reference);
     void setPotentialRatios(const std::vector<Fraction>& fractions);
+    void setMonitoringEnabled(bool enabled);
 
 private:
     juce::ComboBox    lockYComboBox;

@@ -25,6 +25,12 @@ namespace PianoRollStateIds
     static const juce::Identifier refFreq           { "refFreq" };
     static const juce::Identifier primePowers       { "primePowers" };
     static const juce::Identifier irratio           { "irratio" };
+
+    // Settings Bar
+    static const juce::Identifier lockY            { "lockY" };
+    static const juce::Identifier reference        { "reference" };
+    static const juce::Identifier monitoringEnabled{ "monitoringEnabled" };
+    static const juce::Identifier potentialRatios  { "potentialRatios" };
 }
 
 // ---------------------------------------------------------------------------
@@ -61,6 +67,12 @@ juce::ValueTree PianoRollStateSerialiser::toValueTree(const PianoRollState& stat
         notesTree.addChild(noteTree, -1, nullptr);
     }
     tree.addChild(notesTree, -1, nullptr);
+
+    // Settings Bar
+    tree.setProperty(PianoRollStateIds::lockY,             state.lockY,                                               nullptr);
+    tree.setProperty(PianoRollStateIds::reference,         state.reference,                                           nullptr);
+    tree.setProperty(PianoRollStateIds::monitoringEnabled, state.monitoringEnabled,                                   nullptr);
+    tree.setProperty(PianoRollStateIds::potentialRatios,   makeStringFromPotentialRatios(state.potentialRatios),      nullptr);
 
     return tree;
 }
@@ -110,6 +122,15 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
             state.notes.push_back(n);
         }
     }
+
+    // Settings Bar
+    state.lockY             = (int)  tree.getProperty(PianoRollStateIds::lockY,             0);
+    state.reference         = (int)  tree.getProperty(PianoRollStateIds::reference,         0);
+    state.monitoringEnabled = (bool) tree.getProperty(PianoRollStateIds::monitoringEnabled, false);
+
+    juce::String ratiosStr  = tree.getProperty(PianoRollStateIds::potentialRatios, "").toString();
+    if (ratiosStr.isNotEmpty())
+        state.potentialRatios = makePotentialRatiosFromString(ratiosStr);
 
     return state;
 }

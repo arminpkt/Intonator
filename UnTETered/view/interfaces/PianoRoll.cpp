@@ -414,6 +414,7 @@ void PianoRoll::handleMonitoringChanged() {
     monitoringEnabled = settingsBar.isMonitoringEnabled();
     if (!monitoringEnabled)
         stopAllPreviews();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
@@ -801,7 +802,10 @@ void PianoRoll::tripletGrid() {
         gridTripletted = !gridTripletted;
 }
 
-void PianoRoll::handleLockYChanged() { lockYSetting = settingsBar.getLockY(); }
+void PianoRoll::handleLockYChanged() {
+    lockYSetting = settingsBar.getLockY();
+    pushNoteStateToProcessor();
+}
 
 void PianoRoll::handleReferenceChanged() {
     switch (settingsBar.getReference()) {
@@ -809,14 +813,17 @@ void PianoRoll::handleReferenceChanged() {
         case lockNote:
             if (notesSelected.size() == 1) lockedNoteReference = notesSelected[0];
             else settingsBar.setReference(selectedNote);
-            break;
+        break;
         case customRef: throw std::invalid_argument("not implemented");
     }
     referenceSetting = settingsBar.getReference();
+    pushNoteStateToProcessor();
 }
 
-void PianoRoll::handlePotentialRatiosChanged() { potentialRatios = settingsBar.getPotentialRatios(); }
-
+void PianoRoll::handlePotentialRatiosChanged() {
+    potentialRatios = settingsBar.getPotentialRatios();
+    pushNoteStateToProcessor();
+}
 void PianoRoll::timerCallback() {
     const auto& ts = processor.getTransportState();
     cachedPpqPosition = ts.ppqPosition.load(std::memory_order_relaxed);
@@ -852,6 +859,25 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     noteRegion       = makeNoteRegionFromState(state);
     notesSelected.clear();
     draggedRect.reset();
+
+    // Settings Bar
+    // reference=lockNote can't survive serialization (pointer is gone), so fall back
+    const int safeReference = (state.reference == lockNote) ? selectedNote : state.reference;
+    lockYSetting    = static_cast<LockY>(state.lockY);
+    referenceSetting = static_cast<Reference>(safeReference);
+    monitoringEnabled = state.monitoringEnabled;
+
+    settingsBar.setLockY(lockYSetting);
+    settingsBar.setReference(referenceSetting);
+    settingsBar.setMonitoringEnabled(monitoringEnabled);
+    if (!state.potentialRatios.empty())
+        if (!state.potentialRatios.empty())
+        {
+            potentialRatios.clear();
+            for (const auto& [num, den] : state.potentialRatios)
+                potentialRatios.push_back(Fraction{ num, den });
+            settingsBar.setPotentialRatios(potentialRatios);
+        }
 }
 
 void PianoRoll::pushNoteStateToProcessor() const {
@@ -860,6 +886,16 @@ void PianoRoll::pushNoteStateToProcessor() const {
     state.barWidthPxF      = barWidthPxF;
     state.freqBottomScreen = freqBottomScreen;
     state.barLeftScreen    = barLeftScreen;
+
+    state.lockY            = lockYSetting;
+    state.reference        = referenceSetting;
+    state.monitoringEnabled = monitoringEnabled;
+    state.potentialRatios.clear();
+    for (const auto& f : potentialRatios)
+    {
+        auto [num, den] = f.getNumeratorAndDenominator();
+        state.potentialRatios.emplace_back(num, den);
+    }
     processor.setPianoRollState(state);
 }
 

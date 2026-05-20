@@ -51,16 +51,3 @@ target_link_libraries(UnTETered
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
-
-#set(VST3_DESTINATION "/Library/Audio/Plug-Ins/VST3/")
-#set(AU_DESTINATION "/Library/Audio/Plug-Ins/Components/")
-
-# Copy VST3 and AU files upon build completion
-#add_custom_command(TARGET UnTETered POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        "$<TARGET_FILE_DIR:UnTETered>/UnTETered.vst3"
-#        "${VST3_DESTINATION}/UnTETered.vst3"
-#        COMMAND ${CMAKE_COMMAND} -E copy
-#        "$<TARGET_FILE_DIR:UnTETered>/UnTETered.component"
-#        "${AU_DESTINATION}/UnTETered.component"
-#)

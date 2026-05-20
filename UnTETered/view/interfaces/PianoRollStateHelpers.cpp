@@ -76,3 +76,24 @@ juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers
 
     return {csvString};
 }
+
+juce::String makeStringFromPotentialRatios(const std::vector<std::pair<int,int>>& ratios)
+{
+    juce::StringArray parts;
+    for (const auto& [num, den] : ratios)
+        parts.add(juce::String(num) + "/" + juce::String(den));
+    return parts.joinIntoString(" ");
+}
+
+std::vector<std::pair<int,int>> makePotentialRatiosFromString(const juce::String& str)
+{
+    std::vector<std::pair<int,int>> out;
+    auto parts = juce::StringArray::fromTokens(str, " ", "");
+    for (const auto& part : parts)
+    {
+        auto sides = juce::StringArray::fromTokens(part, "/", "");
+        if (sides.size() == 2)
+            out.emplace_back(sides[0].getIntValue(), sides[1].getIntValue());
+    }
+    return out;
+}

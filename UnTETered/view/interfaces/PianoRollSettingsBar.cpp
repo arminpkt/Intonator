@@ -78,6 +78,11 @@ void PianoRollSettingsBar::setPotentialRatios(const std::vector<Fraction>& fract
     potentialRatiosField.setFractions(fractions);
 }
 
+void PianoRollSettingsBar::setMonitoringEnabled(const bool enabled)
+{
+    monitoringToggle.setToggleState(enabled, juce::dontSendNotification);
+}
+
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
     lockYComboBox.setBounds(bounds.removeFromLeft(70));
