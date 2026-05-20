@@ -70,7 +70,7 @@ void TextInput::evaluateAndSendMidi() {
             static_cast<juce::uint8>(100));
         processor.midiBuffer.addEvent(noteOn, 20);
 
-        auto pitchBendValue = note->getPitchBendValue();
+        auto pitchBendValue = note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE);
         auto pitchBend = juce::MidiMessage::pitchWheel(
             static_cast<int>(i + 2), pitchBendValue);
         processor.midiBuffer.addEvent(pitchBend, 30);

@@ -29,7 +29,7 @@ public:
     void addNoteWithRefNote(Note* reference, Fraction ratio, double irratio, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end);
     void deleteNote(Note* note);
-    void calculateMidiMessages(float pitchBendRange = 2); // not const!
+    void calculateMidiMessages(float pitchBendRange); // not const!
 
 private:
     static int midiEventPriority(const juce::MidiMessage& m);

@@ -76,7 +76,7 @@ struct Note {
      *
      * @param bendRange     The range of the pitchbend in semitones
      */
-    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange = 1) const {
+    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange) const {
         int roundedMidiValue = getRoundedMidiValue();
         return getPitchBendValueWRT(roundedMidiValue, bendRange);
     }
@@ -88,7 +88,7 @@ struct Note {
      * @param bendRange         The range of the pitchbend in semitones
      * @return
      */
-    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange = 1) const {
+    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange) const {
         double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
         double bendRatio = offsetInSemitones / bendRange;
         double bendValueCont = 8192 + 8192 * bendRatio;
