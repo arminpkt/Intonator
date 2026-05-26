@@ -635,7 +635,7 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     if (code == '1' && key.getModifiers().isCommandDown()) { narrowGrid();               return true; }
     if (code == '2' && key.getModifiers().isCommandDown()) { widenGrid();                return true; }
     if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
-    if (code == 'L') { toggleLockYSetting();    return true; }
+    if (code == 'Y') { toggleLockYSetting();    return true; }
     if (code == 'R') { toggleLockRefSetting();  return true; }
 
     return false;
@@ -660,6 +660,10 @@ void PianoRoll::toggleLockRefSetting() {
         settingsBar.setLockRef(false, true);
         settingsBar.setLockRef(true, true);
         return;
+    }
+
+    if (notesSelected.size() == 1 && notesSelected[0] == lockedNoteReference) {
+        notesSelected.clear();
     }
 
     settingsBar.setLockRef(false, true);
