@@ -8,6 +8,7 @@ UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProc
     addAndMakeVisible(pianoRoll);
 
     setSize (1200, 400);
+    setResizable(true, true);
 }
 
 UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;

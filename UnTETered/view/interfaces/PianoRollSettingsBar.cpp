@@ -6,42 +6,60 @@
 
 #include <utility>
 
+#include "IntervalPresets.h"
+
 PianoRollSettingsBar::PianoRollSettingsBar(
-    std::function<void()> handleLock,
-    std::function<void()> handleRef,
-    std::function<void()> handleFrac,
+    std::function<void()> handleLockY,
+    std::function<void()> handleLockRef,
+    std::function<void()> handleVals,
+    std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring
-    ) : handleLockYChange(std::move(handleLock)),
-        handleReferenceChange(std::move(handleRef)),
-        handlePotentialRatiosChange(std::move(handleFrac)),
+    ) : handleLockYChange(std::move(handleLockY)),
+        handleLockRefChange(std::move(handleLockRef)),
+        handleIntervalsChange(std::move(handleVals)),
+        handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)) {
     initialiseLockY();
-    initialiseReference();
-    initialisePotentialRatios();
+    initialiseLockRef();
+    initialiseIntervals();
+    initialiseCustomIntervals();
     initialiseMonitoring();
 }
 
 void PianoRollSettingsBar::initialiseLockY() {
-    addAndMakeVisible(lockYComboBox);
-    lockYComboBox.setColour(juce::ComboBox::backgroundColourId, COMBOBOX_BACKGROUND_COLOUR);
-    lockYComboBox.addItem("lock", locked+1);
-    lockYComboBox.addItem("snap", snap+1);
-    lockYComboBox.addItem("free", continuous+1);
-    lockYComboBox.onChange = handleLockYChange;
+    addAndMakeVisible(lockYToggle);
+    lockYToggle.onStateChange = handleLockYChange;
+    lockYToggle.setHelpText("hoi");
 }
 
-void PianoRollSettingsBar::initialiseReference() {
-    addAndMakeVisible(referenceComboBox);
-    referenceComboBox.setColour(juce::ComboBox::backgroundColourId, COMBOBOX_BACKGROUND_COLOUR);
-    referenceComboBox.addItem("select", selectedNote+1);
-    referenceComboBox.addItem("fixed", lockNote+1);
-    referenceComboBox.onChange = handleReferenceChange;
+void PianoRollSettingsBar::initialiseLockRef() {
+    addAndMakeVisible(lockRefToggle);
+    lockRefToggle.onStateChange = handleLockRefChange;
 }
 
-void PianoRollSettingsBar::initialisePotentialRatios() {
-    addAndMakeVisible(potentialRatiosField);
-    potentialRatiosField.setColour(juce::TextEditor::backgroundColourId, COMBOBOX_BACKGROUND_COLOUR);
-    potentialRatiosField.onTextChange = handlePotentialRatiosChange;
+void PianoRollSettingsBar::initialiseIntervals() {
+    addAndMakeVisible(intervalsComboBox);
+    intervalsComboBox.onChange = handleIntervalsChange;
+
+    intervalsComboBox.addItem("7-limit", SEVEN_LIMIT_ID);
+    intervalsComboBox.addItem("custom", CUSTOM_INTERVALS_ID);
+
+    intervalsComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
+    intervalsComboBox.setColour(juce::ComboBox::outlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    intervalsComboBox.setColour(juce::ComboBox::arrowColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    intervalsComboBox.setColour(juce::ComboBox::textColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 1.f));
+}
+
+void PianoRollSettingsBar::initialiseCustomIntervals() {
+    addAndMakeVisible(customIntervalsField);
+    customIntervalsField.setColour(juce::TextEditor::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
+    customIntervalsField.setColour(juce::TextEditor::textColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 1.f));
+    customIntervalsField.setColour(juce::TextEditor::outlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.setColour(juce::TextEditor::highlightColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.setColour(juce::TextEditor::highlightedTextColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.setColour(juce::TextEditor::shadowColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.onTextChange = handleCustomIntervalsChange;
 }
 
 void PianoRollSettingsBar::initialiseMonitoring() {
@@ -50,32 +68,50 @@ void PianoRollSettingsBar::initialiseMonitoring() {
     monitoringToggle.onClick = handleMonitoringChange;
 }
 
-LockY PianoRollSettingsBar::getLockY() const {
-    return static_cast<LockY>(lockYComboBox.getSelectedId() - 1);
+void PianoRollSettingsBar::setCustomIntervalsVisibility(bool visible) {
+    customIntervalsField.setVisible(visible);
 }
 
-Reference PianoRollSettingsBar::getReference() const {
-    return static_cast<Reference>(referenceComboBox.getSelectedId() - 1);
+bool PianoRollSettingsBar::getLockY() const {
+    return lockYToggle.getToggleState();
 }
 
-std::vector<Fraction> PianoRollSettingsBar::getPotentialRatios() const {
-    return potentialRatiosField.getFractions();
+bool PianoRollSettingsBar::getLockRef() const {
+    return lockRefToggle.getToggleState();
+}
+
+int PianoRollSettingsBar::getIntervals() const {
+    return intervalsComboBox.getSelectedId();
+}
+
+std::vector<Fraction> PianoRollSettingsBar::getCustomIntervals() const {
+    return customIntervalsField.getFractions();
 }
 
 bool PianoRollSettingsBar::isMonitoringEnabled() const {
     return monitoringToggle.getToggleState();
 }
 
-void PianoRollSettingsBar::setLockY(const LockY lockY) {
-    lockYComboBox.setSelectedId(lockY+1);
+void PianoRollSettingsBar::setLockY(bool lockY, bool sendNotification) {
+    if (sendNotification)
+        lockYToggle.setToggleState(lockY, juce::sendNotification);
+    else
+        lockYToggle.setToggleState(lockY, juce::dontSendNotification);
 }
 
-void PianoRollSettingsBar::setReference(const Reference reference) {
-    referenceComboBox.setSelectedId(reference+1);
+void PianoRollSettingsBar::setLockRef(bool lockRef, bool sendNotification) {
+    if (sendNotification)
+        lockRefToggle.setToggleState(lockRef, juce::sendNotification);
+    else
+        lockRefToggle.setToggleState(lockRef, juce::dontSendNotification);
 }
 
-void PianoRollSettingsBar::setPotentialRatios(const std::vector<Fraction>& fractions) {
-    potentialRatiosField.setFractions(fractions);
+void PianoRollSettingsBar::setIntervals(int id) {
+    intervalsComboBox.setSelectedId(id);
+}
+
+void PianoRollSettingsBar::setCustomIntervals(const std::vector<Fraction>& fractions) {
+    customIntervalsField.setFractions(fractions);
 }
 
 void PianoRollSettingsBar::setMonitoringEnabled(const bool enabled)
@@ -85,12 +121,13 @@ void PianoRollSettingsBar::setMonitoringEnabled(const bool enabled)
 
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
-    lockYComboBox.setBounds(bounds.removeFromLeft(70));
+    lockYToggle.setBounds(bounds.removeFromLeft(70));
     bounds.removeFromLeft(MARGIN);
-    referenceComboBox.setBounds(bounds.removeFromLeft(80));
+    lockRefToggle.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
-    // Monitoring toggle sits at the right end.
-    monitoringToggle.setBounds(bounds.removeFromRight(80));
+    monitoringToggle.setBounds(bounds.removeFromLeft(90));
     bounds.removeFromRight(MARGIN);
-    potentialRatiosField.setBounds(bounds);
+    intervalsComboBox.setBounds(bounds.removeFromLeft(100));
+    bounds.removeFromLeft(MARGIN);
+    customIntervalsField.setBounds(bounds);
 }

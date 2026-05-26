@@ -8,45 +8,49 @@
 
 #include "FractionsField.h"
 
-enum LockY{locked, snap, continuous};
-enum Reference{selectedNote, lockNote, customRef};
-
 class PianoRollSettingsBar : public juce::Component {
 public:
     const int MARGIN = 5;
-    const juce::Colour COMBOBOX_BACKGROUND_COLOUR = {70, 70, 70};
 
     explicit PianoRollSettingsBar(
-        std::function<void()> handleLock,
-        std::function<void()> handleRef,
-        std::function<void()> handleFrac,
+        std::function<void()> handleLockY,
+        std::function<void()> handleLockRef,
+        std::function<void()> handleVals,
+        std::function<void()> handleCustomVals,
         std::function<void()> handleMonitoring
         );
 
-    LockY getLockY() const;
-    Reference getReference() const;
-    std::vector<Fraction> getPotentialRatios() const;
+    bool getLockY() const;
+    bool getLockRef() const;
+    int getIntervals() const;
+    std::vector<Fraction> getCustomIntervals() const;
     bool isMonitoringEnabled() const;
 
-    void setLockY(LockY lockY);
-    void setReference(Reference reference);
-    void setPotentialRatios(const std::vector<Fraction>& fractions);
+    void setLockY(bool lockY, bool sendNotification = false);
+    void setLockRef(bool lockRef, bool sendNotification = false);
+    void setIntervals(int id);
+    void setCustomIntervals(const std::vector<Fraction>& fractions);
     void setMonitoringEnabled(bool enabled);
 
+    void setCustomIntervalsVisibility(bool visible);
+
 private:
-    juce::ComboBox    lockYComboBox;
-    juce::ComboBox    referenceComboBox;
-    FractionsField    potentialRatiosField;
+    juce::ToggleButton lockYToggle { "lock Y" };
+    juce::ToggleButton lockRefToggle { "lock ref" };
+    juce::ComboBox intervalsComboBox;
+    FractionsField customIntervalsField;
     juce::ToggleButton monitoringToggle { "monitor" };
 
     std::function<void()> handleLockYChange;
-    std::function<void()> handleReferenceChange;
-    std::function<void()> handlePotentialRatiosChange;
+    std::function<void()> handleLockRefChange;
+    std::function<void()> handleIntervalsChange;
+    std::function<void()> handleCustomIntervalsChange;
     std::function<void()> handleMonitoringChange;
 
     void initialiseLockY();
-    void initialiseReference();
-    void initialisePotentialRatios();
+    void initialiseLockRef();
+    void initialiseIntervals();
+    void initialiseCustomIntervals();
     void initialiseMonitoring();
 
     void resized() override;

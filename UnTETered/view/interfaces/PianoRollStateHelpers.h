@@ -12,5 +12,5 @@ PianoRollState makeStateFromNoteRegion(const NoteRegion& region);
 NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange = 2.0f);
 std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var);
 juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> var);
-juce::String makeStringFromPotentialRatios(const std::vector<std::pair<int,int>>& ratios);
-std::vector<std::pair<int,int>> makePotentialRatiosFromString(const juce::String& str);
+juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals);
+std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str);

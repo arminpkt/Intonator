@@ -6,6 +6,8 @@
 
 #include <vector>
 #include <juce_core/juce_core.h>
+
+#include "IntervalPresets.h"
 #include "../../logic/Monzo.h"
 
 
@@ -23,13 +25,13 @@ struct PianoRollState
 {
     std::vector<StoredPianoNote> notes;
 
-    float  octaveHeightPxF  = 120.0f;
-    float  barWidthPxF      = 120.0f;
-    double freqBottomScreen = 55.0;
-    float  barLeftScreen    = 0.0f;
+    float  octaveHeightPxF   = 120.0f;
+    float  barWidthPxF       = 120.0f;
+    double freqBottomScreen  = 55.0;
+    float  barLeftScreen     = 0.0f;
 
-    int  lockY             = 0;      // LockY enum value, default = locked
-    int  reference         = 0;      // Reference enum value, default = selectedNote
-    bool monitoringEnabled = false;
-    std::vector<std::pair<int,int>> potentialRatios;  // num/den pairs, no Fraction include needed
+    bool   lockY             = false;
+    bool   monitoringEnabled = false;
+    int    intervalsSetting  = SEVEN_LIMIT_ID;
+    std::vector<std::pair<int,int>> customIntervals;  // num/den pairs, no Fraction include needed
 };

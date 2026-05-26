@@ -28,8 +28,8 @@ public:
     const juce::Colour MULT_SELECTED_BASE_COLOUR = {100, 100, 100};
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
-    const juce::Colour POTENTIAL_RATIO_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
-    const juce::Colour POTENTIAL_RATIO_TEXT_COLOUR = {50, 50, 50};
+    const juce::Colour INTERVAL_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
+    const juce::Colour INTERVAL_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour DRAGGED_RECT_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 50);
     const juce::Colour DRAGGED_RECT_OUTLINE_COLOUR = {150, 200, 150};
     const juce::Colour PLAYHEAD_COLOUR = {255, 255, 255};
@@ -39,12 +39,11 @@ public:
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     ~PianoRoll() override;
-    void initialisePotentialRatios();
 
 private:
     void paint(juce::Graphics& g) override;
-    static void fillRect(const Rect& rect, juce::Graphics& g);
-    static void drawRect(const Rect& rect, juce::Graphics& g);
+    static void fillRect(juce::Graphics& g, const Rect& rect);
+    static void drawRect(juce::Graphics& g, const Rect& rect);
     static void drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g, juce::Justification justification);
     void drawBackground(juce::Graphics& g, const Rect& bounds) const;
     void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const;
@@ -52,9 +51,10 @@ private:
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
     void drawNote(const Note* note, const juce::Colour& baseColour, const juce::Colour& outlineColour, juce::Graphics& g) const;
-    void drawPotentialRatios(juce::Graphics& g) const;
+    void drawIntervals(juce::Graphics& g) const;
     void drawRectDragged(juce::Graphics& g) const;
     void drawOrientationBar(juce::Graphics& g) const;
+    void drawDividerBeneath(juce::Graphics& g, Rect bounds) const;
     void drawPlayhead(juce::Graphics& g) const;
     void drawPasteCursorHandle(juce::Graphics& g) const;
     void drawPasteCursorLine(juce::Graphics& g) const;
@@ -73,12 +73,12 @@ private:
     int getXPxFromBar(float bar) const;
     Note* getNoteAt(Point px);
     bool referenceExists() const;
-    std::optional<Fraction> getPotentialRatioAt(Point px) const;
+    std::optional<Fraction> getIntervalAt(Point px) const;
     Rect getNoteBounds(const Note* note) const;
-    std::optional<Rect> getPotentialRatioBounds(Fraction ratio) const;
+    std::optional<Rect> getIntervalBounds(Fraction ratio) const;
     std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
     std::optional<double> getReferenceFrequency() const;
-    std::vector<double> getPotentialFrequencies(Note* note) const;
+    std::vector<double> getIntervalFrequencies(Note* note) const;
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
     void unselectNote(const Note* note);
@@ -104,11 +104,13 @@ private:
     void handleDoubleClick(Point px);
     void handleShiftSingleClick(Point px);
     bool keyPressed(const juce::KeyPress& key) override;
-    void incrementLockYSetting();
-    void incrementReferenceSetting();
+    void toggleLockYSetting();
+    void setLockY(bool lockY);
+    void toggleLockRefSetting();
+    void setLockRef(bool lockRef);
     void addNoteWithoutReference(double frequency, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
-    void deleteNote(Note* note);
+    void deleteNote(Note* note, bool pushState = true);
     void deleteSelection();
     void copySelectionToClipboard();
     void cutSelection();
@@ -124,8 +126,9 @@ private:
     Rect getOrientationBarBounds() const;
 
     void handleLockYChanged();
-    void handleReferenceChanged();
-    void handlePotentialRatiosChanged();
+    void handleLockRefChanged();
+    void handleIntervalsChanged();
+    void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
 
     void timerCallback() override;
@@ -166,9 +169,12 @@ private:
     NoteRegion noteRegion;
 
     PianoRollSettingsBar settingsBar;
-    LockY lockYSetting = locked;
-    Reference referenceSetting = selectedNote;
-    std::vector<Fraction> potentialRatios;
+    bool lockYSetting = false;
+    bool lockRefSetting = false;
+
+    int intervalsSetting = 1;
+    std::vector<Fraction> intervals;
+    std::vector<Fraction> customIntervals;
 
     float octaveHeightPxF = 200;
     float barWidthPxF = 100;
@@ -184,7 +190,7 @@ private:
     std::optional<std::tuple<double, Fraction, double>> customReference;
     Note* lockedNoteReference{};
     Note* noteHighlighted{};
-    std::optional<Fraction> potentialRatioHighlighted;
+    std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
     std::vector<double> selectedNotesRefFreqs;
