@@ -106,12 +106,16 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
 
     if (notesSelected.size() > 1) {
         auto intRatios = getIntRatios(notesSelected);
+        auto oddified = getIntRatios(notesSelected, true);
         for (size_t i = 0; i < notesSelected.size(); ++i) {
             auto* noteSelected = notesSelected[i];
             drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
             if (intRatios) {
                 g.setColour(INT_RATIO_TEXT_COLOUR);
-                drawText(juce::String(std::to_string(intRatios.value()[i])), getNoteBounds(noteSelected), g);
+                auto boundsLeft = getNoteBounds(noteSelected);
+                auto boundsRight = boundsLeft.removeFromRight(boundsLeft.getWidth()/2);
+                drawText(juce::String(intRatios.value()[i]), boundsLeft, g);
+                drawText("(" + juce::String(oddified.value()[i]) + ")", boundsRight, g, juce::Justification::right);
             }
         }
     }
@@ -201,7 +205,7 @@ void PianoRoll::drawPasteCursorLine(juce::Graphics& g) const {
 void PianoRoll::drawSettingsBackground(juce::Graphics& g) const {
     auto settingsBarBounds = getSettingsBarBounds();
     drawBackground(g, settingsBarBounds);
-    g.setColour(juce::Colour::fromFloatRGBA(0, 0, 0, 0.2f));
+    g.setColour(SETTINGS_BACKGROUND_COLOUR);
     fillRect(g, settingsBarBounds);
     drawDividerBeneath(g, settingsBarBounds);
 }

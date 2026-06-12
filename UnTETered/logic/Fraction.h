@@ -39,6 +39,10 @@ public:
         return monzo.getNumeratorAndDenominator();
     }
 
+    [[nodiscard]] Fraction oddified() const {
+        return Fraction{monzo.oddified()};
+    }
+
     explicit operator double() const {
         if (!cachedValue)
             cachedValue = static_cast<double>(monzo);

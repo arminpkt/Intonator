@@ -84,6 +84,12 @@ public:
         return std::make_pair(num, denom);
     }
 
+    [[nodiscard]] Monzo oddified() const {
+        Monzo oddified(primePowers);
+        oddified.primePowers[0] = 0;
+        return oddified;
+    }
+
     Monzo operator-() const {
         std::array<int, primes::PrimeCount> negatedPowers{};
         for (size_t i = 0; i < primePowers.size(); ++i)

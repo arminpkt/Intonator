@@ -11,6 +11,9 @@
 class PianoRollSettingsBar : public juce::Component {
 public:
     const int MARGIN = 5;
+    const juce::Colour TRANSPARENT_COLOUR = juce::Colour::fromFloatRGBA(0, 0, 0, 0);
+    const juce::Colour LINE_COLOUR = juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f);
+    const juce::Colour TEXT_COLOUR = {255, 255, 255};
 
     explicit PianoRollSettingsBar(
         std::function<void()> handleLockY,

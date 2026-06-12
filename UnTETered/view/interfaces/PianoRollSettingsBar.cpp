@@ -44,21 +44,21 @@ void PianoRollSettingsBar::initialiseIntervals() {
     intervalsComboBox.addItem("7-limit", SEVEN_LIMIT_ID);
     intervalsComboBox.addItem("custom", CUSTOM_INTERVALS_ID);
 
-    intervalsComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
-    intervalsComboBox.setColour(juce::ComboBox::outlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    intervalsComboBox.setColour(juce::ComboBox::arrowColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    intervalsComboBox.setColour(juce::ComboBox::textColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 1.f));
+    intervalsComboBox.setColour(juce::ComboBox::backgroundColourId, TRANSPARENT_COLOUR);
+    intervalsComboBox.setColour(juce::ComboBox::outlineColourId, LINE_COLOUR);
+    intervalsComboBox.setColour(juce::ComboBox::arrowColourId, LINE_COLOUR);
+    intervalsComboBox.setColour(juce::ComboBox::textColourId, TEXT_COLOUR);
 }
 
 void PianoRollSettingsBar::initialiseCustomIntervals() {
     addAndMakeVisible(customIntervalsField);
-    customIntervalsField.setColour(juce::TextEditor::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
-    customIntervalsField.setColour(juce::TextEditor::textColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 1.f));
-    customIntervalsField.setColour(juce::TextEditor::outlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    customIntervalsField.setColour(juce::TextEditor::focusedOutlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    customIntervalsField.setColour(juce::TextEditor::highlightColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    customIntervalsField.setColour(juce::TextEditor::highlightedTextColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
-    customIntervalsField.setColour(juce::TextEditor::shadowColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
+    customIntervalsField.setColour(juce::TextEditor::backgroundColourId, TRANSPARENT_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::textColourId, TEXT_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::outlineColourId, LINE_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::focusedOutlineColourId, LINE_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::highlightColourId, LINE_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::highlightedTextColourId, LINE_COLOUR);
+    customIntervalsField.setColour(juce::TextEditor::shadowColourId, LINE_COLOUR);
     customIntervalsField.onTextChange = handleCustomIntervalsChange;
 }
 

@@ -34,7 +34,7 @@ public:
     const juce::Colour DRAGGED_RECT_OUTLINE_COLOUR = {150, 200, 150};
     const juce::Colour PLAYHEAD_COLOUR = {255, 255, 255};
     const juce::Colour PASTE_CURSOR_COLOUR = {255, 160, 30};
-    const juce::Colour SETTINGS_BACKGROUND_COLOUR = {70, 70, 70};
+    const juce::Colour SETTINGS_BACKGROUND_COLOUR = juce::Colour::fromFloatRGBA(0, 0, 0, 0.2f);
     const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
