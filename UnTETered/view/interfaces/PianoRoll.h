@@ -82,6 +82,8 @@ private:
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
     void unselectNote(const Note* note);
+    void lockRef();
+    void unlockRef();
 
     float mirrorYPx(float y, float axis = 0.5f) const;
     int mirrorYPx(int y, float axis = 0.5f) const;
@@ -107,7 +109,6 @@ private:
     void toggleLockYSetting();
     void setLockY(bool lockY);
     void toggleLockRefSetting();
-    void setLockRef(bool lockRef);
     void addNoteWithoutReference(double frequency, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
     void deleteNote(Note* note, bool pushState = true);
@@ -126,7 +127,6 @@ private:
     Rect getOrientationBarBounds() const;
 
     void handleLockYChanged();
-    void handleLockRefChanged();
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
@@ -170,7 +170,6 @@ private:
 
     PianoRollSettingsBar settingsBar;
     bool lockYSetting = false;
-    bool lockRefSetting = false;
 
     int intervalsSetting = 1;
     std::vector<Fraction> intervals;
@@ -188,7 +187,7 @@ private:
 
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
-    Note* lockedNoteReference{};
+    std::optional<std::pair<Note, Note*>> lockedRef{};
     Note* noteHighlighted{};
     std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};

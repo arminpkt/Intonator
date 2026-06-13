@@ -13,7 +13,6 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
     : processor(proc),
       settingsBar(PianoRollSettingsBar(
           [this] { handleLockYChanged(); },
-          [this] { handleLockRefChanged(); },
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
           [this] { handleMonitoringChanged(); })) {
@@ -89,9 +88,6 @@ int PianoRoll::getNrOfSubDivs() const {
 void PianoRoll::drawNotes(juce::Graphics& g) const {
     for (auto& note : noteRegion.notes)
         drawNote(note.get(), NOTE_BASE_COLOUR, NOTE_OUTLINE_COLOUR, g);
-
-    if (lockRefSetting)
-        drawNote(lockedNoteReference, SELECTED_BASE_COLOUR.withMultipliedSaturation(.5), SELECTED_OUTLINE_COLOUR, g);
 
     if (notesSelected.size() == 1) {
         auto* noteSelected = notesSelected[0];
@@ -306,10 +302,10 @@ std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
 }
 
 std::optional<std::tuple<double, Fraction, double>> PianoRoll::getReferenceRefFreqRatioIrratio() const {
-    if (lockRefSetting)
-        return std::make_tuple(lockedNoteReference->referenceFrequency,
-                               lockedNoteReference->ratio,
-                               lockedNoteReference->irratio);
+    if (lockedRef)
+        return std::make_tuple(lockedRef.value().first.referenceFrequency,
+                               lockedRef.value().first.ratio,
+                               lockedRef.value().first.irratio);
     if (notesSelected.size() == 1) {
         auto* n = notesSelected[0];
         return std::make_tuple(n->referenceFrequency, n->ratio, n->irratio);
@@ -352,6 +348,15 @@ void PianoRoll::unselectNote(const Note* note) {
     auto index = indexOfSelection(note);
     if (index)
         notesSelected.erase(notesSelected.begin() + static_cast<long>(index.value()));
+}
+
+void PianoRoll::lockRef() {
+    if (notesSelected.size() == 1)
+        lockedRef = {*notesSelected[0], notesSelected[0]};
+}
+
+void PianoRoll::unlockRef() {
+    lockedRef = {};
 }
 
 void PianoRoll::startNotePreview(const Note* note) {
@@ -406,6 +411,9 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     }
 
     previewedDuringCurrentDrag.clear();
+
+    if (event.mods.isAltDown())
+        lockRef();
 
     int nrOfClicks = (event.getNumberOfClicks() - 1) % 2 + 1;
     if (event.mods.isShiftDown() && nrOfClicks == 1)
@@ -472,6 +480,10 @@ void PianoRoll::mouseUp(const juce::MouseEvent& _) {
         noteWasDraggedThisGesture = false;
     }
     undoSnapshotTakenForCurrentDrag = false;
+
+    if (lockedRef)
+        notesSelected = {lockedRef.value().second};
+    unlockRef();
 }
 
 void PianoRoll::mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) {
@@ -586,7 +598,7 @@ void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos)
         return;
     }
 
-    if (!lockRefSetting) return;
+    if (!lockedRef) return;
 
     for (auto* s : notesSelected) if (s == lockedNoteReference) return;
 
@@ -803,18 +815,6 @@ void PianoRoll::tripletGrid() {
 
 void PianoRoll::handleLockYChanged() {
     lockYSetting = settingsBar.getLockY();
-    pushNoteStateToProcessor();
-}
-
-void PianoRoll::handleLockRefChanged() {
-    bool newLockRef = settingsBar.getLockRef();
-
-    if (newLockRef) {
-        if (notesSelected.size() == 1) lockedNoteReference = notesSelected[0];
-        else newLockRef = false;
-    }
-
-    setLockRef(newLockRef);
     pushNoteStateToProcessor();
 }
 

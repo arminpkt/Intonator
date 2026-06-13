@@ -10,17 +10,14 @@
 
 PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleLockY,
-    std::function<void()> handleLockRef,
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring
     ) : handleLockYChange(std::move(handleLockY)),
-        handleLockRefChange(std::move(handleLockRef)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)) {
     initialiseLockY();
-    initialiseLockRef();
     initialiseIntervals();
     initialiseCustomIntervals();
     initialiseMonitoring();
@@ -30,11 +27,6 @@ void PianoRollSettingsBar::initialiseLockY() {
     addAndMakeVisible(lockYToggle);
     lockYToggle.onStateChange = handleLockYChange;
     lockYToggle.setHelpText("hoi");
-}
-
-void PianoRollSettingsBar::initialiseLockRef() {
-    addAndMakeVisible(lockRefToggle);
-    lockRefToggle.onStateChange = handleLockRefChange;
 }
 
 void PianoRollSettingsBar::initialiseIntervals() {
@@ -76,10 +68,6 @@ bool PianoRollSettingsBar::getLockY() const {
     return lockYToggle.getToggleState();
 }
 
-bool PianoRollSettingsBar::getLockRef() const {
-    return lockRefToggle.getToggleState();
-}
-
 int PianoRollSettingsBar::getIntervals() const {
     return intervalsComboBox.getSelectedId();
 }
@@ -99,13 +87,6 @@ void PianoRollSettingsBar::setLockY(bool lockY, bool sendNotification) {
         lockYToggle.setToggleState(lockY, juce::dontSendNotification);
 }
 
-void PianoRollSettingsBar::setLockRef(bool lockRef, bool sendNotification) {
-    if (sendNotification)
-        lockRefToggle.setToggleState(lockRef, juce::sendNotification);
-    else
-        lockRefToggle.setToggleState(lockRef, juce::dontSendNotification);
-}
-
 void PianoRollSettingsBar::setIntervals(int id) {
     intervalsComboBox.setSelectedId(id);
 }
@@ -122,8 +103,6 @@ void PianoRollSettingsBar::setMonitoringEnabled(const bool enabled)
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
     lockYToggle.setBounds(bounds.removeFromLeft(70));
-    bounds.removeFromLeft(MARGIN);
-    lockRefToggle.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
     monitoringToggle.setBounds(bounds.removeFromLeft(90));
     bounds.removeFromRight(MARGIN);
