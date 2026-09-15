@@ -12,8 +12,14 @@
 #include "Fraction.h"
 #include "PitchClass.h"
 
+
+const juce::String NOTE_NAMES[] = {
+    "A", "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab"
+};
+
 struct Note {
     double referenceFrequency;
+
     Fraction ratio;
     double irratio;
     float start;
@@ -27,9 +33,7 @@ struct Note {
      * @param f     Reference frequency in Hz
      */
     [[nodiscard]] double getDistanceFrom(const double f) const {
-        double ratioToF = getFrequency() / f;
-        double ratioLog = std::log2(ratioToF);
-        return ratioLog * 12;
+        return getDistance(f, getFrequency());
     }
 
     /** Computes the interval between the input's frequency and this note's frequency in semitones.
@@ -60,6 +64,14 @@ struct Note {
             throw std::out_of_range("note out of midi range");
         }
         return static_cast<int>(roundedMidiValue);
+    }
+
+    // Computes cents from closest 12TET note, range -50 to 50.
+    [[nodiscard]] int getCentOffset() const {
+        auto pitch = getPitch();
+        auto rounded = std::round(pitch);
+        auto offset = pitch - rounded;
+        return static_cast<int>(offset * 100);
     }
 
     /** Computer the pitchbend offset in semitones with respect to the input MIDI note value.
@@ -116,6 +128,13 @@ struct Note {
         }
     }
 
+    void roundReferenceTo12TET() {
+        auto semitonesTo440 = getDistance(referenceFrequency, 440);
+        auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
+        auto factor = std::pow(2, semitonesToClosest12TET / 12);
+        referenceFrequency *= factor;
+    }
+
     [[nodiscard]] float getHue() const {
         auto pitchClass = getPitchClass();
         float hue = static_cast<float>(pitchClass.value) / 12.f;
@@ -124,6 +143,21 @@ struct Note {
 
     [[nodiscard]] double getFrequency() const {
         return static_cast<double>(ratio) * referenceFrequency;
+    }
+
+    [[nodiscard]] juce::String getNoteName() const {
+        auto pc = getPitchClass();
+        auto index = pc.getRoundedValue() % 12;
+        return NOTE_NAMES[index];
+    }
+
+    [[nodiscard]] juce::String getAbsoluteInfo() const {
+        juce::String noteName = getNoteName();
+        auto centOffset = getCentOffset();
+        juce::String connector = centOffset >= 0 ? " + " : " - ";
+        juce::String centString = juce::String{std::abs(centOffset)} + "ct";
+
+        return noteName + connector + centString;
     }
 
     bool isFamiliarWith(const Note* note) const {
@@ -157,5 +191,11 @@ struct Note {
     Note& operator/=(const int& i) {
         *this /= Fraction(i, 1);
         return *this;
+    }
+
+    [[nodiscard]] static double getDistance(const double from, const double to) {
+        double ratio = to / from;
+        double ratioLog = std::log2(ratio);
+        return ratioLog * 12;
     }
 };

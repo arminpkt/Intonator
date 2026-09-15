@@ -19,6 +19,10 @@ struct PitchClass {
         return v;
     }
 
+    [[nodiscard]] int getRoundedValue() const {
+        return static_cast<int>(std::round(value));
+    }
+
     PitchClass operator+(const PitchClass& other) const {
         return {value + other.value};
     }

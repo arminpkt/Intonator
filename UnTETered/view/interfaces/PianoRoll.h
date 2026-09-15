@@ -20,11 +20,13 @@ public:
     const juce::Colour BAR_LINE_COLOUR = {50, 50, 50};
     const juce::Colour NOTE_BASE_COLOUR = {100, 100, 100};
     const juce::Colour NOTE_OUTLINE_COLOUR = {50, 50, 50};
+    const juce::Colour BASE_TEXT_COLOUR = {170, 170, 170};
     const juce::Colour FAMILY_BASE_COLOUR = {50, 50, 180};
     const juce::Colour FAMILY_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour FAMILY_RATIO_TEXT_COLOUR = {170, 170, 170};
     const juce::Colour SELECTED_BASE_COLOUR = {50, 180, 50};
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
+    const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour MULT_SELECTED_BASE_COLOUR = {100, 100, 100};
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
@@ -44,7 +46,8 @@ private:
     void paint(juce::Graphics& g) override;
     static void fillRect(juce::Graphics& g, const Rect& rect);
     static void drawRect(juce::Graphics& g, const Rect& rect);
-    static void drawText(const juce::String& text, const Rect& bounds, const juce::Graphics& g, juce::Justification justification);
+    static void drawText(const juce::String& text, const Rect& bounds, juce::Colour colour, juce::Graphics& g, juce::Justification
+                         justification);
     void drawBackground(juce::Graphics& g, const Rect& bounds) const;
     void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const;
     Fraction getSubDivsFraction() const;
@@ -108,6 +111,9 @@ private:
     void setLockY(bool lockY);
     void toggleLockRefSetting();
     void setLockRef(bool lockRef);
+    void toggleAbsoluteInfoSetting();
+    void setAbsoluteInfo(bool absoluteInfo);
+    void roundReferenceTo12TET() const;
     void addNoteWithoutReference(double frequency, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
     void deleteNote(Note* note, bool pushState = true);
@@ -127,6 +133,7 @@ private:
 
     void handleLockYChanged();
     void handleLockRefChanged();
+    void handleAbsoluteInfoChanged();
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
@@ -171,6 +178,7 @@ private:
     PianoRollSettingsBar settingsBar;
     bool lockYSetting = false;
     bool lockRefSetting = false;
+    bool absoluteInfoSetting = false;
 
     int intervalsSetting = 1;
     std::vector<Fraction> intervals;

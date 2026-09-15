@@ -11,16 +11,19 @@
 PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleLockY,
     std::function<void()> handleLockRef,
+    std::function<void()> handleAbsoluteInfo,
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring
     ) : handleLockYChange(std::move(handleLockY)),
         handleLockRefChange(std::move(handleLockRef)),
+        handleAbsoluteInfoChange(std::move(handleAbsoluteInfo)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)) {
     initialiseLockY();
     initialiseLockRef();
+    initialiseAbsoluteInfo();
     initialiseIntervals();
     initialiseCustomIntervals();
     initialiseMonitoring();
@@ -35,6 +38,11 @@ void PianoRollSettingsBar::initialiseLockY() {
 void PianoRollSettingsBar::initialiseLockRef() {
     addAndMakeVisible(lockRefToggle);
     lockRefToggle.onStateChange = handleLockRefChange;
+}
+
+void PianoRollSettingsBar::initialiseAbsoluteInfo() {
+    addAndMakeVisible(absoluteInfoToggle);
+    absoluteInfoToggle.onStateChange = handleAbsoluteInfoChange;
 }
 
 void PianoRollSettingsBar::initialiseIntervals() {
@@ -80,6 +88,10 @@ bool PianoRollSettingsBar::getLockRef() const {
     return lockRefToggle.getToggleState();
 }
 
+bool PianoRollSettingsBar::getAbsoluteInfo() const {
+    return absoluteInfoToggle.getToggleState();
+}
+
 int PianoRollSettingsBar::getIntervals() const {
     return intervalsComboBox.getSelectedId();
 }
@@ -106,6 +118,13 @@ void PianoRollSettingsBar::setLockRef(bool lockRef, bool sendNotification) {
         lockRefToggle.setToggleState(lockRef, juce::dontSendNotification);
 }
 
+void PianoRollSettingsBar::setAbsoluteInfo(bool absoluteInfo, bool sendNotification) {
+    if (sendNotification)
+        absoluteInfoToggle.setToggleState(absoluteInfo, juce::sendNotification);
+    else
+        absoluteInfoToggle.setToggleState(absoluteInfo, juce::dontSendNotification);
+}
+
 void PianoRollSettingsBar::setIntervals(int id) {
     intervalsComboBox.setSelectedId(id);
 }
@@ -124,6 +143,8 @@ void PianoRollSettingsBar::resized() {
     lockYToggle.setBounds(bounds.removeFromLeft(70));
     bounds.removeFromLeft(MARGIN);
     lockRefToggle.setBounds(bounds.removeFromLeft(80));
+    bounds.removeFromLeft(MARGIN);
+    absoluteInfoToggle.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
     monitoringToggle.setBounds(bounds.removeFromLeft(90));
     bounds.removeFromRight(MARGIN);
