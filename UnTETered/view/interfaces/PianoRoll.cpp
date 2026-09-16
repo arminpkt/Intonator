@@ -661,7 +661,7 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     if (code == '2' && key.getModifiers().isCommandDown()) { widenGrid();                return true; }
     if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
     if (code == 'Y') { toggleLockYSetting();        return true; }
-    if (code == 'A') { toggleAbsoluteInfoSetting(); return true; }
+    if (code == 'I') { toggleAbsoluteInfoSetting(); return true; }
     if (code == 'T') { roundReferenceTo12TET();     return true; }
 
     return false;
@@ -685,10 +685,12 @@ void PianoRoll::setAbsoluteInfo(bool absoluteInfo) {
     settingsBar.setAbsoluteInfo(absoluteInfo);
 }
 
-void PianoRoll::roundReferenceTo12TET() const {
+void PianoRoll::roundReferenceTo12TET() {
+    pushUndoSnapshot();
     for (auto& note : notesSelected) {
         note->roundReferenceTo12TET();
     }
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::addNoteWithoutReference(double frequency, float start, float end) {
@@ -740,11 +742,7 @@ void PianoRoll::cutSelection() {
     if (notesSelected.empty()) return;
     pushUndoSnapshot();
     copySelectionToClipboard();
-    while (!notesSelected.empty()) {
-        auto* note = notesSelected.back();
-        noteRegion.deleteNote(note);
-        notesSelected.pop_back();
-    }
+    deleteSelection();
     pushNoteStateToProcessor();
 }
 

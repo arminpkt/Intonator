@@ -36,14 +36,12 @@ public:
 
 private:
     juce::ToggleButton lockYToggle { "lock Y" };
-    juce::ToggleButton lockRefToggle { "lock ref" };
-    juce::ToggleButton absoluteInfoToggle {"absolute"};
+    juce::ToggleButton absoluteInfoToggle {"note info"};
     juce::ComboBox intervalsComboBox;
     FractionsField customIntervalsField;
     juce::ToggleButton monitoringToggle { "monitor" };
 
     std::function<void()> handleLockYChange;
-    std::function<void()> handleLockRefChange;
     std::function<void()> handleAbsoluteInfoChange;
     std::function<void()> handleIntervalsChange;
     std::function<void()> handleCustomIntervalsChange;
