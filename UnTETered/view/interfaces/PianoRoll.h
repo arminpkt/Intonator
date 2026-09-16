@@ -18,8 +18,8 @@ public:
     const int ORIENTATION_BAR_HEIGHT = 15;
     const juce::Colour SUB_DIV_LINE_COLOUR = {100, 100, 100};
     const juce::Colour BAR_LINE_COLOUR = {50, 50, 50};
-    const juce::Colour NOTE_BASE_COLOUR = {100, 100, 100};
-    const juce::Colour NOTE_OUTLINE_COLOUR = {50, 50, 50};
+    const juce::Colour BASE_NOTE_COLOUR = {100, 100, 100};
+    const juce::Colour BASE_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour BASE_TEXT_COLOUR = {170, 170, 170};
     const juce::Colour FAMILY_BASE_COLOUR = {50, 50, 180};
     const juce::Colour FAMILY_OUTLINE_COLOUR = {50, 50, 50};
@@ -27,6 +27,7 @@ public:
     const juce::Colour SELECTED_BASE_COLOUR = {50, 180, 50};
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
+    const juce::Colour LOCKED_REF_OUTLINE_COLOUR = {50, 200, 50};
     const juce::Colour MULT_SELECTED_BASE_COLOUR = {100, 100, 100};
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
@@ -75,12 +76,11 @@ private:
     int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
     Note* getNoteAt(Point px);
-    bool referenceExists() const;
     std::optional<Fraction> getIntervalAt(Point px) const;
     Rect getNoteBounds(const Note* note) const;
     std::optional<Rect> getIntervalBounds(Fraction ratio) const;
+    std::optional<Note*> getReference() const;
     std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
-    std::optional<double> getReferenceFrequency() const;
     std::vector<double> getIntervalFrequencies(Note* note) const;
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
@@ -106,11 +106,10 @@ private:
     void handleSingleClick(Point px);
     void handleDoubleClick(Point px);
     void handleShiftSingleClick(Point px);
+    void handleOptionSingleClick(Point point);
     bool keyPressed(const juce::KeyPress& key) override;
     void toggleLockYSetting();
     void setLockY(bool lockY);
-    void toggleLockRefSetting();
-    void setLockRef(bool lockRef);
     void toggleAbsoluteInfoSetting();
     void setAbsoluteInfo(bool absoluteInfo);
     void roundReferenceTo12TET() const;
@@ -132,7 +131,6 @@ private:
     Rect getOrientationBarBounds() const;
 
     void handleLockYChanged();
-    void handleLockRefChanged();
     void handleAbsoluteInfoChanged();
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
@@ -177,7 +175,6 @@ private:
 
     PianoRollSettingsBar settingsBar;
     bool lockYSetting = false;
-    bool lockRefSetting = false;
     bool absoluteInfoSetting = false;
 
     int intervalsSetting = 1;
@@ -196,7 +193,7 @@ private:
 
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
-    Note* lockedNoteReference{};
+    std::optional<Note*> lockedNoteReference{};
     Note* noteHighlighted{};
     std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};

@@ -14,7 +14,6 @@ public:
 
     explicit PianoRollSettingsBar(
         std::function<void()> handleLockY,
-        std::function<void()> handleLockRef,
         std::function<void()> handleAbsoluteInfo,
         std::function<void()> handleVals,
         std::function<void()> handleCustomVals,
@@ -22,14 +21,12 @@ public:
         );
 
     bool getLockY() const;
-    bool getLockRef() const;
     bool getAbsoluteInfo() const;
     int getIntervals() const;
     std::vector<Fraction> getCustomIntervals() const;
     bool isMonitoringEnabled() const;
 
     void setLockY(bool lockY, bool sendNotification = false);
-    void setLockRef(bool lockRef, bool sendNotification = false);
     void setAbsoluteInfo(bool absoluteInfo, bool sendNotification = false);
     void setIntervals(int id);
     void setCustomIntervals(const std::vector<Fraction>& fractions);
@@ -53,7 +50,6 @@ private:
     std::function<void()> handleMonitoringChange;
 
     void initialiseLockY();
-    void initialiseLockRef();
     void initialiseAbsoluteInfo();
     void initialiseIntervals();
     void initialiseCustomIntervals();

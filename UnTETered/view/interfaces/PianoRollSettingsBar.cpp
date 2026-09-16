@@ -10,19 +10,16 @@
 
 PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleLockY,
-    std::function<void()> handleLockRef,
     std::function<void()> handleAbsoluteInfo,
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring
     ) : handleLockYChange(std::move(handleLockY)),
-        handleLockRefChange(std::move(handleLockRef)),
         handleAbsoluteInfoChange(std::move(handleAbsoluteInfo)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)) {
     initialiseLockY();
-    initialiseLockRef();
     initialiseAbsoluteInfo();
     initialiseIntervals();
     initialiseCustomIntervals();
@@ -33,11 +30,6 @@ void PianoRollSettingsBar::initialiseLockY() {
     addAndMakeVisible(lockYToggle);
     lockYToggle.onStateChange = handleLockYChange;
     lockYToggle.setHelpText("hoi");
-}
-
-void PianoRollSettingsBar::initialiseLockRef() {
-    addAndMakeVisible(lockRefToggle);
-    lockRefToggle.onStateChange = handleLockRefChange;
 }
 
 void PianoRollSettingsBar::initialiseAbsoluteInfo() {
@@ -84,10 +76,6 @@ bool PianoRollSettingsBar::getLockY() const {
     return lockYToggle.getToggleState();
 }
 
-bool PianoRollSettingsBar::getLockRef() const {
-    return lockRefToggle.getToggleState();
-}
-
 bool PianoRollSettingsBar::getAbsoluteInfo() const {
     return absoluteInfoToggle.getToggleState();
 }
@@ -109,13 +97,6 @@ void PianoRollSettingsBar::setLockY(bool lockY, bool sendNotification) {
         lockYToggle.setToggleState(lockY, juce::sendNotification);
     else
         lockYToggle.setToggleState(lockY, juce::dontSendNotification);
-}
-
-void PianoRollSettingsBar::setLockRef(bool lockRef, bool sendNotification) {
-    if (sendNotification)
-        lockRefToggle.setToggleState(lockRef, juce::sendNotification);
-    else
-        lockRefToggle.setToggleState(lockRef, juce::dontSendNotification);
 }
 
 void PianoRollSettingsBar::setAbsoluteInfo(bool absoluteInfo, bool sendNotification) {
@@ -141,8 +122,6 @@ void PianoRollSettingsBar::setMonitoringEnabled(const bool enabled)
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
     lockYToggle.setBounds(bounds.removeFromLeft(70));
-    bounds.removeFromLeft(MARGIN);
-    lockRefToggle.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
     absoluteInfoToggle.setBounds(bounds.removeFromLeft(80));
     bounds.removeFromLeft(MARGIN);
