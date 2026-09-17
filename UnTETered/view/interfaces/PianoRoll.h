@@ -16,6 +16,8 @@ public:
     const float SCROLL_FACTOR = 60.0f;
     const int SETTINGS_BAR_HEIGHT = 30;
     const int ORIENTATION_BAR_HEIGHT = 15;
+    const double LOWEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(0);
+    const double HIGHEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(127);
     const juce::Colour SUB_DIV_LINE_COLOUR = {100, 100, 100};
     const juce::Colour BAR_LINE_COLOUR = {50, 50, 50};
     const juce::Colour BASE_NOTE_COLOUR = {100, 100, 100};

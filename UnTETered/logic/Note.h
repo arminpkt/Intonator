@@ -28,25 +28,10 @@ struct Note {
     Note(const double ref, Fraction r, double i, const float s, const float e)
         : referenceFrequency(ref), ratio(r), irratio(i), start(s), end(e) {}
 
-    /** Computes the interval between f and this note's frequency in semitones.
-     *
-     * @param f     Reference frequency in Hz
-     */
-    [[nodiscard]] double getDistanceFrom(const double f) const {
-        return getDistance(f, getFrequency());
-    }
-
-    /** Computes the interval between the input's frequency and this note's frequency in semitones.
-     *
-     * @param note  Reference note
-     */
-    [[nodiscard]] double getDistanceFrom(const Note& note) const {
-        return getDistanceFrom(note.getFrequency());
-    }
 
     // Computes the MIDI value if MIDI were continuous.
     [[nodiscard]] double getPitch() const {
-        double distanceFromA440 = getDistanceFrom(440);
+        double distanceFromA440 = getDistanceInSemitonesFromFrequencies(440, getFrequency());
         double pitch = distanceFromA440 + 69;
         return pitch;
     }
@@ -113,7 +98,7 @@ struct Note {
      * @param other     The note to move this note close to
      */
     void octavateClosestTo(const Note& other) {
-        double distanceInSemitones = getDistanceFrom(other);
+        double distanceInSemitones = getDistanceInSemitonesFromFrequencies(other.getFrequency(), getFrequency());
         double distanceInOctaves = distanceInSemitones / 12;
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
         DBG(distanceInSemitones);
@@ -129,7 +114,7 @@ struct Note {
     }
 
     void roundReferenceTo12TET() {
-        auto semitonesTo440 = getDistance(referenceFrequency, 440);
+        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(referenceFrequency, 440);
         auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
         auto factor = std::pow(2, semitonesToClosest12TET / 12);
         referenceFrequency *= factor;
@@ -156,8 +141,9 @@ struct Note {
         auto centOffset = getCentOffset();
         juce::String connector = centOffset >= 0 ? " + " : " - ";
         juce::String centString = juce::String{std::abs(centOffset)} + "ct";
+        juce::String midiValue = juce::String{getPitch()};
 
-        return noteName + connector + centString;
+        return noteName + connector + centString + " " + midiValue;
     }
 
     bool isFamiliarWith(const Note* note) const {
@@ -193,9 +179,23 @@ struct Note {
         return *this;
     }
 
-    [[nodiscard]] static double getDistance(const double from, const double to) {
+    [[nodiscard]] static double getDistanceInSemitonesFromFrequencies(const double from, const double to) {
         double ratio = to / from;
         double ratioLog = std::log2(ratio);
         return ratioLog * 12;
+    }
+
+    [[nodiscard]] static double getPitchFromFrequency(double frequency) {
+        double semitonesFrom440 = getDistanceInSemitonesFromFrequencies(440, frequency);
+        double pitch = semitonesFrom440 + 69;
+        return pitch;
+    }
+
+    [[nodiscard]] static double getFrequencyFromPitch(double pitch) {
+        double semitonesFromA440 = pitch - 69;
+        double ratioLog = semitonesFromA440 / 12;
+        double ratio = std::pow(2, ratioLog);
+        double frequency = ratio * 440;
+        return frequency;
     }
 };

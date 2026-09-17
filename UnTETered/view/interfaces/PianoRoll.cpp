@@ -495,8 +495,16 @@ void PianoRoll::scroll(const PointF deltaXY) {
 }
 
 void PianoRoll::clipScreenEdges() {
-    if (barLeftScreen   < 0.0f) barLeftScreen   = 0.0f;
-    if (freqBottomScreen < 10.0) freqBottomScreen = 10.0;
+    if (barLeftScreen   < 0.0f)
+        barLeftScreen = 0.0f;
+
+    if (freqBottomScreen < LOWEST_ALLOWED_FREQ)
+        freqBottomScreen = LOWEST_ALLOWED_FREQ;
+
+    auto topScreenYPx = getNoteCanvasBounds().getTopLeft().getY();
+    auto freqTopScreen = getFreqFromYPx(topScreenYPx);
+    if (freqTopScreen > HIGHEST_ALLOWED_FREQ)
+        freqBottomScreen /= (freqTopScreen / HIGHEST_ALLOWED_FREQ);
 }
 
 void PianoRoll::handleSingleClick(const Point px) {
