@@ -45,6 +45,10 @@ public:
         return cachedValue.value();
     }
 
+    Fraction reciprocal() const {
+        return *this^-1;
+    }
+
     Fraction operator*(const Fraction& other) const {
         const Monzo m = monzo + other.monzo;
         return Fraction(m);

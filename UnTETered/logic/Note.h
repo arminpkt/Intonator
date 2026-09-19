@@ -45,9 +45,8 @@ struct Note {
     // Computes the closest MIDI value for this note.
     [[nodiscard]] int getRoundedMidiValue() const {
         double roundedMidiValue = std::round(getPitch());
-        if (roundedMidiValue < 0 || roundedMidiValue > 127) {
+        if (roundedMidiValue < 0 || roundedMidiValue > 127)
             throw std::out_of_range("note out of midi range");
-        }
         return static_cast<int>(roundedMidiValue);
     }
 

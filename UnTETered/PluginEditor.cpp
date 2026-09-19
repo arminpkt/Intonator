@@ -15,6 +15,15 @@ UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;
 
 
 void UnTETeredAudioProcessorEditor::resized() {
+    clipResize();
     auto area = getLocalBounds();
     pianoRoll.setBounds(area);
+}
+
+void UnTETeredAudioProcessorEditor::clipResize() {
+    auto bounds = getBounds();
+    if (bounds.getWidth() < 200)
+        setBounds(bounds.withWidth(200));
+    if (bounds.getHeight() < 200)
+        setBounds(bounds.withHeight(200));
 }

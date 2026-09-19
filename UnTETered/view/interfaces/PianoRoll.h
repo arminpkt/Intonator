@@ -18,6 +18,9 @@ public:
     const int ORIENTATION_BAR_HEIGHT = 15;
     const double LOWEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(0);
     const double HIGHEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(127);
+    const float HIGHEST_ALLOWED_OCTAVE_HEIGHT = 400;
+    const float LOWEST_ALLOWED_BAR_WIDTH = 20;
+    const float HIGHEST_ALLOWED_BAR_WIDTH = 800;
     const juce::Colour SUB_DIV_LINE_COLOUR = {100, 100, 100};
     const juce::Colour BAR_LINE_COLOUR = {50, 50, 50};
     const juce::Colour BASE_NOTE_COLOUR = {100, 100, 100};
@@ -80,6 +83,7 @@ private:
     Note* getNoteAt(Point px);
     std::optional<Fraction> getIntervalAt(Point px) const;
     Rect getNoteBounds(const Note* note) const;
+    int getNoteHeight() const;
     std::optional<Rect> getIntervalBounds(Fraction ratio) const;
     std::optional<Note*> getReference() const;
     std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
@@ -97,15 +101,21 @@ private:
     void mouseDrag(const juce::MouseEvent& event) override;
     void mouseMove(const juce::MouseEvent& event) override;
     void mouseMagnify(const juce::MouseEvent& event, float scaleFactor) override;
+    void zoomX(float scaleFactor, int mouseX);
+    void zoomY(float scaleFactor, int pxFromTop);
     void dragRectangle(Point mouseDownPos, Point currentPos);
     void moveExtendShrinkNotes(Point mouseDownPos, Point currentPos);
     void moveExtendShrinkHorizontally(int dX) const;
-    void moveVertically(Point currentPos, Point mouseDownPos) const;
+    void moveVertically(Point currentPos, Point mouseDownPos);
+    void moveVerticallyFreely(double freqFactor);
+    void moveVerticallyRelativeToReference(const Fraction& interval);
     void mouseUp(const juce::MouseEvent& _) override;
     void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
     void scroll(PointF deltaXY);
+    void clipMagnification(int mouseX, int pxFromTop);
     void clipScreenEdges();
     void handleSingleClick(Point px);
+    void updateSelectedNotesSnapshot();
     void handleDoubleClick(Point px);
     void handleShiftSingleClick(Point px);
     void handleOptionSingleClick(Point point);
@@ -150,6 +160,7 @@ private:
     void pushUndoSnapshot();
     void undo();
     void redo();
+    void setNotes(std::vector<StoredPianoNote> notes);
     bool undoSnapshotTakenForCurrentDrag = false;
     bool noteWasDraggedThisGesture = false;
 

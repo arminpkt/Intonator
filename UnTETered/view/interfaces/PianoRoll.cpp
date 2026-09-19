@@ -214,6 +214,8 @@ void PianoRoll::drawSettingsBackground(juce::Graphics& g) const {
 }
 
 void PianoRoll::resized() {
+    clipMagnification(0, 0);
+    clipScreenEdges();
     settingsBar.setBounds(getSettingsBarBounds());
 }
 
@@ -295,11 +297,15 @@ std::optional<Fraction> PianoRoll::getIntervalAt(Point px) const {
 }
 
 Rect PianoRoll::getNoteBounds(const Note* note) const {
-    int noteH = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
+    int noteH = getNoteHeight();
     return { getXPxFromBar(note->start),
              getYPxFromFreq(note->getFrequency()) - noteH / 2,
              getXPxFromBar(note->end) - getXPxFromBar(note->start),
              noteH };
+}
+
+int PianoRoll::getNoteHeight() const {
+    return static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
 }
 
 std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
@@ -453,18 +459,32 @@ void PianoRoll::mouseMove(const juce::MouseEvent& event) {
 
 void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFactor) {
     auto mousePos = event.getPosition();
+    auto pxFromTop = mousePos.getY();
+    auto mouseX = mousePos.getX();
     if (event.mods.isShiftDown()) {
-        auto pxFromTop = mousePos.getY();
         freqBottomScreen = getFreqFromYPx(pxFromTop);
         octaveHeightPxF *= scaleFactor;
         freqBottomScreen = getFreqFromYPx(mirrorYPx(pxFromTop, 0));
     } else {
-        barLeftScreen = getBarExactFromXPx(mousePos.getX());
+        barLeftScreen = getBarExactFromXPx(mouseX);
         barWidthPxF  *= scaleFactor;
-        barLeftScreen = getBarExactFromXPx(-mousePos.getX());
+        barLeftScreen = getBarExactFromXPx(-mouseX);
     }
+    clipMagnification(mouseX, pxFromTop);
     clipScreenEdges();
     pushViewportToProcessor();
+}
+
+void PianoRoll::zoomX(const float scaleFactor, const int mouseX) {
+    barLeftScreen = getBarExactFromXPx(mouseX);
+    barWidthPxF  *= scaleFactor;
+    barLeftScreen = getBarExactFromXPx(-mouseX);
+}
+
+void PianoRoll::zoomY(const float scaleFactor, const int pxFromTop) {
+    freqBottomScreen = getFreqFromYPx(pxFromTop);
+    octaveHeightPxF *= scaleFactor;
+    freqBottomScreen = getFreqFromYPx(mirrorYPx(pxFromTop, 0));
 }
 
 void PianoRoll::mouseUp(const juce::MouseEvent& _) {
@@ -494,17 +514,35 @@ void PianoRoll::scroll(const PointF deltaXY) {
     pushViewportToProcessor();
 }
 
+void PianoRoll::clipMagnification(const int mouseX, const int pxFromTop) {
+    if (barWidthPxF < LOWEST_ALLOWED_BAR_WIDTH)
+        zoomX(LOWEST_ALLOWED_BAR_WIDTH / barWidthPxF, mouseX);
+
+    if (barWidthPxF > HIGHEST_ALLOWED_BAR_WIDTH)
+        zoomX(HIGHEST_ALLOWED_BAR_WIDTH / barWidthPxF, mouseX);
+
+    float lowestAllowedOctaveHeight = getNoteCanvasBounds().toFloat().getHeight() * 12 / 128;
+    if (octaveHeightPxF < lowestAllowedOctaveHeight)
+        zoomY(lowestAllowedOctaveHeight / octaveHeightPxF, pxFromTop);
+
+    if (octaveHeightPxF > HIGHEST_ALLOWED_OCTAVE_HEIGHT)
+        zoomY(HIGHEST_ALLOWED_OCTAVE_HEIGHT / octaveHeightPxF, pxFromTop);
+}
+
 void PianoRoll::clipScreenEdges() {
-    if (barLeftScreen   < 0.0f)
+    if (barLeftScreen < 0.0f)
         barLeftScreen = 0.0f;
 
-    if (freqBottomScreen < LOWEST_ALLOWED_FREQ)
-        freqBottomScreen = LOWEST_ALLOWED_FREQ;
+    auto halfNoteH = getNoteHeight() / 2;
+    auto freqMarginFactor = getFreqFromYPx(0) / getFreqFromYPx(halfNoteH);
+
+    if (freqBottomScreen < LOWEST_ALLOWED_FREQ / freqMarginFactor)
+        freqBottomScreen = LOWEST_ALLOWED_FREQ / freqMarginFactor;
 
     auto topScreenYPx = getNoteCanvasBounds().getTopLeft().getY();
     auto freqTopScreen = getFreqFromYPx(topScreenYPx);
-    if (freqTopScreen > HIGHEST_ALLOWED_FREQ)
-        freqBottomScreen /= (freqTopScreen / HIGHEST_ALLOWED_FREQ);
+    if (freqTopScreen > HIGHEST_ALLOWED_FREQ * freqMarginFactor)
+        freqBottomScreen /= (freqTopScreen / HIGHEST_ALLOWED_FREQ / freqMarginFactor);
 }
 
 void PianoRoll::handleSingleClick(const Point px) {
@@ -513,10 +551,7 @@ void PianoRoll::handleSingleClick(const Point px) {
         selectNote(note, px);
 
         dragStartOffsetPx = px.getX() - getXPxFromBar(note->start);
-        selectedNotesStartsEnds.clear();
-        for (const auto& n : notesSelected) selectedNotesStartsEnds.emplace_back(n->start, n->end);
-        selectedNotesRefFreqs.clear();
-        for (const auto& n : notesSelected) selectedNotesRefFreqs.push_back(n->referenceFrequency);
+        updateSelectedNotesSnapshot();
 
         noteClicked = note;
         undoSnapshotTakenForCurrentDrag = false;
@@ -535,6 +570,13 @@ void PianoRoll::handleSingleClick(const Point px) {
 
     notesSelected.clear();
     pasteCursorBarPos = getBarSubFromXPx(px.getX());
+}
+
+void PianoRoll::updateSelectedNotesSnapshot() {
+    selectedNotesStartsEnds.clear();
+    for (const auto& n : notesSelected) selectedNotesStartsEnds.emplace_back(n->start, n->end);
+    selectedNotesRefFreqs.clear();
+    for (const auto& n : notesSelected) selectedNotesRefFreqs.push_back(n->referenceFrequency);
 }
 
 void PianoRoll::handleDoubleClick(const Point px) {
@@ -599,18 +641,28 @@ void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
     for (size_t i = 0; i < notesSelected.size(); i++) {
         auto* n = notesSelected[i];
         auto [start, end] = selectedNotesStartsEnds[i];
-        if (dragLeftSideSelectedNote)       n->start = start + dBar;
-        else if (dragRightSideSelectedNote) n->end   = end   + dBar;
-        else { n->start = start + dBar; n->end = end + dBar; }
+        if (dragLeftSideSelectedNote)
+            n->start = start + dBar;
+        else if (dragRightSideSelectedNote)
+            n->end = end + dBar;
+        else {
+            n->start = start + dBar;
+            n->end = end + dBar;
+        }
     }
+
+    for (auto* note : notesSelected)
+        if (note->start < 0) {
+            moveExtendShrinkHorizontally(dX - static_cast<int>(note->start * barWidthPxF));
+            return;
+        }
 }
 
-void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos) const {
+void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos) {
     // Move freely if not locked
     if (!lockYSetting) {
         double freqFactor = getFreqFromYPx(currentPos.getY()) / getFreqFromYPx(mouseDownPos.getY());
-        for (size_t i = 0; i < notesSelected.size(); i++)
-            notesSelected[i]->referenceFrequency = selectedNotesRefFreqs[i] * freqFactor;
+        moveVerticallyFreely(freqFactor);
         return;
     }
 
@@ -624,6 +676,27 @@ void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos)
     auto interval = getIntervalAt(currentPos);
     if (!interval) return;
 
+    // Move relative to reference
+    moveVerticallyRelativeToReference(interval.value());
+}
+
+void PianoRoll::moveVerticallyFreely(double freqFactor) {
+    for (size_t i = 0; i < notesSelected.size(); i++)
+        notesSelected[i]->referenceFrequency = selectedNotesRefFreqs[i] * freqFactor;
+
+    for (auto* note : notesSelected) {
+        if (note->getFrequency() > HIGHEST_ALLOWED_FREQ) {
+            moveVerticallyFreely(freqFactor * (HIGHEST_ALLOWED_FREQ * 0.999999) / note->getFrequency());
+            return;
+        }
+        if (note->getFrequency() < LOWEST_ALLOWED_FREQ) {
+            moveVerticallyFreely(freqFactor * (LOWEST_ALLOWED_FREQ * 1.000001) / note->getFrequency());
+            return;
+        }
+    }
+}
+
+void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) {
     auto refFreq   = lockedNoteReference.value()->referenceFrequency;
     auto ratio    = lockedNoteReference.value()->ratio;
     auto irratio   = lockedNoteReference.value()->irratio;
@@ -633,8 +706,25 @@ void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos)
 
     for (auto* note : notesSelected) {
         note->referenceFrequency *= refFreqFactor;
-        note->ratio = note->ratio * ratioFactor * interval.value();
+        note->ratio = note->ratio * ratioFactor * interval;
         note->irratio *= irratioFactor;
+
+        auto pitch = note->getPitch();
+        if (pitch < 0 || pitch > 127) {
+            undo();
+            return;
+        }
+    }
+
+    for (auto* note : notesSelected) {
+        if (note->getFrequency() > HIGHEST_ALLOWED_FREQ) {
+            moveVerticallyRelativeToReference(interval^-1);
+            return;
+        }
+        if (note->getFrequency() < LOWEST_ALLOWED_FREQ) {
+            moveVerticallyRelativeToReference(interval^-1);
+            return;
+        }
     }
 }
 
