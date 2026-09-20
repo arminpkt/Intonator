@@ -696,7 +696,7 @@ void PianoRoll::moveVerticallyFreely(double freqFactor) {
     }
 }
 
-void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) {
+void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) const {
     auto refFreq   = lockedNoteReference.value()->referenceFrequency;
     auto ratio    = lockedNoteReference.value()->ratio;
     auto irratio   = lockedNoteReference.value()->irratio;
@@ -705,26 +705,18 @@ void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) {
     double irratioFactor = irratio / noteClicked->irratio;
 
     for (auto* note : notesSelected) {
-        note->referenceFrequency *= refFreqFactor;
-        note->ratio = note->ratio * ratioFactor * interval;
-        note->irratio *= irratioFactor;
-
-        auto pitch = note->getPitch();
-        if (pitch < 0 || pitch > 127) {
-            undo();
+        Note copy = *note;
+        copy.referenceFrequency *= refFreqFactor;
+        copy.ratio = copy.ratio * ratioFactor * interval;
+        copy.irratio *= irratioFactor;
+        if (copy.getFrequency() > HIGHEST_ALLOWED_FREQ || copy.getFrequency() < LOWEST_ALLOWED_FREQ)
             return;
-        }
     }
 
     for (auto* note : notesSelected) {
-        if (note->getFrequency() > HIGHEST_ALLOWED_FREQ) {
-            moveVerticallyRelativeToReference(interval^-1);
-            return;
-        }
-        if (note->getFrequency() < LOWEST_ALLOWED_FREQ) {
-            moveVerticallyRelativeToReference(interval^-1);
-            return;
-        }
+        note->referenceFrequency *= refFreqFactor;
+        note->ratio = note->ratio * ratioFactor * interval;
+        note->irratio *= irratioFactor;
     }
 }
 

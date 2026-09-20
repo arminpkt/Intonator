@@ -108,7 +108,7 @@ private:
     void moveExtendShrinkHorizontally(int dX) const;
     void moveVertically(Point currentPos, Point mouseDownPos);
     void moveVerticallyFreely(double freqFactor);
-    void moveVerticallyRelativeToReference(const Fraction& interval);
+    void moveVerticallyRelativeToReference(const Fraction& interval) const;
     void mouseUp(const juce::MouseEvent& _) override;
     void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
     void scroll(PointF deltaXY);
