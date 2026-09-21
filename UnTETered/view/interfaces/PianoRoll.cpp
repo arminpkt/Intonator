@@ -133,7 +133,7 @@ void PianoRoll::drawNote(const Note* note, const juce::Colour& baseColour, const
 }
 
 void PianoRoll::drawIntervals(juce::Graphics& g) const {
-    if (!getReference()) return;
+    if (!lockedNoteReference) return;
     for (auto& ratio : intervals) {
         auto bounds = getIntervalBounds(ratio).value();
         auto baseColour = (intervalHighlighted && ratio == intervalHighlighted.value())
@@ -287,13 +287,31 @@ Note* PianoRoll::getNoteAt(Point px) {
 }
 
 std::optional<Fraction> PianoRoll::getIntervalAt(Point px) const {
-    if (!getReference()) return std::nullopt;
+    if (!lockedNoteReference) return std::nullopt;
     for (auto& ratio : intervals) {
         auto boundsOpt = getIntervalBounds(ratio);
         if (boundsOpt && boundsOpt.value().expanded(3).contains(px))
             return ratio;
     }
     return std::nullopt;
+}
+
+std::optional<Fraction> PianoRoll::getClosestInterval(Point px) {
+    if (!lockedNoteReference)
+        return std::nullopt;
+
+    int smallestDistance = std::numeric_limits<int>::max();
+    std::optional<Fraction> closestInterval{};
+    for (auto& interval : intervals) {
+        auto bounds = getIntervalBounds(interval).value();
+        auto distance = std::abs(px.getY() - bounds.getCentreY());
+        if (distance < 20 && distance < smallestDistance) {
+            smallestDistance = distance;
+            closestInterval = interval;
+        }
+    }
+
+    return closestInterval;
 }
 
 Rect PianoRoll::getNoteBounds(const Note* note) const {
@@ -309,30 +327,20 @@ int PianoRoll::getNoteHeight() const {
 }
 
 std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
-    auto reference = getReference();
-    if (!reference) return std::nullopt;
+    if (!lockedNoteReference) return std::nullopt;
     auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
     int noteH = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
-    int y = getYPxFromFreq(reference.value()->getFrequency() * static_cast<double>(ratio)) - noteH / 2;
+    int y = getYPxFromFreq(lockedNoteReference.value()->getFrequency() * static_cast<double>(ratio)) - noteH / 2;
     return Rect{l, y, r, noteH};
 }
 
-std::optional<Note*> PianoRoll::getReference() const {
-    if (lockedNoteReference)
-        return lockedNoteReference.value();
-    if (notesSelected.size() == 1)
-        return notesSelected[0];
-    return std::nullopt;
-}
-
 std::optional<std::tuple<double, Fraction, double>> PianoRoll::getReferenceRefFreqRatioIrratio() const {
-    auto reference = getReference();
-    if (!reference)
+    if (!lockedNoteReference)
         return std::nullopt;
     return std::make_tuple(
-        reference.value()->referenceFrequency,
-        reference.value()->ratio,
-        reference.value()->irratio
+        lockedNoteReference.value()->referenceFrequency,
+        lockedNoteReference.value()->ratio,
+        lockedNoteReference.value()->irratio
         );
 }
 
@@ -453,8 +461,8 @@ void PianoRoll::mouseMove(const juce::MouseEvent& event) {
     auto position = event.getPosition();
     if (auto* noteAt = getNoteAt(position))
         noteHighlighted = noteAt;
-    else if (auto intervalAt = getIntervalAt(position))
-        intervalHighlighted = intervalAt;
+    else if (auto closestInterval = getClosestInterval(position))
+        intervalHighlighted = closestInterval;
 }
 
 void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFactor) {
@@ -580,15 +588,20 @@ void PianoRoll::updateSelectedNotesSnapshot() {
 }
 
 void PianoRoll::handleDoubleClick(const Point px) {
-    auto barSub           = getBarSubFromXPx(px.getX());
+    auto barSub= getBarSubFromXPx(px.getX());
     auto intervalAt = getIntervalAt(px);
-    auto* noteAt          = getNoteAt(px);
+    auto* noteAt = getNoteAt(px);
 
-    if (noteAt) { deleteNote(noteAt); return; }
+    if (noteAt) {
+        deleteNote(noteAt);
+        return;
+    }
 
-    if (intervalAt) {
-        auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
-        addNoteWithRefFreq(refFreq, ratio * intervalAt.value(), irratio, barSub, barSub + 1);
+    if (lockedNoteReference) {
+        if (auto closestInterval = getClosestInterval(px)) {
+            auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
+            addNoteWithRefFreq(refFreq, ratio * closestInterval.value(), irratio, barSub, barSub + 1);
+        }
         return;
     }
 

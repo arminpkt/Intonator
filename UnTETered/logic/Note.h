@@ -131,7 +131,7 @@ struct Note {
 
     [[nodiscard]] juce::String getNoteName() const {
         auto pc = getPitchClass();
-        auto index = pc.getRoundedValue() % 12;
+        auto index = (pc.getRoundedValue() + 3) % 12;
         return NOTE_NAMES[index];
     }
 

@@ -82,10 +82,10 @@ private:
     int getXPxFromBar(float bar) const;
     Note* getNoteAt(Point px);
     std::optional<Fraction> getIntervalAt(Point px) const;
+    std::optional<Fraction> getClosestInterval(Point px);
     Rect getNoteBounds(const Note* note) const;
     int getNoteHeight() const;
     std::optional<Rect> getIntervalBounds(Fraction ratio) const;
-    std::optional<Note*> getReference() const;
     std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
     std::vector<double> getIntervalFrequencies(Note* note) const;
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
