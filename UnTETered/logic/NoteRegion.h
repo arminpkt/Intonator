@@ -11,6 +11,7 @@
 #include "Note.h"
 
 struct NoteEvent {
+    Note* note;
     double startTime;
     double endTime;
     juce::MidiMessage noteOn;
@@ -30,6 +31,8 @@ public:
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end);
     void deleteNote(Note* note);
     void calculateMidiMessages(float pitchBendRange); // not const!
+    static bool isMidiValueUsed(int value, const std::vector<std::pair<double, int>>& activeMidiValues);
+    static int getFirstAvailableMidiValue(int preferredValue, std::vector<std::pair<double, int>>& activeMidiValues);
 
 private:
     static int midiEventPriority(const juce::MidiMessage& m);

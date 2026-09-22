@@ -40,6 +40,7 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
         NoteEvent event
         {
+            note.get(),
             note->start,
             note->end,
             juce::MidiMessage::noteOn(1, midiNoteNumber, static_cast<juce::uint8>(100)),
@@ -65,21 +66,18 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
     // Active notes: pair of (end time, channel)
     std::vector<std::pair<double, int>> activeChannels;
+    std::vector<std::pair<double, int>> activeMidiValues;
+    DBG("\nreset");
 
-    for (auto& event : noteEvents)
-    {
+    for (auto& event : noteEvents) {
         // Release all channels whose notes have already ended
-        for (auto it = activeChannels.begin(); it != activeChannels.end();)
-        {
-            if (it->first <= event.startTime)
-            {
+        for (auto it = activeChannels.begin(); it != activeChannels.end();) {
+            if (it->first <= event.startTime) {
                 channelPool.release(it->second);
                 it = activeChannels.erase(it);
             }
             else
-            {
                 ++it;
-            }
         }
 
         auto channelOptional = channelPool.acquire();
@@ -93,6 +91,25 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
         event.noteOff.setChannel(channel);
 
         activeChannels.emplace_back( event.endTime, channel );
+
+        for (auto it = activeMidiValues.begin(); it != activeMidiValues.end();) {
+            if (it->first <= event.startTime)
+                it = activeMidiValues.erase(it);
+            else
+                ++it;
+        }
+
+        int preferredValue = event.noteOn.getNoteNumber();
+        int firstAvailableValue = getFirstAvailableMidiValue(preferredValue, activeMidiValues);
+        if (firstAvailableValue != preferredValue) {
+            const int pitchBendValue = event.note->getPitchBendValueWRT(firstAvailableValue, pitchBendRange);
+            event.noteOn = juce::MidiMessage::noteOn(channel, firstAvailableValue, static_cast<juce::uint8>(100));
+            event.pitchBend = juce::MidiMessage::pitchWheel(channel, pitchBendValue);
+            event.noteOff = juce::MidiMessage::noteOff(channel, firstAvailableValue, static_cast<juce::uint8>(100));
+        }
+
+        activeMidiValues.emplace_back(event.endTime, firstAvailableValue);
+        DBG(firstAvailableValue);
     }
 
     // Flatten all note events into midiMessages
@@ -114,6 +131,23 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
 
                return midiEventPriority(a) < midiEventPriority(b);
            });
+}
+
+bool NoteRegion::isMidiValueUsed(int value, const std::vector<std::pair<double, int>>& activeMidiValues) {
+    for (auto [_, activeValue] : activeMidiValues) {
+        if (value == activeValue)
+            return true;
+    }
+    return false;
+}
+
+int NoteRegion::getFirstAvailableMidiValue(int preferredValue, std::vector<std::pair<double, int>>& activeMidiValues) {
+    int value = preferredValue;
+
+    while (isMidiValueUsed(value, activeMidiValues))
+        value++;
+
+    return value;
 }
 
 int NoteRegion::midiEventPriority(const juce::MidiMessage& m)
