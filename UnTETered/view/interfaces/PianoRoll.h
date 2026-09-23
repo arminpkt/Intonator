@@ -224,6 +224,6 @@ private:
     int    cachedDenominator = 4;
 
     juce::TooltipWindow tooltipWindow { this };
-    void displayToolTip(Point screenPosition, Point position);
+    void displayToolTip(Point screenPosition);
     static juce::String getIntervalTooltipText(Fraction& interval);
 };

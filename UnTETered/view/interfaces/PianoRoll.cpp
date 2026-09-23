@@ -467,7 +467,7 @@ void PianoRoll::mouseMove(const juce::MouseEvent& event) {
     else if (auto closestInterval = getClosestInterval(position))
         intervalHighlighted = closestInterval;
 
-    displayToolTip(event.getScreenPosition(), event.getPosition());
+    displayToolTip(event.getScreenPosition());
 }
 
 void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFactor) {
@@ -1067,7 +1067,7 @@ void PianoRoll::redo() {
     pushNoteStateToProcessor();
 }
 
-void PianoRoll::displayToolTip(Point screenPosition, Point position) {
+void PianoRoll::displayToolTip(Point screenPosition) {
     if (intervalHighlighted) {
         auto tooltipText = getIntervalTooltipText(intervalHighlighted.value());
         tooltipWindow.displayTip(screenPosition, tooltipText);
