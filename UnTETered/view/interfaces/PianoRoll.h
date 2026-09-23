@@ -160,7 +160,6 @@ private:
     void pushUndoSnapshot();
     void undo();
     void redo();
-    void setNotes(std::vector<StoredPianoNote> notes);
     bool undoSnapshotTakenForCurrentDrag = false;
     bool noteWasDraggedThisGesture = false;
 
@@ -207,7 +206,7 @@ private:
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
     std::optional<Note*> lockedNoteReference{};
-    Note* noteHighlighted{};
+    std::optional<Note*> noteHighlighted{};
     std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
@@ -223,4 +222,8 @@ private:
     double cachedPpqPosition = 0.0;
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
+
+    juce::TooltipWindow tooltipWindow { this };
+    void displayToolTip(Point screenPosition, Point position);
+    static juce::String getIntervalTooltipText(Fraction& interval);
 };

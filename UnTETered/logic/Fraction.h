@@ -64,9 +64,15 @@ public:
         return Fraction(m);
     }
 
-    std::string toString() const {
+    juce::String toString() const {
         const auto [numerator, denominator] = getNumeratorAndDenominator();
         return std::to_string(numerator) + "/" + std::to_string(denominator);
+    }
+
+    std::optional<juce::String> getName() const {
+        if (NAMES.count(toString()))
+            return NAMES.at(toString());
+        return std::nullopt;
     }
 
     friend std::ostream& operator<<(std::ostream& os, Fraction& f) {
@@ -102,4 +108,41 @@ public:
     Monzo getMonzo() const {
         return monzo;
     }
+
+    double getSizeInSemitones() const {
+        double ratioLog = std::log2(static_cast<double>(*this));
+        return ratioLog * 12;
+    }
+
+    int getSizeInCents() const {
+        return static_cast<int>(std::round(getSizeInSemitones() * 100));
+    }
+
+    inline static const std::unordered_map<juce::String, juce::String> NAMES = {
+        {"1/1", "unison"},
+        {"2/1", "octave"},
+        {"1/2", "octave"},
+        {"3/2", "just perfect fifth"},
+        {"2/3", "just perfect fifth"},
+        {"4/3", "just perfect fourth"},
+        {"3/4", "just perfect fourth"},
+        {"5/4", "just major third"},
+        {"4/5", "just major third"},
+        {"6/5", "just minor third"},
+        {"5/6", "just minor third"},
+        {"9/8", "Pythagorean major second"},
+        {"8/9", "Pythagorean major second"},
+        {"7/4", "harmonic seventh"},
+        {"4/7", "harmonic seventh"},
+        {"7/5", "narrow tritone"},
+        {"5/7", "narrow tritone"},
+        {"16/15", "just diatonic semitone"},
+        {"15/16", "just diatonic semitone"},
+        {"5/3", "just major sixth"},
+        {"3/5", "just major sixth"},
+        {"8/5", "just minor sixth"},
+        {"5/8", "just minor sixth"},
+        {"15/8", "just major seventh"},
+        {"8/15", "just major seventh"},
+    };
 };

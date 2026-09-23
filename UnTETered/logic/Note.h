@@ -55,7 +55,7 @@ struct Note {
         auto pitch = getPitch();
         auto rounded = std::round(pitch);
         auto offset = pitch - rounded;
-        return static_cast<int>(offset * 100);
+        return static_cast<int>(std::round(offset * 100));
     }
 
     /** Computer the pitchbend offset in semitones with respect to the input MIDI note value.
@@ -137,12 +137,15 @@ struct Note {
 
     [[nodiscard]] juce::String getAbsoluteInfo() const {
         juce::String noteName = getNoteName();
+
         auto centOffset = getCentOffset();
         juce::String connector = centOffset >= 0 ? " + " : " - ";
         juce::String centString = juce::String{std::abs(centOffset)} + "ct";
-        juce::String midiValue = juce::String{getPitch()};
 
-        return noteName + connector + centString + " " + midiValue;
+        auto pitchRounded = std::round(getPitch() * 100)/100;
+        juce::String midiValue = juce::String{pitchRounded};
+
+        return noteName + connector + centString; // + " " + midiValue;
     }
 
     bool isFamiliarWith(const Note* note) const {

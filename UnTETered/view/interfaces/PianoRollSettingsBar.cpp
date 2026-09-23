@@ -28,20 +28,23 @@ PianoRollSettingsBar::PianoRollSettingsBar(
 
 void PianoRollSettingsBar::initialiseLockY() {
     addAndMakeVisible(lockYToggle);
+    lockYToggle.setTooltip ("Fixes the pitch of notes, so they can only be changed relative to a selected reference note.");
     lockYToggle.onStateChange = handleLockYChange;
     lockYToggle.setHelpText("hoi");
 }
 
 void PianoRollSettingsBar::initialiseAbsoluteInfo() {
     addAndMakeVisible(absoluteInfoToggle);
+    absoluteInfoToggle.setTooltip ("Notes will show their pitch.");
     absoluteInfoToggle.onStateChange = handleAbsoluteInfoChange;
 }
 
 void PianoRollSettingsBar::initialiseIntervals() {
     addAndMakeVisible(intervalsComboBox);
+    intervalsComboBox.setTooltip ("Choose which intervals should be available.");
     intervalsComboBox.onChange = handleIntervalsChange;
 
-    intervalsComboBox.addItem("7-limit", SEVEN_LIMIT_ID);
+    intervalsComboBox.addItem("standard", SEVEN_LIMIT_ID);
     intervalsComboBox.addItem("custom", CUSTOM_INTERVALS_ID);
 
     intervalsComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
@@ -52,6 +55,7 @@ void PianoRollSettingsBar::initialiseIntervals() {
 
 void PianoRollSettingsBar::initialiseCustomIntervals() {
     addAndMakeVisible(customIntervalsField);
+    customIntervalsField.setTooltip ("Enter intervals of your choice, written as a/b, separated by commas.");
     customIntervalsField.setColour(juce::TextEditor::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
     customIntervalsField.setColour(juce::TextEditor::textColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 1.f));
     customIntervalsField.setColour(juce::TextEditor::outlineColourId, juce::Colour::fromFloatRGBA(1.f, 1.f, 1.f, 0.4f));
@@ -64,6 +68,7 @@ void PianoRollSettingsBar::initialiseCustomIntervals() {
 
 void PianoRollSettingsBar::initialiseMonitoring() {
     addAndMakeVisible(monitoringToggle);
+    monitoringToggle.setTooltip ("Notes will sound when selected.");
     monitoringToggle.setToggleState(false, juce::dontSendNotification);
     monitoringToggle.onClick = handleMonitoringChange;
 }
@@ -123,7 +128,7 @@ void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
     lockYToggle.setBounds(bounds.removeFromLeft(70));
     bounds.removeFromLeft(MARGIN);
-    absoluteInfoToggle.setBounds(bounds.removeFromLeft(80));
+    absoluteInfoToggle.setBounds(bounds.removeFromLeft(60));
     bounds.removeFromLeft(MARGIN);
     monitoringToggle.setBounds(bounds.removeFromLeft(90));
     bounds.removeFromRight(MARGIN);

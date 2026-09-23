@@ -36,7 +36,7 @@ public:
 
 private:
     juce::ToggleButton lockYToggle { "lock Y" };
-    juce::ToggleButton absoluteInfoToggle {"note info"};
+    juce::ToggleButton absoluteInfoToggle {"info"};
     juce::ComboBox intervalsComboBox;
     FractionsField customIntervalsField;
     juce::ToggleButton monitoringToggle { "monitor" };

@@ -20,17 +20,16 @@ struct FractionsField : juce::TextEditor {
         return fractions;
     }
 
-    void setFractions(std::vector<Fraction> fractions) {
+    void setFractions(const std::vector<Fraction>& fractions) {
         if (fractions.empty())
             setText("");
 
-        std::string string = "";
+        juce::String string = "";
 
         for (auto& fraction : fractions)
             string += fraction.toString() + ", ";
 
-        string.pop_back();
-        string.pop_back();
+        string = string.dropLastCharacters(2);
 
         setText(string);
     }
