@@ -5,6 +5,8 @@
 #include <unordered_set>
 
 #include "PianoRoll.h"
+
+#include "InstructionsWindow.h"
 #include "PianoRollStateHelpers.h"
 #include "IntervalPresets.h"
 #include "../../logic/util.h"
@@ -16,7 +18,8 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
           [this] { handleAbsoluteInfoChanged(); },
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
-          [this] { handleMonitoringChanged(); })) {
+          [this] { handleMonitoringChanged(); },
+          [] { handleInstructionsClicked(); } )) {
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
     startTimerHz(30);
@@ -413,10 +416,18 @@ void PianoRoll::stopAllPreviews() {
 }
 
 void PianoRoll::handleMonitoringChanged() {
-    monitoringEnabled = settingsBar.isMonitoringEnabled();
+    monitoringEnabled = settingsBar.getMonitoring();
     if (!monitoringEnabled)
         stopAllPreviews();
     pushNoteStateToProcessor();
+}
+
+void PianoRoll::handleInstructionsClicked() {
+    juce::AlertWindow::showMessageBoxAsync(
+        juce::AlertWindow::NoIcon,
+        "Instructions",
+        INSTRUCTIONS_TEXT
+    );
 }
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
@@ -994,7 +1005,7 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 
     settingsBar.setLockY(lockYSetting);
     settingsBar.setAbsoluteInfo(absoluteInfoSetting);
-    settingsBar.setMonitoringEnabled(monitoringEnabled);
+    settingsBar.setMonitoring(monitoringEnabled);
     settingsBar.setIntervals(intervalsSetting);
 
     if (!state.customIntervals.empty())
