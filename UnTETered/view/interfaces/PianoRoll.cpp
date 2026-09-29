@@ -99,29 +99,26 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
     }
 
     // Draw over the single selected note and its family members (reverse order)
-    if (notesSelected.size() == 1) {
-        auto* noteSelected = notesSelected[0];
+    if (lockedNoteReference) {
+        auto lockedNotePtr = lockedNoteReference.value();
         for (auto& note : noteRegion.notes) {
-            if (note.get() == noteSelected || !note->isFamiliarWith(noteSelected)) continue;
+            if (note.get() == lockedNotePtr || !note->isFamiliarWith(lockedNotePtr)) continue;
             drawNote(note.get(), FAMILY_BASE_COLOUR, FAMILY_OUTLINE_COLOUR, g);
-            drawText((note->ratio / noteSelected->ratio).toString(), getNoteBounds(note.get()), FAMILY_RATIO_TEXT_COLOUR, g);
+            drawText((note->ratio / lockedNotePtr->ratio).toString(), getNoteBounds(note.get()), FAMILY_RATIO_TEXT_COLOUR, g);
         }
-        auto outlineColour = noteSelected == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : SELECTED_OUTLINE_COLOUR;
-        drawNote(noteSelected, SELECTED_BASE_COLOUR, outlineColour, g);
+        auto outlineColour = lockedNotePtr == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : SELECTED_OUTLINE_COLOUR;
+        drawNote(lockedNotePtr, SELECTED_BASE_COLOUR, outlineColour, g);
         if (absoluteInfoSetting)
-            drawText(noteSelected->getAbsoluteInfo(), getNoteBounds(noteSelected), SELECTED_TEXT_COLOUR, g);
+            drawText(lockedNotePtr->getAbsoluteInfo(), getNoteBounds(lockedNotePtr), SELECTED_TEXT_COLOUR, g);
     }
 
-    // Draw over the multiple selected notes
-    if (notesSelected.size() > 1) {
-        auto intRatios = getIntRatios(notesSelected);
-        for (size_t i = 0; i < notesSelected.size(); ++i) {
-            auto* noteSelected = notesSelected[i];
-            drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
-            if (intRatios) {
-                drawText(juce::String(std::to_string(intRatios.value()[i])), getNoteBounds(noteSelected), INT_RATIO_TEXT_COLOUR, g);
-            }
-        }
+    // Draw over the selected notes
+    auto intRatios = getIntRatios(notesSelected);
+    for (size_t i = 0; i < notesSelected.size(); ++i) {
+        auto* noteSelected = notesSelected[i];
+        drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
+        if (intRatios && intRatios.value().size() > 1 && !lockedNoteReference)
+            drawText(juce::String(std::to_string(intRatios.value()[i])), getNoteBounds(noteSelected), INT_RATIO_TEXT_COLOUR, g);
     }
 }
 
@@ -130,8 +127,8 @@ void PianoRoll::drawNote(const Note* note, const juce::Colour& baseColour, const
     g.setColour(colour);
     auto bounds = getNoteBounds(note);
     fillRect(g, bounds);
-    auto actualOutlineColour = note == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : outlineColour;
-    g.setColour(actualOutlineColour);
+    // auto actualOutlineColour = note == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : outlineColour;
+    g.setColour(outlineColour);
     drawRect(g, bounds);
 }
 

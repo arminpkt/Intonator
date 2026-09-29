@@ -72,6 +72,8 @@ public:
     std::optional<juce::String> getName() const {
         if (NAMES.count(toString()))
             return NAMES.at(toString());
+        if (NAMES.count(reciprocal().toString()))
+            return NAMES.at(reciprocal().toString());
         return std::nullopt;
     }
 

@@ -33,7 +33,7 @@ public:
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour LOCKED_REF_OUTLINE_COLOUR = {50, 200, 50};
-    const juce::Colour MULT_SELECTED_BASE_COLOUR = {100, 100, 100};
+    const juce::Colour MULT_SELECTED_BASE_COLOUR = juce::Colour::fromRGBA(100, 100, 100, 0);
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour INTERVAL_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
