@@ -19,11 +19,12 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
           [this] { handleMonitoringChanged(); },
-          [] { handleInstructionsClicked(); } )) {
+          [this] { handleInstructionsClicked(); } )) {
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
-    startTimerHz(30);
     addAndMakeVisible(settingsBar);
+    instructionsWindow.setVisible(false);
+    startTimerHz(30);
 }
 
 PianoRoll::~PianoRoll() {
@@ -420,11 +421,7 @@ void PianoRoll::handleMonitoringChanged() {
 }
 
 void PianoRoll::handleInstructionsClicked() {
-    juce::AlertWindow::showMessageBoxAsync(
-        juce::AlertWindow::NoIcon,
-        "Instructions",
-        INSTRUCTIONS_TEXT
-    );
+    instructionsWindow.open();
 }
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {

@@ -749,7 +749,6 @@ public:
         {"73/60", "amity supraminor third"},
         {"28/23", "vicesimotertial neutral third"},
         {"26/21", "tridecimal submajor third"},
-        {"51/41", ""},
         {"71/57", "witchcraft major third"},
         {"76/61", "magic major third"},
         {"96/77", "undecimal perde segah"},

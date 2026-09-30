@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "InstructionsWindow.h"
 #include "PianoRollSettingsBar.h"
 #include "../Types.h"
 #include "../../logic/NoteRegion.h"
@@ -44,35 +45,6 @@ public:
     const juce::Colour PASTE_CURSOR_COLOUR = {255, 160, 30};
     const juce::Colour SETTINGS_BACKGROUND_COLOUR = {70, 70, 70};
     const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
-
-    static constexpr const char* INSTRUCTIONS_TEXT =
-        "Double click anywhere to create a note.\n"
-        "Option+click a note to set it as a reference.\n"
-        "(New notes will now snap to just intervals from the chosen reference).\n"
-        "\nKeyboard controls:\n"
-        "Cmd+C / Ctrl+C: Copy selection\n"
-        "Cmd+X / Ctrl+X: Cut selection\n"
-        "Cmd+V / Ctrl+V: Paste\n"
-        "Cmd+D / Ctrl+D: Duplicate selection\n"
-        "Cmd+A / Ctrl+A: Select all\n"
-        "Cmd+1 / Ctrl+1: Narrow grid\n"
-        "Cmd+2 / Ctrl+2: Widen grid\n"
-        "Cmd+3 / Ctrl+3: Triplet grid\n"
-        "Y: Toggle lock Y setting\n"
-        "I: Toggle info setting\n"
-        "T: Round reference frequency of selection to 12TET"
-    ;
-    // if (code == 'X' && key.getModifiers().isCommandDown()) { cutSelection();             return true; }
-    // if (code == 'C' && key.getModifiers().isCommandDown()) { copySelectionToClipboard(); return true; }
-    // if (code == 'V' && key.getModifiers().isCommandDown()) { pasteClipboard();           return true; }
-    // if (code == 'D' && key.getModifiers().isCommandDown()) { duplicate();                return true; }
-    // if (code == 'A' && key.getModifiers().isCommandDown()) { selectAll();                return true; }
-    // if (code == '1' && key.getModifiers().isCommandDown()) { narrowGrid();               return true; }
-    // if (code == '2' && key.getModifiers().isCommandDown()) { widenGrid();                return true; }
-    // if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
-    // if (code == 'Y') { toggleLockYSetting();        return true; }
-    // if (code == 'I') { toggleAbsoluteInfoSetting(); return true; }
-    // if (code == 'T') { roundReferenceTo12TET();     return true; }
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     ~PianoRoll() override;
@@ -176,7 +148,7 @@ private:
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
-    static void handleInstructionsClicked();
+    void handleInstructionsClicked();
 
     void timerCallback() override;
 
@@ -256,4 +228,6 @@ private:
     juce::TooltipWindow tooltipWindow { this };
     void displayToolTip(Point screenPosition);
     static juce::String getIntervalTooltipText(Fraction& interval);
+
+    InstructionsWindow instructionsWindow;
 };
