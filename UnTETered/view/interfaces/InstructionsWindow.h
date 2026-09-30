@@ -9,15 +9,15 @@
 class InstructionsField : public juce::Component {
 public:
     std::vector<std::pair<juce::String, juce::String>> CONTROLS = {
-        {"Double click", "Create a note"},
-        {"Option+click a note", "Set the note as a reference"},
+        {"Double click", "Create or delete a note"},
+        {"Option+click a note", "Set note as a reference"},
         {"Cmd+C / Ctrl+C", "Copy selection"},
         {"Cmd+X / Ctrl+X", "Cut selection"},
         {"Cmd+V / Ctrl+V", "Paste"},
-        {"Cmd+Z / Ctrl+Z", "Undo"},
-        {"Cmd+Shift+Z / Ctrl+Shift+Z", "Redo"},
         {"Cmd+D / Ctrl+D", "Duplicate selection"},
         {"Cmd+A / Ctrl+A", "Select all"},
+        {"Cmd+Z / Ctrl+Z", "Undo"},
+        {"Cmd+Shift+Z / Ctrl+Shift+Z", "Redo"},
         {"Cmd+1 / Ctrl+1", "Narrow grid"},
         {"Cmd+2 / Ctrl+2", "Widen grid"},
         {"Cmd+3 / Ctrl+3", "Triplet grid"},
@@ -26,7 +26,7 @@ public:
         {"Option+Down", "Move selection an octave down"},
         {"Y", "Toggle lock Y setting"},
         {"I", "Toggle info setting"},
-        {"T", "Round to 12TET"}
+        {"T", "Round selection to 12TET"}
     };
 
     void paint (juce::Graphics& g) override {

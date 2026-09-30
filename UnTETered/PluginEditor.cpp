@@ -15,7 +15,7 @@ UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProc
 
 UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() {
     processorRef.removeChangeListener(this);
-};
+}
 
 void UnTETeredAudioProcessorEditor::resized() {
     clipResize();
