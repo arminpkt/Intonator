@@ -55,7 +55,7 @@ struct Note {
         auto pitch = getPitch();
         auto rounded = std::round(pitch);
         auto offset = pitch - rounded;
-        return static_cast<int>(offset * 100);
+        return static_cast<int>(std::round(offset * 100));
     }
 
     /** Computer the pitchbend offset in semitones with respect to the input MIDI note value.
@@ -112,11 +112,12 @@ struct Note {
         }
     }
 
-    void roundReferenceTo12TET() {
-        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(referenceFrequency, 440);
+    void roundTo12TET() {
+        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(getFrequency(), 440);
         auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
         auto factor = std::pow(2, semitonesToClosest12TET / 12);
-        referenceFrequency *= factor;
+        referenceFrequency = getFrequency() * factor;
+        ratio = {1, 1};
     }
 
     [[nodiscard]] float getHue() const {
@@ -137,12 +138,15 @@ struct Note {
 
     [[nodiscard]] juce::String getAbsoluteInfo() const {
         juce::String noteName = getNoteName();
+
         auto centOffset = getCentOffset();
         juce::String connector = centOffset >= 0 ? " + " : " - ";
         juce::String centString = juce::String{std::abs(centOffset)} + "ct";
-        juce::String midiValue = juce::String{getPitch()};
 
-        return noteName + connector + centString + " " + midiValue;
+        auto pitchRounded = std::round(getPitch() * 100)/100;
+        juce::String midiValue = juce::String{pitchRounded};
+
+        return noteName + connector + centString; // + " " + midiValue;
     }
 
     bool isFamiliarWith(const Note* note) const {

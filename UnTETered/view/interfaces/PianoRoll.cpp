@@ -5,6 +5,8 @@
 #include <unordered_set>
 
 #include "PianoRoll.h"
+
+#include "InstructionsWindow.h"
 #include "PianoRollStateHelpers.h"
 #include "IntervalPresets.h"
 #include "../../logic/util.h"
@@ -16,11 +18,13 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
           [this] { handleAbsoluteInfoChanged(); },
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
-          [this] { handleMonitoringChanged(); })) {
+          [this] { handleMonitoringChanged(); },
+          [this] { handleInstructionsClicked(); } )) {
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
-    startTimerHz(30);
     addAndMakeVisible(settingsBar);
+    instructionsWindow.setVisible(false);
+    startTimerHz(30);
 }
 
 PianoRoll::~PianoRoll() {
@@ -96,29 +100,26 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
     }
 
     // Draw over the single selected note and its family members (reverse order)
-    if (notesSelected.size() == 1) {
-        auto* noteSelected = notesSelected[0];
+    if (lockedNoteReference) {
+        auto lockedNotePtr = lockedNoteReference.value();
         for (auto& note : noteRegion.notes) {
-            if (note.get() == noteSelected || !note->isFamiliarWith(noteSelected)) continue;
+            if (note.get() == lockedNotePtr || !note->isFamiliarWith(lockedNotePtr)) continue;
             drawNote(note.get(), FAMILY_BASE_COLOUR, FAMILY_OUTLINE_COLOUR, g);
-            drawText((note->ratio / noteSelected->ratio).toString(), getNoteBounds(note.get()), FAMILY_RATIO_TEXT_COLOUR, g);
+            drawText((note->ratio / lockedNotePtr->ratio).toString(), getNoteBounds(note.get()), FAMILY_RATIO_TEXT_COLOUR, g);
         }
-        auto outlineColour = noteSelected == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : SELECTED_OUTLINE_COLOUR;
-        drawNote(noteSelected, SELECTED_BASE_COLOUR, outlineColour, g);
+        auto outlineColour = lockedNotePtr == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : SELECTED_OUTLINE_COLOUR;
+        drawNote(lockedNotePtr, SELECTED_BASE_COLOUR, outlineColour, g);
         if (absoluteInfoSetting)
-            drawText(noteSelected->getAbsoluteInfo(), getNoteBounds(noteSelected), SELECTED_TEXT_COLOUR, g);
+            drawText(lockedNotePtr->getAbsoluteInfo(), getNoteBounds(lockedNotePtr), SELECTED_TEXT_COLOUR, g);
     }
 
-    // Draw over the multiple selected notes
-    if (notesSelected.size() > 1) {
-        auto intRatios = getIntRatios(notesSelected);
-        for (size_t i = 0; i < notesSelected.size(); ++i) {
-            auto* noteSelected = notesSelected[i];
-            drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
-            if (intRatios) {
-                drawText(juce::String(std::to_string(intRatios.value()[i])), getNoteBounds(noteSelected), INT_RATIO_TEXT_COLOUR, g);
-            }
-        }
+    // Draw over the selected notes
+    auto intRatios = getIntRatios(notesSelected);
+    for (size_t i = 0; i < notesSelected.size(); ++i) {
+        auto* noteSelected = notesSelected[i];
+        drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
+        if (intRatios && intRatios.value().size() > 1 && !lockedNoteReference)
+            drawText(juce::String(std::to_string(intRatios.value()[i])), getNoteBounds(noteSelected), INT_RATIO_TEXT_COLOUR, g);
     }
 }
 
@@ -127,8 +128,8 @@ void PianoRoll::drawNote(const Note* note, const juce::Colour& baseColour, const
     g.setColour(colour);
     auto bounds = getNoteBounds(note);
     fillRect(g, bounds);
-    auto actualOutlineColour = note == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : outlineColour;
-    g.setColour(actualOutlineColour);
+    // auto actualOutlineColour = note == lockedNoteReference ? LOCKED_REF_OUTLINE_COLOUR : outlineColour;
+    g.setColour(outlineColour);
     drawRect(g, bounds);
 }
 
@@ -311,7 +312,10 @@ std::optional<Fraction> PianoRoll::getClosestInterval(Point px) {
         }
     }
 
-    return closestInterval;
+    if (closestInterval)
+        return closestInterval;
+
+    return getIntervalAt(px);
 }
 
 Rect PianoRoll::getNoteBounds(const Note* note) const {
@@ -410,10 +414,14 @@ void PianoRoll::stopAllPreviews() {
 }
 
 void PianoRoll::handleMonitoringChanged() {
-    monitoringEnabled = settingsBar.isMonitoringEnabled();
+    monitoringEnabled = settingsBar.getMonitoring();
     if (!monitoringEnabled)
         stopAllPreviews();
     pushNoteStateToProcessor();
+}
+
+void PianoRoll::handleInstructionsClicked() {
+    instructionsWindow.open();
 }
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
@@ -456,13 +464,15 @@ void PianoRoll::mouseDrag(const juce::MouseEvent& event) {
 }
 
 void PianoRoll::mouseMove(const juce::MouseEvent& event) {
-    noteHighlighted = nullptr;
+    noteHighlighted = std::nullopt;
     intervalHighlighted.reset();
     auto position = event.getPosition();
     if (auto* noteAt = getNoteAt(position))
         noteHighlighted = noteAt;
     else if (auto closestInterval = getClosestInterval(position))
         intervalHighlighted = closestInterval;
+
+    displayToolTip(event.getScreenPosition());
 }
 
 void PianoRoll::mouseMagnify(const juce::MouseEvent& event, const float scaleFactor) {
@@ -589,7 +599,6 @@ void PianoRoll::updateSelectedNotesSnapshot() {
 
 void PianoRoll::handleDoubleClick(const Point px) {
     auto barSub= getBarSubFromXPx(px.getX());
-    auto intervalAt = getIntervalAt(px);
     auto* noteAt = getNoteAt(px);
 
     if (noteAt) {
@@ -597,11 +606,9 @@ void PianoRoll::handleDoubleClick(const Point px) {
         return;
     }
 
-    if (lockedNoteReference) {
-        if (auto closestInterval = getClosestInterval(px)) {
-            auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
-            addNoteWithRefFreq(refFreq, ratio * closestInterval.value(), irratio, barSub, barSub + 1);
-        }
+    if (auto closestInterval = getClosestInterval(px)) {
+        auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
+        addNoteWithRefFreq(refFreq, ratio * closestInterval.value(), irratio, barSub, barSub + 1);
         return;
     }
 
@@ -765,7 +772,7 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
     if (code == 'Y') { toggleLockYSetting();        return true; }
     if (code == 'I') { toggleAbsoluteInfoSetting(); return true; }
-    if (code == 'T') { roundReferenceTo12TET();     return true; }
+    if (code == 'T') { roundTo12TET();     return true; }
 
     return false;
 }
@@ -788,10 +795,10 @@ void PianoRoll::setAbsoluteInfo(bool absoluteInfo) {
     settingsBar.setAbsoluteInfo(absoluteInfo);
 }
 
-void PianoRoll::roundReferenceTo12TET() {
+void PianoRoll::roundTo12TET() {
     pushUndoSnapshot();
     for (auto& note : notesSelected) {
-        note->roundReferenceTo12TET();
+        note->roundTo12TET();
     }
     pushNoteStateToProcessor();
 }
@@ -1008,7 +1015,7 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 
     settingsBar.setLockY(lockYSetting);
     settingsBar.setAbsoluteInfo(absoluteInfoSetting);
-    settingsBar.setMonitoringEnabled(monitoringEnabled);
+    settingsBar.setMonitoring(monitoringEnabled);
     settingsBar.setIntervals(intervalsSetting);
 
     customIntervals.clear();
@@ -1085,4 +1092,32 @@ void PianoRoll::redo() {
     noteRegion = makeNoteRegionFromState(state);
     notesSelected.clear();
     pushNoteStateToProcessor();
+}
+
+void PianoRoll::displayToolTip(Point screenPosition) {
+    if (intervalHighlighted) {
+        auto tooltipText = getIntervalTooltipText(intervalHighlighted.value());
+        tooltipWindow.displayTip(screenPosition, tooltipText);
+        return;
+    }
+
+    if (noteHighlighted) {
+        auto tooltipText = noteHighlighted.value()->getAbsoluteInfo();
+        if (lockedNoteReference && noteHighlighted.value()->isFamiliarWith(lockedNoteReference.value())) {
+            auto interval = noteHighlighted.value()->ratio / lockedNoteReference.value()->ratio;
+            tooltipText += ":   " + getIntervalTooltipText(interval);
+        }
+        tooltipWindow.displayTip(screenPosition, tooltipText);
+        return;
+    }
+
+    tooltipWindow.hideTip();
+}
+
+juce::String PianoRoll::getIntervalTooltipText(Fraction& interval) {
+    auto tooltipText = interval.toString() + " (";
+    if (auto name = interval.getName())
+        tooltipText += name.value() + ", ";
+    tooltipText += juce::String(interval.getSizeInCents()) + "ct)";
+    return tooltipText;
 }

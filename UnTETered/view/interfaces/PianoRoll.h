@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "InstructionsWindow.h"
 #include "PianoRollSettingsBar.h"
 #include "../Types.h"
 #include "../../logic/NoteRegion.h"
@@ -33,7 +34,7 @@ public:
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour LOCKED_REF_OUTLINE_COLOUR = {50, 200, 50};
-    const juce::Colour MULT_SELECTED_BASE_COLOUR = {100, 100, 100};
+    const juce::Colour MULT_SELECTED_BASE_COLOUR = juce::Colour::fromRGBA(100, 100, 100, 0);
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
     const juce::Colour INTERVAL_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
@@ -126,7 +127,7 @@ private:
     void setLockY(bool lockY);
     void toggleAbsoluteInfoSetting();
     void setAbsoluteInfo(bool absoluteInfo);
-    void roundReferenceTo12TET();
+    void roundTo12TET();
     void addNoteWithoutReference(double frequency, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
     void deleteNote(Note* note, bool pushState = true);
@@ -150,6 +151,7 @@ private:
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
+    void handleInstructionsClicked();
 
     void timerCallback() override;
 
@@ -162,7 +164,6 @@ private:
     void pushUndoSnapshot();
     void undo();
     void redo();
-    void setNotes(std::vector<StoredPianoNote> notes);
     bool undoSnapshotTakenForCurrentDrag = false;
     bool noteWasDraggedThisGesture = false;
 
@@ -209,7 +210,7 @@ private:
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
     std::optional<Note*> lockedNoteReference{};
-    Note* noteHighlighted{};
+    std::optional<Note*> noteHighlighted{};
     std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
@@ -225,6 +226,12 @@ private:
     double cachedPpqPosition = 0.0;
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
+
+    juce::TooltipWindow tooltipWindow { this };
+    void displayToolTip(Point screenPosition);
+    static juce::String getIntervalTooltipText(Fraction& interval);
+
+    InstructionsWindow instructionsWindow;
 
     bool isLoadingState = false;
 };
