@@ -125,7 +125,7 @@ private:
     void setLockY(bool lockY);
     void toggleAbsoluteInfoSetting();
     void setAbsoluteInfo(bool absoluteInfo);
-    void roundReferenceTo12TET();
+    void roundTo12TET();
     void addNoteWithoutReference(double frequency, float start, float end);
     void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
     void deleteNote(Note* note, bool pushState = true);

@@ -772,7 +772,7 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
     if (code == 'Y') { toggleLockYSetting();        return true; }
     if (code == 'I') { toggleAbsoluteInfoSetting(); return true; }
-    if (code == 'T') { roundReferenceTo12TET();     return true; }
+    if (code == 'T') { roundTo12TET();     return true; }
 
     return false;
 }
@@ -795,10 +795,10 @@ void PianoRoll::setAbsoluteInfo(bool absoluteInfo) {
     settingsBar.setAbsoluteInfo(absoluteInfo);
 }
 
-void PianoRoll::roundReferenceTo12TET() {
+void PianoRoll::roundTo12TET() {
     pushUndoSnapshot();
     for (auto& note : notesSelected) {
-        note->roundReferenceTo12TET();
+        note->roundTo12TET();
     }
     pushNoteStateToProcessor();
 }

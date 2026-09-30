@@ -112,11 +112,12 @@ struct Note {
         }
     }
 
-    void roundReferenceTo12TET() {
-        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(referenceFrequency, 440);
+    void roundTo12TET() {
+        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(getFrequency(), 440);
         auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
         auto factor = std::pow(2, semitonesToClosest12TET / 12);
-        referenceFrequency *= factor;
+        referenceFrequency = getFrequency() * factor;
+        ratio = {1, 1};
     }
 
     [[nodiscard]] float getHue() const {
