@@ -12,6 +12,13 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                      #endif
                        )
 {
+    addParameter(stateVersionParam = new juce::AudioParameterInt (
+        juce::ParameterID { "stateVersion", 1 },
+        "State Version",
+        0, 127, 0,
+        juce::AudioParameterIntAttributes{}.withAutomatable(false)
+                                                    .withMeta(true)
+                                                    .withLabel("")));
 }
 
 UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
@@ -199,7 +206,14 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
 }
 
 void UnTETeredAudioProcessor::markStateDirtyForHost() {
-    updateHostDisplay(juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged(true));
+    updateHostDisplay(juce::AudioProcessorListener::ChangeDetails{}
+                        .withNonParameterStateChanged(true));
+
+    if (stateVersionParam != nullptr) {
+        const int next = (stateVersionParam->get() + 1) % 128;
+        stateVersionParam->setValueNotifyingHost(
+            stateVersionParam->convertTo0to1(static_cast<float> (next)));
+    }
 }
 
 

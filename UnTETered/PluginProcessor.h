@@ -132,6 +132,8 @@ private:
     mutable juce::CriticalSection previewMessagesLock;
     std::vector<juce::MidiMessage> pendingPreviewMessages;
 
+    juce::AudioParameterInt* stateVersionParam = nullptr;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
 };
