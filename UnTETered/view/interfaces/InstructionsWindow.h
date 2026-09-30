@@ -6,7 +6,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-class InstructionsWindow : public juce::DialogWindow {
+class InstructionsField : public juce::Component {
+public:
     std::vector<std::pair<juce::String, juce::String>> CONTROLS = {
         {"Double click", "Create a note"},
         {"Option+click a note", "Set the note as a reference."},
@@ -28,21 +29,27 @@ class InstructionsWindow : public juce::DialogWindow {
         {"T", "Round reference frequency of selection to 12TET"}
     };
 
-    Component background{};
-    juce::TextButton okButton{"OK"};
+    void paint (juce::Graphics& g) override {
+        g.setColour(juce::Colours::darkgrey);
+        g.fillRect(0, 0, getWidth(), getHeight());
+        g.setColour(juce::Colours::lightgrey);
+        g.drawText("Instructions", 0, 30, getWidth(), 60, juce::Justification::centred);
+        g.drawMultiLineText("hoi\nhoi\nhallo", 100, 100, 150);
+    }
+};
+
+class InstructionsWindow : public juce::DialogWindow {
+
+    InstructionsField background{};
 
 public:
     InstructionsWindow()
-        : DialogWindow("My Custom Title",
+        : DialogWindow("Instructions",
                       juce::Colours::black,
                       true) {
 
         // Add any components you want
         setContentOwned(&background, true);
-        background.addAndMakeVisible(okButton);
-        okButton.setSize(100, 50);
-        okButton.setCentrePosition(300, 300);
-        okButton.onClick = [this] () { close(); };
 
         // Set reasonable size
         centreWithSize(getWidth(), getHeight());
