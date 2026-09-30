@@ -144,6 +144,8 @@ void UnTETeredAudioProcessor::setStateInformation(const void* data, int sizeInBy
     const auto pianoRollTree = root.getChildWithName(PianoRollStateSerialiser::treeType());
     if (pianoRollTree.isValid())
         setPianoRollState(PianoRollStateSerialiser::fromValueTree(pianoRollTree));
+
+    sendChangeMessage();
 }
 
 //==============================================================================
@@ -195,6 +197,11 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
     const juce::ScopedLock sl(pianoRollStateLock);
     fn(pianoRollState);
 }
+
+void UnTETeredAudioProcessor::markStateDirtyForHost() {
+    updateHostDisplay(juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged(true));
+}
+
 
 void UnTETeredAudioProcessor::addPreviewMessages(std::initializer_list<juce::MidiMessage> msgs)
 {

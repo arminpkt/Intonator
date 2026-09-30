@@ -397,6 +397,7 @@ void Grid2D::pushStateToProcessor() const
                 s.saves[i].screenCells.push_back(p);
         }
     });
+    processor.markStateDirtyForHost();
 }
 
 void Grid2D::pullStateFromProcessorAndRebuild()

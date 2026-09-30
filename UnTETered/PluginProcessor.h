@@ -38,7 +38,8 @@ struct HostSeekRequest
 };
 
 //==============================================================================
-class UnTETeredAudioProcessor final : public juce::AudioProcessor
+class UnTETeredAudioProcessor final : public juce::AudioProcessor,
+                                        public juce::ChangeBroadcaster
 {
 public:
 
@@ -99,6 +100,8 @@ public:
                                float barLeftScreen);
 
     void updatePianoRollState(std::function<void(PianoRollState&)> fn);
+
+    void markStateDirtyForHost();
 
     void addPreviewMessages(std::initializer_list<juce::MidiMessage> msgs);
 

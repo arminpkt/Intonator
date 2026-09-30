@@ -107,7 +107,7 @@ void PianoRollSettingsBar::setAbsoluteInfo(bool absoluteInfo, bool sendNotificat
 }
 
 void PianoRollSettingsBar::setIntervals(int id) {
-    intervalsComboBox.setSelectedId(id);
+    intervalsComboBox.setSelectedId(id, juce::dontSendNotification);
 }
 
 void PianoRollSettingsBar::setCustomIntervals(const std::vector<Fraction>& fractions) {

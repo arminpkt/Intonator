@@ -927,18 +927,21 @@ void PianoRoll::handleAbsoluteInfoChanged() {
     pushNoteStateToProcessor();
 }
 
-void PianoRoll::handleIntervalsChanged() {
-    intervalsSetting = settingsBar.getIntervals();
-
+void PianoRoll::applyIntervalsSetting() {
     if (intervalsSetting == CUSTOM_INTERVALS_ID) {
         intervals = customIntervals;
         settingsBar.setCustomIntervalsVisibility(true);
     }
-    else {
-        intervals = getIntervalsByID(intervalsSetting);
-        settingsBar.setCustomIntervalsVisibility(false);
-    }
+    if (intervalsSetting != SEVEN_LIMIT_ID)
+        intervalsSetting = SEVEN_LIMIT_ID;
 
+    intervals = getIntervalsByID(intervalsSetting);
+    settingsBar.setCustomIntervalsVisibility(false);
+}
+
+void PianoRoll::handleIntervalsChanged() {
+    intervalsSetting = settingsBar.getIntervals();
+    applyIntervalsSetting();
     pushNoteStateToProcessor();
 }
 
@@ -975,14 +978,27 @@ void PianoRoll::timerCallback() {
 }
 
 void PianoRoll::pullStateFromProcessorAndRebuild() {
+    const juce::ScopedValueSetter<bool> guard(isLoadingState, true);
+
     const auto state = processor.getPianoRollState();
     octaveHeightPxF  = state.octaveHeightPxF;
     barWidthPxF      = state.barWidthPxF;
     freqBottomScreen = state.freqBottomScreen;
     barLeftScreen    = state.barLeftScreen;
     noteRegion       = makeNoteRegionFromState(state);
+
     notesSelected.clear();
+    selectedNotesStartsEnds.clear();
+    selectedNotesRefFreqs.clear();
+    lockedNoteReference.reset();
+    noteHighlighted = nullptr;
+    noteClicked = nullptr;
     draggedRect.reset();
+
+    undoStack.clear();
+    redoStack.clear();
+    undoSnapshotTakenForCurrentDrag = false;
+    noteWasDraggedThisGesture = false;
 
     // Settings Bar
     // reference=lockNote can't survive serialization (pointer is gone), so fall back
@@ -995,19 +1011,24 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     settingsBar.setMonitoringEnabled(monitoringEnabled);
     settingsBar.setIntervals(intervalsSetting);
 
+    customIntervals.clear();
     if (!state.customIntervals.empty())
     {
-        customIntervals.clear();
         for (const auto& [num, den] : state.customIntervals)
             customIntervals.emplace_back( num, den );
-        settingsBar.setCustomIntervals(customIntervals);
     }
     else {
-        settingsBar.setCustomIntervals(SEVEN_LIMIT);
+        customIntervals = SEVEN_LIMIT;
     }
+    settingsBar.setCustomIntervals(customIntervals);
+
+    applyIntervalsSetting();
+    repaint();
 }
 
 void PianoRoll::pushNoteStateToProcessor() const {
+    if (isLoadingState)
+        return;
     PianoRollState state    = makeStateFromNoteRegion(noteRegion);
     state.octaveHeightPxF   = octaveHeightPxF;
     state.barWidthPxF       = barWidthPxF;
@@ -1024,6 +1045,7 @@ void PianoRoll::pushNoteStateToProcessor() const {
         state.customIntervals.emplace_back(num, den);
     }
     processor.setPianoRollState(state);
+    processor.markStateDirtyForHost();
 }
 
 void PianoRoll::pushViewportToProcessor() const {

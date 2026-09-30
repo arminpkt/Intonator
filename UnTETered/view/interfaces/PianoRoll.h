@@ -48,6 +48,8 @@ public:
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     ~PianoRoll() override;
 
+    void pullStateFromProcessorAndRebuild();
+
 private:
     void paint(juce::Graphics& g) override;
     static void fillRect(juce::Graphics& g, const Rect& rect);
@@ -144,13 +146,13 @@ private:
 
     void handleLockYChanged();
     void handleAbsoluteInfoChanged();
+    void applyIntervalsSetting();
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
 
     void timerCallback() override;
 
-    void pullStateFromProcessorAndRebuild();
     void pushNoteStateToProcessor() const;
     void pushViewportToProcessor() const;
 
@@ -223,4 +225,6 @@ private:
     double cachedPpqPosition = 0.0;
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
+
+    bool isLoadingState = false;
 };

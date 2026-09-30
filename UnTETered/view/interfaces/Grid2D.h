@@ -37,6 +37,8 @@ public:
     static juce::Colour getColourForNote(Note* note, bool selected);
     static Kernel createEmptyKernel(Point dim);
 
+    void pullStateFromProcessorAndRebuild();
+
 private:
     UnTETeredAudioProcessor& processor;
     const Point dimScreenCells;
@@ -81,6 +83,5 @@ private:
     Point mirrorYPx(Point point) const;
 
     void pushStateToProcessor() const;
-    void pullStateFromProcessorAndRebuild();
     void rebuildActiveNotesFromActiveCells(bool resetNotes);
 };

@@ -9,10 +9,13 @@ UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProc
 
     setSize (1200, 400);
     setResizable(true, true);
+
+    processorRef.addChangeListener(this);
 }
 
-UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() = default;
-
+UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() {
+    processorRef.removeChangeListener(this);
+};
 
 void UnTETeredAudioProcessorEditor::resized() {
     clipResize();
@@ -26,4 +29,12 @@ void UnTETeredAudioProcessorEditor::clipResize() {
         setBounds(bounds.withWidth(200));
     if (bounds.getHeight() < 200)
         setBounds(bounds.withHeight(200));
+}
+
+void UnTETeredAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source) {
+    if (source != &processorRef)
+        return;
+
+    pianoRoll.pullStateFromProcessorAndRebuild();
+    grid2D.pullStateFromProcessorAndRebuild();
 }

@@ -21,8 +21,10 @@ struct FractionsField : juce::TextEditor {
     }
 
     void setFractions(std::vector<Fraction> fractions) {
-        if (fractions.empty())
+        if (fractions.empty()) {
             setText("");
+            return;
+        }
 
         std::string string = "";
 
@@ -32,6 +34,6 @@ struct FractionsField : juce::TextEditor {
         string.pop_back();
         string.pop_back();
 
-        setText(string);
+        setText(string, false);
     }
 };

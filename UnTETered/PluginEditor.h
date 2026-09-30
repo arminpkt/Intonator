@@ -6,7 +6,8 @@
 #include "view/interfaces/TextInput.h"
 
 //==============================================================================
-class UnTETeredAudioProcessorEditor final : public juce::AudioProcessorEditor
+class UnTETeredAudioProcessorEditor final : public juce::AudioProcessorEditor,
+                                            private juce::ChangeListener
 {
 public:
     explicit UnTETeredAudioProcessorEditor (UnTETeredAudioProcessor&);
@@ -17,6 +18,7 @@ public:
     void clipResize();
 
 private:
+    void changeListenerCallback(juce::ChangeBroadcaster *source) override;
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
     UnTETeredAudioProcessor& processorRef;
