@@ -32,7 +32,11 @@ public:
         if (b == 0)
             return std::nullopt;
 
-        return Fraction(a, b);
+        try {
+            return Fraction(a, b);
+        } catch (...) {
+            return std::nullopt;
+        }
     }
 
     [[nodiscard]] std::pair<int, int> getNumeratorAndDenominator() const {
@@ -226,7 +230,7 @@ public:
         {"28/17", "submajor sixth"},
         {"28/19", "Hendrix fifth"},
         {"28/25", "middle second"},
-        {"28/27", "Archytas' 1/3-tone"},
+        {"28/27", "septimal third-tone"},
         {"29/16", "29th harmonic"},
         {"30/17", "septendecimal minor seventh"},
         {"30/19", "smaller undevicesimal minor sixth"},

@@ -45,7 +45,6 @@ public:
         g.drawVerticalLine(50, 50, y);
         g.drawVerticalLine(250, 50, y);
         g.drawVerticalLine(450, 50, y);
-        DBG(y);
     }
 };
 

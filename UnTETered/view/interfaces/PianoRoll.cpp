@@ -939,11 +939,10 @@ void PianoRoll::applyIntervalsSetting() {
         intervals = customIntervals;
         settingsBar.setCustomIntervalsVisibility(true);
     }
-    if (intervalsSetting != SEVEN_LIMIT_ID)
-        intervalsSetting = SEVEN_LIMIT_ID;
-
-    intervals = getIntervalsByID(intervalsSetting);
-    settingsBar.setCustomIntervalsVisibility(false);
+    if (intervalsSetting == SEVEN_LIMIT_ID) {
+        intervals = getIntervalsByID(intervalsSetting);
+        settingsBar.setCustomIntervalsVisibility(false);
+    }
 }
 
 void PianoRoll::handleIntervalsChanged() {
