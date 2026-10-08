@@ -94,6 +94,8 @@ private:
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
     void unselectNote(const Note* note);
+    void setReference(Note* note);
+    void removeReference();
 
     float mirrorYPx(float y, float axis = 0.5f) const;
     int mirrorYPx(int y, float axis = 0.5f) const;
@@ -230,6 +232,7 @@ private:
     juce::TooltipWindow tooltipWindow { this };
     void displayToolTip(Point screenPosition);
     static juce::String getIntervalTooltipText(Fraction& interval);
+    static void logNote(const Note* note);
 
     InstructionsWindow instructionsWindow;
 

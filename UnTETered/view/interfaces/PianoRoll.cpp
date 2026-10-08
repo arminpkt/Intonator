@@ -10,6 +10,7 @@
 #include "PianoRollStateHelpers.h"
 #include "IntervalPresets.h"
 #include "../../logic/util.h"
+#include "../../CrashLog.h"
 
 PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
     : processor(proc),
@@ -357,6 +358,9 @@ std::vector<double> PianoRoll::getIntervalFrequencies(Note* note) const {
 }
 
 void PianoRoll::selectNote(Note* note, Point clickedPos, bool invertIfSelected) {
+    CrashLog::LOG_SCOPE();
+    logNote(note);
+
     if (indexOfSelection(note)) {
         if (invertIfSelected) unselectNote(note);
     } else {
@@ -373,9 +377,23 @@ std::optional<size_t> PianoRoll::indexOfSelection(const Note* note) const {
 }
 
 void PianoRoll::unselectNote(const Note* note) {
+    CrashLog::LOG_SCOPE();
     auto index = indexOfSelection(note);
     if (index)
         notesSelected.erase(notesSelected.begin() + static_cast<long>(index.value()));
+}
+
+void PianoRoll::setReference(Note* note) {
+    CrashLog::LOG_SCOPE();
+    logNote(note);
+
+    lockedNoteReference = note;
+}
+
+void PianoRoll::removeReference() {
+    CrashLog::LOG_SCOPE();
+
+    lockedNoteReference = std::nullopt;
 }
 
 void PianoRoll::startNotePreview(const Note* note) {
@@ -625,12 +643,12 @@ void PianoRoll::handleShiftSingleClick(const Point px) {
 void PianoRoll::handleOptionSingleClick(const Point px) {
     if (auto* note = getNoteAt(px)) {
         if (note == lockedNoteReference)
-            lockedNoteReference = std::nullopt;
+            removeReference();
         else
-            lockedNoteReference = note;
+            setReference(note);
     }
     else
-        lockedNoteReference = std::nullopt;
+        removeReference();
 }
 
 void PianoRoll::dragRectangle(const Point mouseDownPos, const Point currentPos) {
@@ -741,7 +759,10 @@ void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) cons
 }
 
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
+    CrashLog::LOG_SCOPE();
+
     auto code = static_cast<size_t>(key.getKeyCode());
+    CrashLog::log(juce::String(code));
 
     if (code == 'Z' && key.getModifiers().isCommandDown()) {
         if (key.getModifiers().isShiftDown()) redo(); else undo();
@@ -796,6 +817,7 @@ void PianoRoll::setAbsoluteInfo(bool absoluteInfo) {
 }
 
 void PianoRoll::roundTo12TET() {
+    CrashLog::LOG_SCOPE();
     pushUndoSnapshot();
     for (auto& note : notesSelected) {
         note->roundTo12TET();
@@ -804,35 +826,43 @@ void PianoRoll::roundTo12TET() {
 }
 
 void PianoRoll::addNoteWithoutReference(double frequency, float start, float end) {
+    CrashLog::LOG_SCOPE();
     pushUndoSnapshot();
     noteRegion.addNoteWithoutReference(frequency, start, end);
+    logNote(noteRegion.notes.back().get());
     pushNoteStateToProcessor();
     if (!noteRegion.notes.empty())
         startNotePreview(noteRegion.notes.back().get());
 }
 
 void PianoRoll::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end) {
+    CrashLog::LOG_SCOPE();
     pushUndoSnapshot();
     noteRegion.addNoteWithRefFreq(refFreq, ratio, irratio, start, end);
+    logNote(noteRegion.notes.back().get());
     pushNoteStateToProcessor();
     if (!noteRegion.notes.empty())
         startNotePreview(noteRegion.notes.back().get());
 }
 
 void PianoRoll::deleteNote(Note* note, bool pushState) {
+    CrashLog::LOG_SCOPE();
+    logNote(note);
+
     if (pushState)
         pushUndoSnapshot();
 
     noteRegion.deleteNote(note);
     unselectNote(note);
     if (note == lockedNoteReference)
-        lockedNoteReference = std::nullopt;
+        removeReference();
 
     if (pushState)
         pushNoteStateToProcessor();
 }
 
 void PianoRoll::deleteSelection() {
+    CrashLog::LOG_SCOPE();
     if (notesSelected.empty()) return;
 
     pushUndoSnapshot();
@@ -842,6 +872,7 @@ void PianoRoll::deleteSelection() {
 }
 
 void PianoRoll::copySelectionToClipboard() {
+    CrashLog::LOG_SCOPE();
     clipboard.clear();
     for (const auto* note : notesSelected)
         clipboard.push_back(std::make_unique<Note>(
@@ -849,6 +880,7 @@ void PianoRoll::copySelectionToClipboard() {
 }
 
 void PianoRoll::cutSelection() {
+    CrashLog::LOG_SCOPE();
     if (notesSelected.empty()) return;
     pushUndoSnapshot();
     copySelectionToClipboard();
@@ -857,6 +889,7 @@ void PianoRoll::cutSelection() {
 }
 
 void PianoRoll::pasteClipboard() {
+    CrashLog::LOG_SCOPE();
     if (clipboard.empty()) return;
 
     float earliestStart = clipboard.front()->start;
@@ -879,6 +912,7 @@ void PianoRoll::pasteClipboard() {
 }
 
 void PianoRoll::duplicate() {
+    CrashLog::LOG_SCOPE();
     if (notesSelected.empty()) return;
 
     float earliestStart = notesSelected.front()->start;
@@ -984,6 +1018,7 @@ void PianoRoll::timerCallback() {
 }
 
 void PianoRoll::pullStateFromProcessorAndRebuild() {
+    CrashLog::LOG_SCOPE();
     const juce::ScopedValueSetter<bool> guard(isLoadingState, true);
 
     const auto state = processor.getPianoRollState();
@@ -996,7 +1031,7 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     notesSelected.clear();
     selectedNotesStartsEnds.clear();
     selectedNotesRefFreqs.clear();
-    lockedNoteReference.reset();
+    removeReference();
     noteHighlighted = nullptr;
     noteClicked = nullptr;
     draggedRect.reset();
@@ -1033,6 +1068,7 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 }
 
 void PianoRoll::pushNoteStateToProcessor() const {
+    CrashLog::LOG_SCOPE();
     if (isLoadingState)
         return;
     PianoRollState state    = makeStateFromNoteRegion(noteRegion);
@@ -1059,6 +1095,7 @@ void PianoRoll::pushViewportToProcessor() const {
 }
 
 void PianoRoll::pushUndoSnapshot() {
+    CrashLog::LOG_SCOPE();
     undoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
     if (undoStack.size() > static_cast<size_t>(MAX_UNDO_STEPS))
         undoStack.erase(undoStack.begin());
@@ -1066,6 +1103,7 @@ void PianoRoll::pushUndoSnapshot() {
 }
 
 void PianoRoll::undo() {
+    CrashLog::LOG_SCOPE();
     if (undoStack.empty()) return;
     redoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
     PianoRollState state;
@@ -1076,10 +1114,12 @@ void PianoRoll::undo() {
     state.barLeftScreen    = barLeftScreen;
     noteRegion = makeNoteRegionFromState(state);
     notesSelected.clear();
+    lockedNoteReference.reset();
     pushNoteStateToProcessor();
 }
 
 void PianoRoll::redo() {
+    CrashLog::LOG_SCOPE();
     if (redoStack.empty()) return;
     undoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
     PianoRollState state;
@@ -1090,6 +1130,7 @@ void PianoRoll::redo() {
     state.barLeftScreen    = barLeftScreen;
     noteRegion = makeNoteRegionFromState(state);
     notesSelected.clear();
+    lockedNoteReference.reset();
     pushNoteStateToProcessor();
 }
 
@@ -1119,4 +1160,8 @@ juce::String PianoRoll::getIntervalTooltipText(Fraction& interval) {
         tooltipText += name.value() + ", ";
     tooltipText += juce::String(interval.getSizeInCents()) + "ct)";
     return tooltipText;
+}
+
+void PianoRoll::logNote(const Note* note) {
+    CrashLog::log(note ? note->getAbsoluteInfo() : "NULLPTR NOTE");
 }

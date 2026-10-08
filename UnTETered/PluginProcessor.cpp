@@ -1,4 +1,6 @@
 #include "PluginProcessor.h"
+
+#include "CrashLog.h"
 #include "PluginEditor.h"
 
 //==============================================================================
@@ -10,8 +12,14 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
-{
+                       ) {
+    juce::SystemStats::setApplicationCrashHandler([](void*) {
+        CrashLog::logCrash();
+    });
+
+    JUCE_LOG_ASSERTIONS;
+    CrashLog::flushLogIfBig();
+    CrashLog::log("\n===========================================\nCreated instance");
 }
 
 UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
