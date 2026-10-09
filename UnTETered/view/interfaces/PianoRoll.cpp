@@ -15,7 +15,7 @@
 PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
     : processor(proc),
       settingsBar(PianoRollSettingsBar(
-          [this] { handleLockYChanged(); },
+          [this] { handleSnapYChanged(); },
           [this] { handleAbsoluteInfoChanged(); },
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
@@ -397,7 +397,7 @@ void PianoRoll::removeReference() {
 }
 
 void PianoRoll::startNotePreview(const Note* note) {
-    if (!monitoringEnabled) return;
+    if (!monitoringSetting) return;
 
     int channel = PREVIEW_CHANNEL_START;
 
@@ -432,8 +432,8 @@ void PianoRoll::stopAllPreviews() {
 }
 
 void PianoRoll::handleMonitoringChanged() {
-    monitoringEnabled = settingsBar.getMonitoring();
-    if (!monitoringEnabled)
+    monitoringSetting = settingsBar.getMonitoring();
+    if (!monitoringSetting)
         stopAllPreviews();
     pushNoteStateToProcessor();
 }
@@ -698,7 +698,7 @@ void PianoRoll::moveExtendShrinkHorizontally(const int dX) const {
 
 void PianoRoll::moveVertically(const Point currentPos, const Point mouseDownPos) {
     // Move freely if not locked
-    if (!lockYSetting) {
+    if (!snapYSetting) {
         double freqFactor = getFreqFromYPx(currentPos.getY()) / getFreqFromYPx(mouseDownPos.getY());
         moveVerticallyFreely(freqFactor);
         return;
@@ -783,28 +783,37 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
         return true;
     }
 
-    if (code == 'X' && key.getModifiers().isCommandDown()) { cutSelection();             return true; }
-    if (code == 'C' && key.getModifiers().isCommandDown()) { copySelectionToClipboard(); return true; }
-    if (code == 'V' && key.getModifiers().isCommandDown()) { pasteClipboard();           return true; }
-    if (code == 'D' && key.getModifiers().isCommandDown()) { duplicate();                return true; }
-    if (code == 'A' && key.getModifiers().isCommandDown()) { selectAll();                return true; }
-    if (code == '1' && key.getModifiers().isCommandDown()) { narrowGrid();               return true; }
-    if (code == '2' && key.getModifiers().isCommandDown()) { widenGrid();                return true; }
-    if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();              return true; }
-    if (code == 'Y') { toggleLockYSetting();        return true; }
-    if (code == 'I') { toggleAbsoluteInfoSetting(); return true; }
-    if (code == 'T') { roundTo12TET();     return true; }
-
+    if (code == 'X' && key.getModifiers().isCommandDown()) { cutSelection();              return true; }
+    if (code == 'C' && key.getModifiers().isCommandDown()) { copySelectionToClipboard();  return true; }
+    if (code == 'V' && key.getModifiers().isCommandDown()) { pasteClipboard();            return true; }
+    if (code == 'D' && key.getModifiers().isCommandDown()) { duplicate();                 return true; }
+    if (code == 'A' && key.getModifiers().isCommandDown()) { selectAll();                 return true; }
+    if (code == '1' && key.getModifiers().isCommandDown()) { narrowGrid();                return true; }
+    if (code == '2' && key.getModifiers().isCommandDown()) { widenGrid();                 return true; }
+    if (code == '3' && key.getModifiers().isCommandDown()) { tripletGrid();               return true; }
+    if (code == 'Y')                                       { toggleSnapYSetting();        return true; }
+    if (code == 'M')                                       { toggleMonitoringSetting();   return true; }
+    if (code == 'I')                                       { toggleAbsoluteInfoSetting(); return true; }
+    if (code == 'T')                                       { roundTo12TET();              return true; }
     return false;
 }
 
-void PianoRoll::toggleLockYSetting() {
-    settingsBar.setLockY(!lockYSetting, true);
+void PianoRoll::toggleSnapYSetting() {
+    settingsBar.setSnapY(!snapYSetting, true);
 }
 
-void PianoRoll::setLockY(bool lockY) {
-    lockYSetting = lockY;
-    settingsBar.setLockY(lockY);
+void PianoRoll::setSnapY(bool snapY) {
+    snapYSetting = snapY;
+    settingsBar.setSnapY(snapY);
+}
+
+void PianoRoll::toggleMonitoringSetting() {
+    settingsBar.setMonitoring(!monitoringSetting, true);
+}
+
+void PianoRoll::setMonitoring(bool monitoring) {
+    monitoringSetting = monitoring;
+    settingsBar.setMonitoring(monitoring, true);
 }
 
 void PianoRoll::toggleAbsoluteInfoSetting() {
@@ -958,8 +967,8 @@ void PianoRoll::tripletGrid() {
         gridTripletted = !gridTripletted;
 }
 
-void PianoRoll::handleLockYChanged() {
-    lockYSetting = settingsBar.getLockY();
+void PianoRoll::handleSnapYChanged() {
+    snapYSetting = settingsBar.getSnapY();
     pushNoteStateToProcessor();
 }
 
@@ -1043,13 +1052,13 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 
     // Settings Bar
     // reference=lockNote can't survive serialization (pointer is gone), so fall back
-    lockYSetting      = state.lockY;
-    monitoringEnabled = state.monitoringEnabled;
+    snapYSetting      = state.snapY;
+    monitoringSetting = state.monitoringEnabled;
     intervalsSetting  = state.intervalsSetting;
 
-    settingsBar.setLockY(lockYSetting);
+    settingsBar.setSnapY(snapYSetting);
     settingsBar.setAbsoluteInfo(absoluteInfoSetting);
-    settingsBar.setMonitoring(monitoringEnabled);
+    settingsBar.setMonitoring( monitoringSetting);
     settingsBar.setIntervals(intervalsSetting);
 
     customIntervals.clear();
@@ -1077,8 +1086,8 @@ void PianoRoll::pushNoteStateToProcessor() const {
     state.freqBottomScreen  = freqBottomScreen;
     state.barLeftScreen     = barLeftScreen;
 
-    state.lockY             = lockYSetting;
-    state.monitoringEnabled = monitoringEnabled;
+    state.snapY             = snapYSetting;
+    state.monitoringEnabled = monitoringSetting;
     state.intervalsSetting  = intervalsSetting;
     state.customIntervals.clear();
     for (const auto& f : customIntervals)

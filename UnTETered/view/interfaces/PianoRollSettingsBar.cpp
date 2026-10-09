@@ -9,19 +9,19 @@
 #include "IntervalPresets.h"
 
 PianoRollSettingsBar::PianoRollSettingsBar(
-    std::function<void()> handleLockY,
+    std::function<void()> handleSnapY,
     std::function<void()> handleAbsoluteInfo,
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring,
     std::function<void()> handleInstructions
-    ) : handleLockYChange(std::move(handleLockY)),
+    ) : handleSnapYChange(std::move(handleSnapY)),
         handleAbsoluteInfoChange(std::move(handleAbsoluteInfo)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)),
         handleInstructionsClick(std::move((handleInstructions))) {
-    initialiseLockY();
+    initialiseSnapY();
     initialiseAbsoluteInfo();
     initialiseIntervals();
     initialiseCustomIntervals();
@@ -29,11 +29,11 @@ PianoRollSettingsBar::PianoRollSettingsBar(
     initialiseInstructions();
 }
 
-void PianoRollSettingsBar::initialiseLockY() {
-    addAndMakeVisible(lockYToggle);
-    lockYToggle.setTooltip ("Fixes the pitch of notes, so they can only be changed relative to a selected reference note.");
-    lockYToggle.onStateChange = handleLockYChange;
-    lockYToggle.setHelpText("hoi");
+void PianoRollSettingsBar::initialiseSnapY() {
+    addAndMakeVisible(snapYToggle);
+    snapYToggle.setTooltip ("Fixes the pitch of notes, so they can only be changed relative to a selected reference note.");
+    snapYToggle.onStateChange = handleSnapYChange;
+    snapYToggle.setHelpText("hoi");
 }
 
 void PianoRollSettingsBar::initialiseAbsoluteInfo() {
@@ -89,8 +89,8 @@ void PianoRollSettingsBar::setCustomIntervalsVisibility(bool visible) {
     customIntervalsField.setVisible(visible);
 }
 
-bool PianoRollSettingsBar::getLockY() const {
-    return lockYToggle.getToggleState();
+bool PianoRollSettingsBar::getSnapY() const {
+    return snapYToggle.getToggleState();
 }
 
 bool PianoRollSettingsBar::getAbsoluteInfo() const {
@@ -109,11 +109,18 @@ bool PianoRollSettingsBar::getMonitoring() const {
     return monitoringToggle.getToggleState();
 }
 
-void PianoRollSettingsBar::setLockY(bool lockY, bool sendNotification) {
+void PianoRollSettingsBar::setSnapY(bool snapY, bool sendNotification) {
     if (sendNotification)
-        lockYToggle.setToggleState(lockY, juce::sendNotification);
+        snapYToggle.setToggleState(snapY, juce::sendNotification);
     else
-        lockYToggle.setToggleState(lockY, juce::dontSendNotification);
+        snapYToggle.setToggleState(snapY, juce::dontSendNotification);
+}
+
+void PianoRollSettingsBar::setMonitoring(const bool monitoring, bool sendNotification) {
+    if (sendNotification)
+        monitoringToggle.setToggleState(monitoring, juce::sendNotification);
+    else
+        monitoringToggle.setToggleState(monitoring, juce::dontSendNotification);
 }
 
 void PianoRollSettingsBar::setAbsoluteInfo(bool absoluteInfo, bool sendNotification) {
@@ -131,14 +138,9 @@ void PianoRollSettingsBar::setCustomIntervals(const std::vector<Fraction>& fract
     customIntervalsField.setFractions(fractions);
 }
 
-void PianoRollSettingsBar::setMonitoring(const bool enabled)
-{
-    monitoringToggle.setToggleState(enabled, juce::dontSendNotification);
-}
-
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
-    lockYToggle.setBounds(bounds.removeFromLeft(70));
+    snapYToggle.setBounds(bounds.removeFromLeft(70));
     bounds.removeFromLeft(MARGIN);
     absoluteInfoToggle.setBounds(bounds.removeFromLeft(60));
     bounds.removeFromLeft(MARGIN);

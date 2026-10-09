@@ -30,7 +30,7 @@ struct PianoRollState
     double freqBottomScreen  = 55.0;
     float  barLeftScreen     = 0.0f;
 
-    bool   lockY             = false;
+    bool   snapY             = false;
     bool   monitoringEnabled = false;
     int    intervalsSetting  = SEVEN_LIMIT_ID;
     std::vector<std::pair<int,int>> customIntervals;  // num/den pairs, no Fraction include needed

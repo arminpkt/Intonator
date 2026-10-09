@@ -125,8 +125,10 @@ private:
     void handleShiftSingleClick(Point px);
     void handleOptionSingleClick(Point point);
     bool keyPressed(const juce::KeyPress& key) override;
-    void toggleLockYSetting();
-    void setLockY(bool lockY);
+    void toggleSnapYSetting();
+    void setSnapY(bool snapY);
+    void toggleMonitoringSetting();
+    void setMonitoring(bool monitoring);
     void toggleAbsoluteInfoSetting();
     void setAbsoluteInfo(bool absoluteInfo);
     void roundTo12TET();
@@ -147,7 +149,7 @@ private:
     Rect getNoteCanvasBounds() const;
     Rect getOrientationBarBounds() const;
 
-    void handleLockYChanged();
+    void handleSnapYChanged();
     void handleAbsoluteInfoChanged();
     void applyIntervalsSetting();
     void handleIntervalsChanged();
@@ -183,7 +185,7 @@ private:
 
     void stopAllPreviews();
 
-    bool monitoringEnabled = false;
+    bool monitoringSetting = false;
     std::vector<ActivePreview> activePreviews;
     std::unordered_set<Note*> previewedDuringCurrentDrag;
 
@@ -192,7 +194,7 @@ private:
     NoteRegion noteRegion;
 
     PianoRollSettingsBar settingsBar;
-    bool lockYSetting = false;
+    bool snapYSetting = false;
     bool absoluteInfoSetting = false;
 
     int intervalsSetting = 1;

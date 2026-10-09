@@ -27,10 +27,10 @@ namespace PianoRollStateIds
     static const juce::Identifier irratio           { "irratio" };
 
     // Settings Bar
-    static const juce::Identifier lockY            { "lockY" };
-    static const juce::Identifier monitoringEnabled{ "monitoringEnabled" };
-    static const juce::Identifier intervalsSetting { "intervalsSetting" };
-    static const juce::Identifier customIntervals  { "customIntervals" };
+    static const juce::Identifier snapY             { "snapY" };
+    static const juce::Identifier monitoringEnabled { "monitoringEnabled" };
+    static const juce::Identifier intervalsSetting  { "intervalsSetting" };
+    static const juce::Identifier customIntervals   { "customIntervals" };
 }
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ juce::ValueTree PianoRollStateSerialiser::toValueTree(const PianoRollState& stat
     tree.addChild(notesTree, -1, nullptr);
 
     // Settings Bar
-    tree.setProperty(PianoRollStateIds::lockY,             state.lockY, nullptr);
+    tree.setProperty(PianoRollStateIds::snapY,             state.snapY, nullptr);
     tree.setProperty(PianoRollStateIds::monitoringEnabled, state.monitoringEnabled, nullptr);
     tree.setProperty(PianoRollStateIds::intervalsSetting,  state.intervalsSetting, nullptr);
     tree.setProperty(PianoRollStateIds::customIntervals,   makeStringFromIntervals(state.customIntervals), nullptr);
@@ -123,7 +123,7 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
     }
 
     // Settings Bar
-    state.lockY             = (bool) tree.getProperty(PianoRollStateIds::lockY,             false);
+    state.snapY             = (bool) tree.getProperty(PianoRollStateIds::snapY,             false);
     state.monitoringEnabled = (bool) tree.getProperty(PianoRollStateIds::monitoringEnabled, false);
     state.intervalsSetting  = (int)  tree.getProperty(PianoRollStateIds::intervalsSetting, false);
 
