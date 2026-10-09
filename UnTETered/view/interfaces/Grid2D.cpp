@@ -152,7 +152,7 @@ void Grid2D::activateTransition() {
         Note* note = getNoteFromGrid(cellGrid, !sameSize);
         nextActiveNotes.push_back(note);
     }
-    optimiseTransition(activeNotes, nextActiveNotes);
+    Util::optimiseTransition(activeNotes, nextActiveNotes);
 
     for (size_t i = 0; i < nextActiveNotes.size(); ++i) {
         const Note* note = nextActiveNotes[i];

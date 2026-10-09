@@ -44,12 +44,6 @@ public:
         return monzo.getNumeratorAndDenominator();
     }
 
-    explicit operator double() const {
-        if (!cachedValue)
-            cachedValue = static_cast<double>(monzo);
-        return cachedValue.value();
-    }
-
     Fraction reciprocal() const {
         return *this^-1;
     }
@@ -69,16 +63,42 @@ public:
         return Fraction(m);
     }
 
+    explicit operator double() const {
+        if (!cachedValue)
+            cachedValue = static_cast<double>(monzo);
+        return cachedValue.value();
+    }
+
+    double toDouble() const {
+        return static_cast<double>(*this);
+    }
+
     juce::String toString() const {
         const auto [numerator, denominator] = getNumeratorAndDenominator();
         return std::to_string(numerator) + "/" + std::to_string(denominator);
     }
 
     std::optional<juce::String> getName() const {
+        if (isContractive())
+            return reciprocal().getName();
+
         if (intervalNames::NAMES.count(toString()))
             return intervalNames::NAMES.at(toString());
-        if (intervalNames::NAMES.count(reciprocal().toString()))
-            return intervalNames::NAMES.at(reciprocal().toString());
+
+        Fraction copy = *this;
+        int nrOfOctaves = 0;
+        while ((copy / 2).isExpansive()) {
+            copy = copy / 2;
+            nrOfOctaves++;
+        }
+        if (intervalNames::NAMES.count(copy.toString())) {
+            auto reducedName = intervalNames::NAMES.at(copy.toString());
+            if (reducedName.equalsIgnoreCase("octave"))
+                return juce::String(nrOfOctaves + 1) + " octaves";
+            juce::String name = reducedName + " +" + juce::String(nrOfOctaves) + "oct";
+            return name;
+        }
+
         return std::nullopt;
     }
 
@@ -117,11 +137,19 @@ public:
     }
 
     double getSizeInSemitones() const {
-        double ratioLog = std::log2(static_cast<double>(*this));
+        double ratioLog = std::log2(toDouble());
         return ratioLog * 12;
     }
 
     int getSizeInCents() const {
         return static_cast<int>(std::round(getSizeInSemitones() * 100));
+    }
+
+    bool isExpansive() const {
+        return toDouble() > 1;
+    }
+
+    bool isContractive() const {
+        return toDouble() < 1;
     }
 };

@@ -8,8 +8,7 @@
 
 #include "util.h"
 
-
-double dists_sum_sq(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
+double Util::dists_sum_sq(const std::vector<PitchClass> &freq_as, const std::vector<PitchClass> &freq_bs) {
     assert(freq_as.size() == freq_bs.size() && "Vectors must have the same size");
 
     double sum_sq = 0;
@@ -21,7 +20,7 @@ double dists_sum_sq(const std::vector<PitchClass> &freq_as, const std::vector<Pi
     return sum_sq;
 }
 
-void optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
+void Util::optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
     if (as_ordered.size() != bs_ordered.size())
         return;
 
@@ -77,7 +76,7 @@ void optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::vector<
     std::swap(bs_ordered, bs_best_order);
 }
 
-void optimiseOctaves(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
+void Util::optimiseOctaves(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
     if (as_ordered.size() != bs_ordered.size())
         return;
 
@@ -87,12 +86,12 @@ void optimiseOctaves(const std::vector<Note*>& as_ordered, std::vector<Note*>& b
     }
 }
 
-void optimiseTransition(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
+void Util::optimiseTransition(const std::vector<Note*>& as_ordered, std::vector<Note*>& bs_ordered) {
     optimiseDestinationOrder(as_ordered, bs_ordered);
     optimiseOctaves(as_ordered, bs_ordered);
 }
 
-std::optional<std::vector<int>> getIntRatios(const std::vector<Note*>& notes) {
+std::optional<std::vector<int>> Util::getIntRatios(const std::vector<Note*>& notes) {
     if (notes.empty())
         return std::nullopt;
 
@@ -108,7 +107,7 @@ std::optional<std::vector<int>> getIntRatios(const std::vector<Note*>& notes) {
     return getIntRatios(ratios);
 }
 
-std::vector<int> getIntRatios(std::vector<Fraction> fractions) {
+std::vector<int> Util::getIntRatios(std::vector<Fraction> fractions) {
     for (size_t i = 0; i < primes::PrimeCount; ++i) {
         int smallestPower = getSmallestPowerAtIndex(fractions, i);
         addToPowersAtIndex(fractions, -smallestPower, i);
@@ -120,7 +119,7 @@ std::vector<int> getIntRatios(std::vector<Fraction> fractions) {
     return intRatios;
 }
 
-int getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t i) {
+int Util::getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t i) {
     int smallestPower = std::numeric_limits<int>::max();
     for (const auto& fraction : fractions)
         if (const int primePower = fraction.getMonzo().primePowers[i]; primePower < smallestPower)
@@ -128,14 +127,14 @@ int getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t
     return smallestPower;
 }
 
-void addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t index) {
+void Util::addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t index) {
     Fraction toMultiply = Fraction{primes::Primes[index], 1} ^ increment;
     for (auto& fraction : fractions) {
         fraction = fraction * toMultiply;
     }
 }
 
-std::tuple<int, int, int, int, int, int> getTLBRWH(Rect r) {
+std::tuple<int, int, int, int, int, int> Util::getTLBRWH(Rect r) {
     auto topLeft = r.getTopLeft();
     auto bottomRight = r.getBottomRight();
     return {
@@ -148,7 +147,7 @@ std::tuple<int, int, int, int, int, int> getTLBRWH(Rect r) {
     };
 }
 
-std::tuple<float, float, float, float, float, float> getTLBRWH(RectF r) {
+std::tuple<float, float, float, float, float, float> Util::getTLBRWH(RectF r) {
     auto topLeft = r.getTopLeft();
     auto bottomRight = r.getBottomRight();
     return {
@@ -159,4 +158,24 @@ std::tuple<float, float, float, float, float, float> getTLBRWH(RectF r) {
         r.getWidth(),
         r.getHeight()
     };
+}
+
+std::vector<Fraction> Util::expandIntervals(const std::vector<Fraction>& intervals) {
+    std::vector<Fraction> expanded;
+    for (auto interval : intervals) {
+        expanded.push_back(interval);
+        if (interval.isExpansive()) {
+            while ((interval / 2).isExpansive())
+                interval = interval / 2;
+            for (int i = 2; i <= 2048; i *= 2)
+                expanded.push_back(interval * i);
+        }
+        if (interval.isContractive()) {
+            while ((interval * 2).isContractive())
+                interval = interval * 2;
+            for (int i = 2; i <= 2048; i *= 2)
+                expanded.push_back(interval / i);
+        }
+    }
+    return expanded;
 }

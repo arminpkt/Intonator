@@ -57,7 +57,7 @@ void PianoRoll::drawText(const juce::String& text, const Rect& bounds, const juc
 }
 
 void PianoRoll::drawBackground(juce::Graphics& g, const Rect& bounds) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(bounds);
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(bounds);
     for (int y = t; y < b; y++) {
         auto colour = juce::Colour::fromHSV(getHueFromYPx(y), 0.2f, 0.7f, 1.0f);
         g.setColour(colour);
@@ -66,7 +66,7 @@ void PianoRoll::drawBackground(juce::Graphics& g, const Rect& bounds) const {
 }
 
 void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(bounds.toFloat());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(bounds.toFloat());
     float firstBar = (ceil(barLeftScreen) - barLeftScreen - 1) * static_cast<float>(barWidthPxF);
 
     if (drawSubDivs) {
@@ -115,7 +115,7 @@ void PianoRoll::drawNotes(juce::Graphics& g) const {
     }
 
     // Draw over the selected notes
-    auto intRatios = getIntRatios(notesSelected);
+    auto intRatios = Util::getIntRatios(notesSelected);
     for (size_t i = 0; i < notesSelected.size(); ++i) {
         auto* noteSelected = notesSelected[i];
         drawNote(noteSelected, MULT_SELECTED_BASE_COLOUR, MULT_SELECTED_OUTLINE_COLOUR, g);
@@ -174,19 +174,19 @@ void PianoRoll::drawOrientationBar(juce::Graphics& g) const {
 }
 
 void PianoRoll::drawDividerBeneath(juce::Graphics& g, Rect bounds) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(bounds.toFloat());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(bounds.toFloat());
     g.setColour(BAR_LINE_COLOUR);
     g.drawHorizontalLine(static_cast<int>(b), l, r);
 }
 
 void PianoRoll::drawPlayhead(juce::Graphics& g) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getCanvasBounds());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(getCanvasBounds());
     g.setColour(PLAYHEAD_COLOUR);
     g.drawVerticalLine(getXPxFromBar(playheadBarPos), static_cast<float>(t), static_cast<float>(b));
 }
 
 void PianoRoll::drawPasteCursorHandle(juce::Graphics& g) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getOrientationBarBounds().toFloat());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(getOrientationBarBounds().toFloat());
     int xPx = getXPxFromBar(pasteCursorBarPos);
 
     constexpr float halfW = 5.0f;
@@ -201,7 +201,7 @@ void PianoRoll::drawPasteCursorHandle(juce::Graphics& g) const {
 }
 
 void PianoRoll::drawPasteCursorLine(juce::Graphics& g) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(getNoteCanvasBounds());
     float alpha = 0.25f + ((std::sin(blinkPhase) + 1.0f) * 0.5f) * 0.75f;
     g.setColour(PASTE_CURSOR_COLOUR.withAlpha(alpha));
     g.drawVerticalLine(getXPxFromBar(pasteCursorBarPos), static_cast<float>(t), static_cast<float>(b));
@@ -333,7 +333,7 @@ int PianoRoll::getNoteHeight() const {
 
 std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
     if (!lockedNoteReference) return std::nullopt;
-    auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
+    auto [t, l, b, r, w, h] = Util::getTLBRWH(getNoteCanvasBounds());
     int noteH = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
     int y = getYPxFromFreq(lockedNoteReference.value()->getFrequency() * static_cast<double>(ratio)) - noteH / 2;
     return Rect{l, y, r, noteH};
@@ -983,7 +983,7 @@ void PianoRoll::applyIntervalsSetting() {
         settingsBar.setCustomIntervalsVisibility(true);
     }
     if (intervalsSetting == SEVEN_LIMIT_ID) {
-        intervals = getIntervalsByID(intervalsSetting);
+        intervals = Util::expandIntervals(getIntervalsByID(intervalsSetting));
         settingsBar.setCustomIntervalsVisibility(false);
     }
 }
@@ -996,8 +996,7 @@ void PianoRoll::handleIntervalsChanged() {
 
 void PianoRoll::handleCustomIntervalsChanged() {
     customIntervals = settingsBar.getCustomIntervals();
-    if (intervalsSetting == CUSTOM_INTERVALS_ID)
-        intervals = customIntervals;
+    applyIntervalsSetting();
     pushNoteStateToProcessor();
 }
 void PianoRoll::timerCallback() {
