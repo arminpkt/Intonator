@@ -12,6 +12,10 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                      #endif
                        )
 {
+    //if (!sender.connect("127.0.0.1", 11000)) {
+    if (!sender.connect("127.0.0.1", 11420)) {
+        DBG("OSC Connection Failed");
+    }
 }
 
 UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
@@ -313,10 +317,30 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
     }
 }
 
-void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept
+void UnTETeredAudioProcessor::requestHostPlayheadJumpToBar(double targetBar) noexcept
 {
-    hostSeekRequest.targetBar.store(targetBar, std::memory_order_relaxed);
-    hostSeekRequest.pending.store(true,        std::memory_order_relaxed);
+    double targetPpq = TimelineHelpers::barToPpq(targetBar, transportState.numerator, transportState.denominator);
+    //if (!sender.send("/live/song/set/current_song_time", (float) targetPpq)) {
+    if (!sender.send("/untetered/song_time", (float) targetPpq)) {
+        DBG("Could not send OSC message");
+    }
+}
+
+void UnTETeredAudioProcessor::requestHostPlaybackStartStop(double targetBar) noexcept {
+    const bool isPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
+    if (!isPlaying) {
+        //if (!sender.send("/live/song/start_playing")) {
+        double targetPpq = TimelineHelpers::barToPpq(targetBar, transportState.numerator, transportState.denominator);
+        if (!sender.send("/untetered/play", (float)targetPpq)) {
+            DBG("Could not send OSC message");
+        }
+        //requestHostPlayheadJumpToBar(targetBar);
+    } else {
+        //if (!sender.send ("/live/song/stop_playing")) {
+        if (!sender.send ("/untetered/stop")) {
+            DBG("Could not send OSC message");
+        }
+    }
 }
 
 //==============================================================================

@@ -15,4 +15,9 @@ namespace TimelineHelpers
         const auto qnPerBar = getQuarterNotesPerBar(numerator, denominator);
         return qnPerBar > 0.0 ? ppq / qnPerBar : 0.0;
     }
+
+    inline double barToPpq(double bar, int numerator, int denominator)
+    {
+        return bar * numerator * 4.0 / denominator;
+    }
 }

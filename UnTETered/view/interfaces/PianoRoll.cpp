@@ -33,11 +33,10 @@ void PianoRoll::paint(juce::Graphics& g) {
     drawBarLines(g, getNoteCanvasBounds(), true);
     drawNotes(g);
     drawRectDragged(g);
-    if (isDraggingPasteCursor)
-        drawPasteCursorLine(g);
+    drawPasteCursorLine(g);
     drawOrientationBar(g);
     drawPlayhead(g);
-    drawPasteCursorHandle(g);
+    drawPlayheadHandle(g);
     drawSettingsBackground(g);
 }
 
@@ -178,9 +177,25 @@ void PianoRoll::drawDividerBeneath(juce::Graphics& g, Rect bounds) const {
 }
 
 void PianoRoll::drawPlayhead(juce::Graphics& g) const {
-    auto [t, l, b, r, w, h] = getTLBRWH(getCanvasBounds());
+    auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
     g.setColour(PLAYHEAD_COLOUR);
-    g.drawVerticalLine(getXPxFromBar(playheadBarPos), static_cast<float>(t), static_cast<float>(b));
+    g.drawVerticalLine(getXPxFromBar(hostPlayheadBarPos), static_cast<float>(t), static_cast<float>(b));
+}
+
+void PianoRoll::drawPlayheadHandle(juce::Graphics &g) const {
+    auto [t, l, b, r, w, h] = getTLBRWH(getOrientationBarBounds().toFloat());
+    int xPx = internalPlayheadDetached ? getXPxFromBar(internalPlayheadHandleBarPos)
+                                        : getXPxFromBar(hostPlayheadHandleBarPos);
+
+    constexpr float halfW = 5.0f;
+    constexpr float triH  = 7.0f;
+    juce::Path triangle;
+    triangle.startNewSubPath(static_cast<float>(xPx + 0.5), b);
+    triangle.lineTo          (static_cast<float>(xPx) - halfW, b - triH);
+    triangle.lineTo          (static_cast<float>(xPx) + halfW, b - triH);
+    triangle.closeSubPath();
+    g.setColour(PLAYHEAD_COLOUR);
+    g.fillPath(triangle);
 }
 
 void PianoRoll::drawPasteCursorHandle(juce::Graphics& g) const {
@@ -420,8 +435,12 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     Point posPx = event.getPosition();
 
     if (getOrientationBarBounds().contains(posPx)) {
-        pasteCursorBarPos = getBarSubRoundedFromXPx(posPx.getX());
-        isDraggingPasteCursor = true;
+        internalPlayheadBarPos = getBarSubRoundedFromXPx(posPx.getX());
+        internalPlayheadHandleBarPos = internalPlayheadBarPos;
+        processor.requestHostPlayheadJumpToBar(internalPlayheadBarPos);
+        playheadHandleClicked = true;
+        internalPlayheadDetached = true;
+        internalPlayheadChanged = true;
         return;
     }
 
@@ -441,8 +460,11 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event) {
 void PianoRoll::mouseDrag(const juce::MouseEvent& event) {
     Point currentPos = event.getPosition();
 
-    if (isDraggingPasteCursor) {
-        pasteCursorBarPos = std::max(0.0f, getBarSubRoundedFromXPx(currentPos.getX()));
+    if (playheadHandleClicked) {
+        //pasteCursorBarPos = std::max(0.0f, getBarSubRoundedFromXPx(currentPos.getX()));
+        internalPlayheadBarPos = std::max(0.0f, getBarSubRoundedFromXPx(currentPos.getX()));
+        internalPlayheadHandleBarPos = internalPlayheadBarPos;
+        draggedPlayheadHandle = true;
         return;
     }
 
@@ -496,8 +518,10 @@ void PianoRoll::zoomY(const float scaleFactor, const int pxFromTop) {
 }
 
 void PianoRoll::mouseUp(const juce::MouseEvent& _) {
-    if (isDraggingPasteCursor) {
-        isDraggingPasteCursor = false;
+    playheadHandleClicked = false;
+    if (draggedPlayheadHandle) {
+        draggedPlayheadHandle = false;
+        processor.requestHostPlayheadJumpToBar(internalPlayheadBarPos);
         return;
     }
     dragLeftSideSelectedNote  = false;
@@ -736,6 +760,12 @@ void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) cons
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     auto code = static_cast<size_t>(key.getKeyCode());
 
+    if (key == juce::KeyPress::spaceKey) {
+        float playheadPos = internalPlayheadDetached ? internalPlayheadBarPos : hostPlayheadBarPos;
+        processor.requestHostPlaybackStartStop(playheadPos);
+        return true;
+    }
+
     if (code == 'Z' && key.getModifiers().isCommandDown()) {
         if (key.getModifiers().isShiftDown()) redo(); else undo();
         return true;
@@ -956,9 +986,17 @@ void PianoRoll::timerCallback() {
     cachedPpqPosition = ts.ppqPosition.load(std::memory_order_relaxed);
     cachedNumerator   = ts.numerator.load(std::memory_order_relaxed);
     cachedDenominator = ts.denominator.load(std::memory_order_relaxed);
+    cachedIsPlaying = ts.isPlaying.load(std::memory_order_relaxed);
 
-    playheadBarPos = static_cast<float>(
+    hostPlayheadBarPos = static_cast<float>(
         TimelineHelpers::ppqToBar(cachedPpqPosition, cachedNumerator, cachedDenominator));
+    if ((hostPlayheadBarPos != oldHostPlayheadBarPos) && (hostPlayheadBarPos != internalPlayheadBarPos) && !cachedIsPlaying && !wasPlaying) {
+            internalPlayheadDetached = false;
+            hostPlayheadHandleBarPos = hostPlayheadBarPos;
+    }
+
+    oldHostPlayheadBarPos = hostPlayheadBarPos;
+    wasPlaying = cachedIsPlaying;
 
     blinkPhase += juce::MathConstants<float>::pi / 22.5f;
     if (blinkPhase > juce::MathConstants<float>::twoPi)

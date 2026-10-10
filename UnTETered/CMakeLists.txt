@@ -64,6 +64,7 @@ target_link_libraries(UnTETered
         PRIVATE
         juce::juce_audio_utils
         juce::juce_animation
+        juce::juce_osc
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
@@ -99,3 +100,44 @@ target_link_libraries(UnTETeredAU
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+# ---- Ableton Remote Script (UnTETeredSync) ---------------------------------
+option(UNTETERED_COPY_REMOTE_SCRIPT
+        "Copy the UnTETeredSync Remote Script into Ableton's User Library when building" ON)
+
+if (UNTETERED_COPY_REMOTE_SCRIPT)
+    # Where the .py files live in your repo -- adjust if they are somewhere else
+    set(UNTETERED_REMOTE_SCRIPT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/scripts/ableton/UnTETered"
+            CACHE PATH "Folder containing the UnTETeredSync .py files")
+
+    if (APPLE)
+        set(_default_user_library "$ENV{HOME}/Music/Ableton/User Library")
+    elseif (WIN32)
+        file(TO_CMAKE_PATH "$ENV{USERPROFILE}/Documents/Ableton/User Library" _default_user_library)
+    endif()
+    set(ABLETON_USER_LIBRARY "${_default_user_library}"
+            CACHE PATH "Ableton Live User Library folder")
+
+    set(_remote_script_dest "${ABLETON_USER_LIBRARY}/Remote Scripts/UnTETeredSync")
+    file(GLOB _remote_script_files CONFIGURE_DEPENDS "${UNTETERED_REMOTE_SCRIPT_SOURCE}/*.py")
+
+    if (_remote_script_files AND ABLETON_USER_LIBRARY)
+        set(_stamp "${CMAKE_CURRENT_BINARY_DIR}/UnTETeredSync_copied.stamp")
+
+        add_custom_command(
+                OUTPUT  "${_stamp}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${_remote_script_dest}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_remote_script_files} "${_remote_script_dest}"
+                COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
+                DEPENDS ${_remote_script_files}
+                COMMENT "Copying UnTETeredSync Remote Script to ${_remote_script_dest}"
+                VERBATIM)
+
+        add_custom_target(UnTETeredSyncRemoteScript DEPENDS "${_stamp}")
+        add_dependencies(UnTETered   UnTETeredSyncRemoteScript)
+        add_dependencies(UnTETeredAU UnTETeredSyncRemoteScript)
+    else()
+        message(WARNING "UnTETeredSync Remote Script not copied: no .py files found in "
+                "${UNTETERED_REMOTE_SCRIPT_SOURCE} or no Ableton User Library set")
+    endif()
+endif()

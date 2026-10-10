@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_osc/juce_osc.h>
 #include <unordered_set>
 #include <array>
 #include <vector>
@@ -29,12 +30,6 @@ struct TransportState
     std::atomic<double>  sampleRate   { 44100.0 };
     std::atomic<int>     numerator    { 4 };
     std::atomic<int>     denominator  { 4 };
-};
-
-struct HostSeekRequest
-{
-    std::atomic<bool>   pending   { false };
-    std::atomic<double> targetBar { 0.0 };
 };
 
 //==============================================================================
@@ -83,7 +78,8 @@ public:
 
     //==============================================================================
     const TransportState& getTransportState();
-    void requestHostSeekToBar(double targetBar) noexcept;
+    void requestHostPlayheadJumpToBar(double targetBar) noexcept;
+    void requestHostPlaybackStartStop(double targetBar) noexcept;
 
     //==============================================================================
     GridState getGridState() const;
@@ -123,7 +119,6 @@ private:
     mutable juce::CriticalSection pianoRollStateLock;
     PianoRollState pianoRollState;
     TransportState transportState;
-    HostSeekRequest hostSeekRequest;
 
     mutable juce::CriticalSection playbackLock;
     PlaybackSequence playbackSequence;
@@ -131,6 +126,8 @@ private:
 
     mutable juce::CriticalSection previewMessagesLock;
     std::vector<juce::MidiMessage> pendingPreviewMessages;
+
+    juce::OSCSender sender;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
