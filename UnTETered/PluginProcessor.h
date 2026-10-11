@@ -1,7 +1,6 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include <juce_osc/juce_osc.h>
 #include <unordered_set>
 #include <array>
 #include <vector>
@@ -12,6 +11,7 @@
 #include "view/interfaces/PianoRollState.h"
 #include "view/interfaces/PianoRollStateSerialiser.h"
 #include "view/interfaces/PianoRollStateHelpers.h"
+#include "DAWbackends/DAWBackend.h"
 
 struct PlaybackSequence
 {
@@ -105,6 +105,7 @@ public:
     juce::MidiBuffer midiBuffer;
 
 private:
+    std::unique_ptr<DAWBackend> createDAWBackend();
     void setTransportStateFromHost(juce::AudioPlayHead*);
     void rebuildPlaybackSequence();
     void flushActiveNotes(juce::MidiBuffer& midiMessages);
@@ -127,7 +128,8 @@ private:
     mutable juce::CriticalSection previewMessagesLock;
     std::vector<juce::MidiMessage> pendingPreviewMessages;
 
-    juce::OSCSender sender;
+    // has to be declared after transport state since it needs the transportState to be already constructed
+    std::unique_ptr<DAWBackend> dawBackend;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)

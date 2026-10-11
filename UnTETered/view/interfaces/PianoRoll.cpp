@@ -179,7 +179,8 @@ void PianoRoll::drawDividerBeneath(juce::Graphics& g, Rect bounds) const {
 void PianoRoll::drawPlayhead(juce::Graphics& g) const {
     auto [t, l, b, r, w, h] = getTLBRWH(getNoteCanvasBounds());
     g.setColour(PLAYHEAD_COLOUR);
-    g.drawVerticalLine(getXPxFromBar(hostPlayheadBarPos), static_cast<float>(t), static_cast<float>(b));
+    float playheadPos = (draggedPlayheadHandle && !cachedIsPlaying) ? internalPlayheadHandleBarPos : hostPlayheadBarPos;
+    g.drawVerticalLine(getXPxFromBar(playheadPos), static_cast<float>(t), static_cast<float>(b));
 }
 
 void PianoRoll::drawPlayheadHandle(juce::Graphics &g) const {

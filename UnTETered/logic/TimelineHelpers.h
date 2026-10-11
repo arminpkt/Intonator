@@ -20,4 +20,10 @@ namespace TimelineHelpers
     {
         return bar * numerator * 4.0 / denominator;
     }
+
+    inline double barToPpqClamped(double bar, int numerator, int denominator)
+    {
+        double ppq = barToPpq(bar, numerator, denominator);
+        return std::max(0.0, ppq);
+    }
 }

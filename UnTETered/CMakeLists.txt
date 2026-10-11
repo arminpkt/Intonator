@@ -51,6 +51,7 @@ target_sources(UnTETered
         logic/noteRegion.cpp
         view/interfaces/PianoRoll.cpp
         view/interfaces/PianoRollSettingsBar.cpp
+        DAWbackends/AbletonBackend.cpp
 )
 
 target_compile_definitions(UnTETered

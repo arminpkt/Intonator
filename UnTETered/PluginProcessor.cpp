@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "DAWbackends/AbletonBackend.h"
 
 //==============================================================================
 UnTETeredAudioProcessor::UnTETeredAudioProcessor()
@@ -10,13 +11,7 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
-{
-    //if (!sender.connect("127.0.0.1", 11000)) {
-    if (!sender.connect("127.0.0.1", 11420)) {
-        DBG("OSC Connection Failed");
-    }
-}
+                       ), dawBackend(createDAWBackend()) {}
 
 UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
 {
@@ -217,6 +212,14 @@ void UnTETeredAudioProcessor::addPreviewMessages(std::initializer_list<juce::Mid
 //==============================================================================
 const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
 
+std::unique_ptr<DAWBackend> UnTETeredAudioProcessor::createDAWBackend() {
+    juce::PluginHostType hostType;
+    if (hostType.isAbletonLive()) {
+        return std::make_unique<AbletonBackend>();
+    }
+    return std::make_unique<NullBackend>();
+}
+
 void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph)
 {
     if (!ph) return;
@@ -319,27 +322,18 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
 
 void UnTETeredAudioProcessor::requestHostPlayheadJumpToBar(double targetBar) noexcept
 {
-    double targetPpq = TimelineHelpers::barToPpq(targetBar, transportState.numerator, transportState.denominator);
-    //if (!sender.send("/live/song/set/current_song_time", (float) targetPpq)) {
-    if (!sender.send("/untetered/song_time", (float) targetPpq)) {
-        DBG("Could not send OSC message");
-    }
+    double targetPpq = TimelineHelpers::barToPpqClamped(targetBar, transportState.numerator, transportState.denominator);
+    dawBackend->requestPlayheadJump(targetPpq);
 }
 
-void UnTETeredAudioProcessor::requestHostPlaybackStartStop(double targetBar) noexcept {
+void UnTETeredAudioProcessor::requestHostPlaybackStartStop(double targetBar) noexcept
+{
     const bool isPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
     if (!isPlaying) {
-        //if (!sender.send("/live/song/start_playing")) {
-        double targetPpq = TimelineHelpers::barToPpq(targetBar, transportState.numerator, transportState.denominator);
-        if (!sender.send("/untetered/play", (float)targetPpq)) {
-            DBG("Could not send OSC message");
-        }
-        //requestHostPlayheadJumpToBar(targetBar);
+        double targetPpq = TimelineHelpers::barToPpqClamped(targetBar, transportState.numerator, transportState.denominator);
+        dawBackend->requestPlay(targetPpq);
     } else {
-        //if (!sender.send ("/live/song/stop_playing")) {
-        if (!sender.send ("/untetered/stop")) {
-            DBG("Could not send OSC message");
-        }
+        dawBackend->requestStop();
     }
 }
 
