@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "DAWbackends/AbletonBackend.h"
+#include "DAWbackends/LogicBackend.h"
 
 //==============================================================================
 UnTETeredAudioProcessor::UnTETeredAudioProcessor()
@@ -214,9 +215,10 @@ const TransportState& UnTETeredAudioProcessor::getTransportState() { return tran
 
 std::unique_ptr<DAWBackend> UnTETeredAudioProcessor::createDAWBackend() {
     juce::PluginHostType hostType;
-    if (hostType.isAbletonLive()) {
+    if (hostType.isAbletonLive())
         return std::make_unique<AbletonBackend>();
-    }
+    if (hostType.isLogic())
+        return std::make_unique<LogicBackend>(transportState);
     return std::make_unique<NullBackend>();
 }
 

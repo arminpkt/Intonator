@@ -11,14 +11,17 @@ void AbletonBackend::requestPlayheadJump(double targetBeat) noexcept {
         DBG("Could not send OSC message");
     }
 }
+
 void AbletonBackend::requestPlay(double targetBeat) noexcept {
     if (!sender.send("/untetered/play", (float)targetBeat)) {
         DBG("Could not send OSC message");
     }
 }
+
 void AbletonBackend::requestStop() noexcept {
     if (!sender.send ("/untetered/stop")) {
         DBG("Could not send OSC message");
     }
 }
+
 const char* AbletonBackend::getName() const noexcept  { return "Ableton";}
