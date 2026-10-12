@@ -100,6 +100,7 @@ target_link_libraries(UnTETeredAU
         PRIVATE
         juce::juce_audio_utils
         juce::juce_animation
+        juce::juce_osc
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

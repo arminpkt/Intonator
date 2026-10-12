@@ -1,6 +1,7 @@
 #pragma once
 #include "DAWBackend.h"
 #include <juce_audio_devices/juce_audio_devices.h>
+#include "BackendLog.h"
 
 struct TransportState;
 

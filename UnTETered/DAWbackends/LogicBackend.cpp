@@ -5,9 +5,9 @@
 LogicBackend::LogicBackend(const TransportState& tState) : DAWBackend(), transportState(tState) {
     midiOutput = juce::MidiOutput::createNewDevice("UnTETered Sync");
     if (midiOutput) {
-        DBG("LogicBackend: created MIDI port ‘UnTETered Sync");
+        BACKEND_LOG("LogicBackend: created MIDI port ‘UnTETered Sync");
     } else {
-        DBG("LogicBackend: could not create virtual MIDI port, nothing will be sent");
+        BACKEND_LOG("LogicBackend: could not create virtual MIDI port, nothing will be sent");
     }
 }
 
@@ -18,18 +18,18 @@ void LogicBackend::requestPlayheadJump(double targetBeat) noexcept {
 void LogicBackend::requestPlay(double targetBeat) noexcept {
     auto fullFrame = beatsToFullFrameMessage(targetBeat);
     if (!fullFrame) {
-        DBG("LogicBackend: Play skipped, no valid start position");
+        BACKEND_LOG("LogicBackend: Play skipped, no valid start position");
         return;
     }
 
     sendMessage(*fullFrame);
     sendMessage(juce::MidiMessage::midiMachineControlCommand(juce::MidiMessage::mmc_play));
-    DBG("LogicBackend: Play");
+    BACKEND_LOG("LogicBackend: Play");
 }
 
 void LogicBackend::requestStop() noexcept {
     sendMessage(juce::MidiMessage::midiMachineControlCommand(juce::MidiMessage::mmc_stop));
-    DBG("LogicBackend: Stop");
+    BACKEND_LOG("LogicBackend: Stop");
 }
 
 const char* LogicBackend::getName() const noexcept  { return "Logic"; }
@@ -38,7 +38,7 @@ void LogicBackend::sendMessage(const juce::MidiMessage &message) noexcept {
     if (midiOutput) {
         midiOutput->sendMessageNow(message);
     } else {
-        DBG("LogicBackend: no MIDI port, message dropped");
+        BACKEND_LOG("LogicBackend: no MIDI port, message dropped");
     }
 }
 
@@ -46,7 +46,7 @@ std::optional<juce::MidiMessage> LogicBackend::beatsToFullFrameMessage(double ta
     double currentBpm = transportState.bpm.load(std::memory_order_relaxed);
     double currentSampleRate = transportState.sampleRate.load(std::memory_order_relaxed);
     if (currentSampleRate <= 0.0 || currentBpm <= 0.0) {
-        DBG("LogicBackend: cannot convert, sampleRate = " << currentSampleRate
+        BACKEND_LOG("LogicBackend: cannot convert, sampleRate = " << currentSampleRate
             << ", bpm = " << currentBpm);
         return std::nullopt;
     }
@@ -63,7 +63,7 @@ std::optional<juce::MidiMessage> LogicBackend::beatsToFullFrameMessage(double ta
     int targetFrames = std::min(static_cast<int>((totalSeconds - wholeSeconds) * FRAME_RATE),
                         static_cast<int>(FRAME_RATE) - 1);
 
-    DBG("LogicBackend: target beat " << targetBeat
+    BACKEND_LOG("LogicBackend: target beat " << targetBeat
         << ", now at beat " << currentPositionBeats
         << " / " << currentTimeSeconds << " s, bpm " << currentBpm
         << " -> " << juce::String(targetHours).paddedLeft('0', 2)

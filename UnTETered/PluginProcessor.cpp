@@ -216,7 +216,8 @@ const TransportState& UnTETeredAudioProcessor::getTransportState() { return tran
 std::unique_ptr<DAWBackend> UnTETeredAudioProcessor::createDAWBackend() {
     juce::PluginHostType hostType;
     if (hostType.isAbletonLive())
-        return std::make_unique<AbletonBackend>();
+        //return std::make_unique<AbletonBackend>();
+        return std::make_unique<LogicBackend>(transportState);
     if (hostType.isLogic())
         return std::make_unique<LogicBackend>(transportState);
     return std::make_unique<NullBackend>();
