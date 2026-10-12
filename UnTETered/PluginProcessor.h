@@ -131,6 +131,8 @@ private:
     // has to be declared after transport state since it needs the transportState to be already constructed
     std::unique_ptr<DAWBackend> dawBackend;
 
+    juce::AudioParameterFloat* editMarker = nullptr; //dummy parameter for logic
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
 };

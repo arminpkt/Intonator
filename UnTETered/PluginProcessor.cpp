@@ -12,7 +12,13 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ), dawBackend(createDAWBackend()) {}
+                       ), dawBackend(createDAWBackend()) {
+    editMarker = new juce::AudioParameterFloat(juce::ParameterID { "editMarker", 1 },
+                                                "Edit Marker",
+                                                juce::NormalisableRange<float> (0.0f, 1.0f),
+                                                0.0f);
+    addParameter (editMarker);
+}
 
 UnTETeredAudioProcessor::~UnTETeredAudioProcessor()
 {
@@ -200,6 +206,13 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
 
 void UnTETeredAudioProcessor::markStateDirtyForHost() {
     updateHostDisplay(juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged(true));
+
+    if (wrapperType == wrapperType_AudioUnit && editMarker != nullptr) {
+        const float newValue = editMarker->get() < 0.5f ? 1.0f : 0.0f;
+        editMarker->beginChangeGesture();
+        editMarker->setValueNotifyingHost(newValue);
+        editMarker->endChangeGesture();
+    }
 }
 
 
