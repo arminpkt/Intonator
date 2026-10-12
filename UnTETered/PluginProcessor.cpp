@@ -96,21 +96,25 @@ bool UnTETeredAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts)
 void UnTETeredAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
                                            juce::MidiBuffer& midiMessages)
 {
-    midiMessages.clear();
+    try {
+        midiMessages.clear();
 
-    {
-        const juce::ScopedLock sl(previewMessagesLock);
-        for (const auto& msg : pendingPreviewMessages)
-            midiMessages.addEvent(msg, 0);
-        pendingPreviewMessages.clear();
+        {
+            const juce::ScopedLock sl(previewMessagesLock);
+            for (const auto& msg : pendingPreviewMessages)
+                midiMessages.addEvent(msg, 0);
+            pendingPreviewMessages.clear();
+        }
+
+        auto* playHead = getPlayHead();
+        if (playHead == nullptr)
+            return;
+
+        setTransportStateFromHost(playHead);
+        playMidi(midiMessages, buffer.getNumSamples());
+    } catch (...) {
+        DBG("PROBLEM");
     }
-
-    auto* playHead = getPlayHead();
-    if (playHead == nullptr)
-        return;
-
-    setTransportStateFromHost(playHead);
-    playMidi(midiMessages, buffer.getNumSamples());
 }
 
 //==============================================================================

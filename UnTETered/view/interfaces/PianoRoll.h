@@ -30,9 +30,9 @@ public:
     const juce::Colour FAMILY_BASE_COLOUR = {50, 50, 180};
     const juce::Colour FAMILY_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour FAMILY_RATIO_TEXT_COLOUR = {170, 170, 170};
-    const juce::Colour SELECTED_BASE_COLOUR = {50, 180, 50};
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
+    const juce::Colour LOCKED_REF_BASE_COLOUR = {50, 180, 50};
     const juce::Colour LOCKED_REF_OUTLINE_COLOUR = {50, 200, 50};
     const juce::Colour MULT_SELECTED_BASE_COLOUR = juce::Colour::fromRGBA(100, 100, 100, 0);
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
@@ -44,6 +44,8 @@ public:
     const juce::Colour PLAYHEAD_COLOUR = {255, 255, 255};
     const juce::Colour PASTE_CURSOR_COLOUR = {255, 160, 30};
     const juce::Colour SETTINGS_BACKGROUND_COLOUR = {70, 70, 70};
+    const juce::Colour INVALID_BACKGROUND_COLOUR = {200, 50, 50};
+    const juce::Colour INVALID_TEXT_COLOUR = {50, 200, 200};
     const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
@@ -71,6 +73,7 @@ private:
     void drawPasteCursorHandle(juce::Graphics& g) const;
     void drawPasteCursorLine(juce::Graphics& g) const;
     void drawSettingsBackground(juce::Graphics& g) const;
+    void drawInvalidScreen(juce::Graphics& g) const;
     void resized() override;
     float getHueFromYPx(int y) const;
     static float getHueFromFreq(double freq);
@@ -168,6 +171,9 @@ private:
     void pushUndoSnapshot();
     void undo();
     void redo();
+    static bool exists(const Note* note);
+    bool isInvalidState();
+    bool invalidState = false;
     bool undoSnapshotTakenForCurrentDrag = false;
     bool noteWasDraggedThisGesture = false;
 
@@ -213,8 +219,8 @@ private:
 
     std::vector<Note*> notesSelected;
     std::optional<std::tuple<double, Fraction, double>> customReference;
-    std::optional<Note*> lockedNoteReference{};
-    std::optional<Note*> noteHighlighted{};
+    Note* lockedNoteReference{};
+    Note* noteHighlighted{};
     std::optional<Fraction> intervalHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;

@@ -152,4 +152,11 @@ public:
     bool isContractive() const {
         return toDouble() < 1;
     }
+
+    bool isOctavial() const {
+        for (size_t i = 1; i < monzo.primePowers.size(); ++i)
+            if (monzo.primePowers[i] != 0)
+                return false;
+        return true;
+    }
 };
