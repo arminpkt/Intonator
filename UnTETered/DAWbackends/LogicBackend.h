@@ -15,7 +15,7 @@ class LogicBackend : public DAWBackend {
         const char* getName() const noexcept override;
     private:
         void sendMessage(const juce::MidiMessage& message) noexcept;
-        std::optional<juce::MidiMessage> beatsToFullFrameMessage(double targetBeat) noexcept;
+        std::optional<juce::MidiMessage> beatsToGotoMessage(double targetBeat) noexcept;
         static constexpr double SMPTE_OFFSET_SECONDS = 3600.0; // 1 hour
         static constexpr double FRAME_RATE = 25.0;
         static constexpr juce::MidiMessage::SmpteTimecodeType FRAME_RATE_ENUM = juce::MidiMessage::fps25;

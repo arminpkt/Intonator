@@ -12,11 +12,11 @@ LogicBackend::LogicBackend(const TransportState& tState) : DAWBackend(), transpo
 }
 
 void LogicBackend::requestPlayheadJump(double targetBeat) noexcept {
-    sendMessage(beatsToFullFrameMessage(targetBeat).value());
+    sendMessage(beatsToGotoMessage(targetBeat).value());
 }
 
 void LogicBackend::requestPlay(double targetBeat) noexcept {
-    auto fullFrame = beatsToFullFrameMessage(targetBeat);
+    auto fullFrame = beatsToGotoMessage(targetBeat);
     if (!fullFrame) {
         BACKEND_LOG("LogicBackend: Play skipped, no valid start position");
         return;
@@ -42,7 +42,7 @@ void LogicBackend::sendMessage(const juce::MidiMessage &message) noexcept {
     }
 }
 
-std::optional<juce::MidiMessage> LogicBackend::beatsToFullFrameMessage(double targetBeat) noexcept {
+std::optional<juce::MidiMessage> LogicBackend::beatsToGotoMessage(double targetBeat) noexcept {
     double currentBpm = transportState.bpm.load(std::memory_order_relaxed);
     double currentSampleRate = transportState.sampleRate.load(std::memory_order_relaxed);
     if (currentSampleRate <= 0.0 || currentBpm <= 0.0) {
@@ -71,6 +71,5 @@ std::optional<juce::MidiMessage> LogicBackend::beatsToFullFrameMessage(double ta
         << ":"    << juce::String(targetSeconds).paddedLeft('0', 2)
         << ":"    << juce::String(targetFrames).paddedLeft('0', 2));
 
-    return juce::MidiMessage::fullFrame(targetHours, targetMinutes, targetSeconds, targetFrames,
-        FRAME_RATE_ENUM);
+    return juce::MidiMessage::midiMachineControlGoto(targetHours, targetMinutes, targetSeconds, targetFrames);
 }
