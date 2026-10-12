@@ -761,12 +761,6 @@ void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) cons
 bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     auto code = static_cast<size_t>(key.getKeyCode());
 
-    if (key == juce::KeyPress::spaceKey) {
-        float playheadPos = internalPlayheadDetached ? internalPlayheadBarPos : hostPlayheadBarPos;
-        processor.requestHostPlaybackStartStop(playheadPos);
-        return true;
-    }
-
     if (code == 'Z' && key.getModifiers().isCommandDown()) {
         if (key.getModifiers().isShiftDown()) redo(); else undo();
         return true;
