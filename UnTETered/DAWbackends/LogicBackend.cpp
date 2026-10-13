@@ -22,7 +22,7 @@ void LogicBackend::requestPlay(double targetBeat) noexcept {
         return;
     }
 
-    sendMessage(*fullFrame);
+    //sendMessage(*fullFrame);
     sendMessage(juce::MidiMessage::midiMachineControlCommand(juce::MidiMessage::mmc_play));
     BACKEND_LOG("LogicBackend: Play");
 }
