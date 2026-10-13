@@ -11,6 +11,7 @@
 #include "view/interfaces/PianoRollState.h"
 #include "view/interfaces/PianoRollStateSerialiser.h"
 #include "view/interfaces/PianoRollStateHelpers.h"
+#include "DAWbackends/DAWBackend.h"
 
 struct PlaybackSequence
 {
@@ -29,12 +30,6 @@ struct TransportState
     std::atomic<double>  sampleRate   { 44100.0 };
     std::atomic<int>     numerator    { 4 };
     std::atomic<int>     denominator  { 4 };
-};
-
-struct HostSeekRequest
-{
-    std::atomic<bool>   pending   { false };
-    std::atomic<double> targetBar { 0.0 };
 };
 
 //==============================================================================
@@ -83,7 +78,8 @@ public:
 
     //==============================================================================
     const TransportState& getTransportState();
-    void requestHostSeekToBar(double targetBar) noexcept;
+    void requestHostPlayheadJumpToBar(double targetBar) noexcept;
+    void requestHostPlaybackStartStop(double targetBar) noexcept;
 
     //==============================================================================
     GridState getGridState() const;
@@ -109,6 +105,7 @@ public:
     juce::MidiBuffer midiBuffer;
 
 private:
+    std::unique_ptr<DAWBackend> createDAWBackend();
     void setTransportStateFromHost(juce::AudioPlayHead*);
     void rebuildPlaybackSequence();
     void flushActiveNotes(juce::MidiBuffer& midiMessages);
@@ -123,7 +120,6 @@ private:
     mutable juce::CriticalSection pianoRollStateLock;
     PianoRollState pianoRollState;
     TransportState transportState;
-    HostSeekRequest hostSeekRequest;
 
     mutable juce::CriticalSection playbackLock;
     PlaybackSequence playbackSequence;
@@ -131,6 +127,11 @@ private:
 
     mutable juce::CriticalSection previewMessagesLock;
     std::vector<juce::MidiMessage> pendingPreviewMessages;
+
+    // has to be declared after transport state since it needs the transportState to be already constructed
+    std::unique_ptr<DAWBackend> dawBackend;
+
+    juce::AudioParameterFloat* editMarker = nullptr; //dummy parameter for logic
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)

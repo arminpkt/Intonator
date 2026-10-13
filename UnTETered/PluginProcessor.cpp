@@ -2,6 +2,8 @@
 
 #include "CrashLog.h"
 #include "PluginEditor.h"
+#include "DAWbackends/AbletonBackend.h"
+#include "DAWbackends/LogicBackend.h"
 
 //==============================================================================
 UnTETeredAudioProcessor::UnTETeredAudioProcessor()
@@ -12,7 +14,12 @@ UnTETeredAudioProcessor::UnTETeredAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       ) {
+                       ), dawBackend(createDAWBackend()) {
+    editMarker = new juce::AudioParameterFloat(juce::ParameterID { "editMarker", 1 },
+                                                "Edit Marker",
+                                                juce::NormalisableRange<float> (0.0f, 1.0f),
+                                                0.0f);
+    addParameter (editMarker);
     juce::SystemStats::setApplicationCrashHandler([](void*) {
         CrashLog::logCrash();
     });
@@ -208,6 +215,13 @@ void UnTETeredAudioProcessor::updatePianoRollState(std::function<void(PianoRollS
 
 void UnTETeredAudioProcessor::markStateDirtyForHost() {
     updateHostDisplay(juce::AudioProcessorListener::ChangeDetails{}.withNonParameterStateChanged(true));
+
+    if (wrapperType == wrapperType_AudioUnit && editMarker != nullptr) {
+        const float newValue = editMarker->get() < 0.5f ? 1.0f : 0.0f;
+        editMarker->beginChangeGesture();
+        editMarker->setValueNotifyingHost(newValue);
+        editMarker->endChangeGesture();
+    }
 }
 
 
@@ -220,6 +234,16 @@ void UnTETeredAudioProcessor::addPreviewMessages(std::initializer_list<juce::Mid
 
 //==============================================================================
 const TransportState& UnTETeredAudioProcessor::getTransportState() { return transportState; }
+
+std::unique_ptr<DAWBackend> UnTETeredAudioProcessor::createDAWBackend() {
+    juce::PluginHostType hostType;
+    if (hostType.isAbletonLive())
+        return std::make_unique<AbletonBackend>();
+        // return std::make_unique<LogicBackend>(transportState);
+    if (hostType.isLogic())
+        return std::make_unique<LogicBackend>(transportState);
+    return std::make_unique<NullBackend>();
+}
 
 void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph)
 {
@@ -321,10 +345,21 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
     }
 }
 
-void UnTETeredAudioProcessor::requestHostSeekToBar(double targetBar) noexcept
+void UnTETeredAudioProcessor::requestHostPlayheadJumpToBar(double targetBar) noexcept
 {
-    hostSeekRequest.targetBar.store(targetBar, std::memory_order_relaxed);
-    hostSeekRequest.pending.store(true,        std::memory_order_relaxed);
+    double targetPpq = TimelineHelpers::barToPpqClamped(targetBar, transportState.numerator, transportState.denominator);
+    dawBackend->requestPlayheadJump(targetPpq);
+}
+
+void UnTETeredAudioProcessor::requestHostPlaybackStartStop(double targetBar) noexcept
+{
+    const bool isPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
+    if (!isPlaying) {
+        double targetPpq = TimelineHelpers::barToPpqClamped(targetBar, transportState.numerator, transportState.denominator);
+        dawBackend->requestPlay(targetPpq);
+    } else {
+        dawBackend->requestStop();
+    }
 }
 
 //==============================================================================

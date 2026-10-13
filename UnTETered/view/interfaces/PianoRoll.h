@@ -75,6 +75,7 @@ private:
     void drawOrientationBar(juce::Graphics& g) const;
     void drawDividerBeneath(juce::Graphics& g, Rect bounds) const;
     void drawPlayhead(juce::Graphics& g) const;
+    void drawPlayheadHandle(juce::Graphics& g) const;
     void drawPasteCursorHandle(juce::Graphics& g) const;
     void drawPasteCursorLine(juce::Graphics& g) const;
     void drawSettingsBackground(juce::Graphics& g) const;
@@ -217,9 +218,17 @@ private:
     double freqBottomScreen = 200;
     float barLeftScreen = 0;
 
-    float playheadBarPos    = 0;
+    float hostPlayheadHandleBarPos = 0;
+    float hostPlayheadBarPos = 0;
+    float oldHostPlayheadBarPos = 0;
+    float internalPlayheadHandleBarPos = 0;
+    bool playheadHandleClicked = false;
+    float internalPlayheadBarPos = 0;
+    bool internalPlayheadDetached = false;
+    bool internalPlayheadChanged = false;
+    bool wasPlaying = false;
     float pasteCursorBarPos = 0;
-    bool  isDraggingPasteCursor = false;
+    bool  draggedPlayheadHandle = false;
     float blinkPhase = 0.0f;
 
     std::vector<Note*> notesSelected;
@@ -243,6 +252,7 @@ private:
     double cachedPpqPosition = 0.0;
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
+    bool cachedIsPlaying = false;
 
     juce::TooltipWindow tooltipWindow{ this };
     juce::LookAndFeel_V4 lookAndFeel{};
