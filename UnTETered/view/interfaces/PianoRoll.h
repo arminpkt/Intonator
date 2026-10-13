@@ -11,7 +11,7 @@
 #include "../../PluginProcessor.h"
 #include "../../logic/TimelineHelpers.h"
 
-class PianoRoll : public juce::Component, juce::Timer {
+class PianoRoll : public juce::Component, public juce::Timer, public juce::TooltipClient {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
@@ -24,29 +24,32 @@ public:
     const float HIGHEST_ALLOWED_BAR_WIDTH = 800;
     const juce::Colour SUB_DIV_LINE_COLOUR = {100, 100, 100};
     const juce::Colour BAR_LINE_COLOUR = {50, 50, 50};
-    const juce::Colour BASE_NOTE_COLOUR = {100, 100, 100};
+    const juce::Colour BASE_BODY_COLOUR = {100, 100, 100};
     const juce::Colour BASE_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour BASE_TEXT_COLOUR = {170, 170, 170};
-    const juce::Colour FAMILY_BASE_COLOUR = {50, 50, 180};
+    const juce::Colour FAMILY_BODY_COLOUR = {50, 50, 180};
     const juce::Colour FAMILY_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour FAMILY_RATIO_TEXT_COLOUR = {170, 170, 170};
     const juce::Colour SELECTED_OUTLINE_COLOUR = {50, 50, 50};
     const juce::Colour SELECTED_TEXT_COLOUR = {50, 50, 50};
-    const juce::Colour LOCKED_REF_BASE_COLOUR = {50, 180, 50};
+    const juce::Colour LOCKED_REF_BODY_COLOUR = {50, 180, 50};
     const juce::Colour LOCKED_REF_OUTLINE_COLOUR = {50, 200, 50};
-    const juce::Colour MULT_SELECTED_BASE_COLOUR = juce::Colour::fromRGBA(100, 100, 100, 0);
+    const juce::Colour LOCKED_REF_TEXT_COLOUR = {50, 50, 50};
+    const juce::Colour MULT_SELECTED_BODY_COLOUR = juce::Colour::fromRGBA(100, 100, 100, 0);
     const juce::Colour MULT_SELECTED_OUTLINE_COLOUR = {200, 200, 200};
     const juce::Colour INT_RATIO_TEXT_COLOUR = {50, 50, 50};
-    const juce::Colour INTERVAL_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
+    const juce::Colour INTERVAL_BODY_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 80);
     const juce::Colour INTERVAL_TEXT_COLOUR = {50, 50, 50};
-    const juce::Colour DRAGGED_RECT_BASE_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 50);
+    const juce::Colour DRAGGED_RECT_BODY_COLOUR = juce::Colour::fromRGBA(50, 50, 50, 50);
     const juce::Colour DRAGGED_RECT_OUTLINE_COLOUR = {150, 200, 150};
     const juce::Colour PLAYHEAD_COLOUR = {255, 255, 255};
     const juce::Colour PASTE_CURSOR_COLOUR = {255, 160, 30};
-    const juce::Colour SETTINGS_BACKGROUND_COLOUR = {70, 70, 70};
     const juce::Colour INVALID_BACKGROUND_COLOUR = {200, 50, 50};
     const juce::Colour INVALID_TEXT_COLOUR = {50, 200, 200};
-    const Rect NOTE_DOT_BOX = {0, 0, 4, 4};
+    const juce::Colour SETTINGS_BAR_BACKGROUND_COLOUR = juce::Colour::fromFloatRGBA(0, 0, 0, 0.2f);
+    const juce::Colour TOOLTIP_BODY_COLOUR = {70, 70, 70};
+    const juce::Colour TOOLTIP_OUTLINE_COLOUR = {0, 0, 0};
+    const juce::Colour TOOLTIP_TEXT_COLOUR = {200, 200, 200};
 
     explicit PianoRoll(UnTETeredAudioProcessor& proc);
     ~PianoRoll() override;
@@ -55,17 +58,19 @@ public:
 
 private:
     void paint(juce::Graphics& g) override;
-    static void fillRect(juce::Graphics& g, const Rect& rect);
-    static void drawRect(juce::Graphics& g, const Rect& rect);
-    static void drawText(const juce::String& text, const Rect& bounds, juce::Colour colour, juce::Graphics& g, juce::Justification
+    static void fillRect(juce::Graphics& g, const Rect& rect, juce::Colour colour);
+    static void drawRect(juce::Graphics& g, const Rect& rect, juce::Colour colour);
+    static void drawText(juce::Graphics& g, const juce::String& text, const Rect& bounds, juce::Colour colour, juce::Justification
                          justification);
     void drawBackground(juce::Graphics& g, const Rect& bounds) const;
     void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const;
     Fraction getSubDivsFraction() const;
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
-    void drawNote(const Note* note, const juce::Colour& baseColour, const juce::Colour& outlineColour, juce::Graphics& g) const;
     void drawIntervals(juce::Graphics& g) const;
+    juce::Colour getIntervalColour(Fraction interval) const;
+    std::tuple<juce::Colour, juce::Colour, juce::Colour> getNoteColours(Note* note, bool highlight = true) const;
+    juce::String getNoteText(const Note* note, std::optional<std::vector<int>> intRatios) const;
     void drawRectDragged(juce::Graphics& g) const;
     void drawOrientationBar(juce::Graphics& g) const;
     void drawDividerBeneath(juce::Graphics& g, Rect bounds) const;
@@ -171,7 +176,7 @@ private:
     void pushUndoSnapshot();
     void undo();
     void redo();
-    static bool exists(const Note* note);
+    bool exists(const Note* note) const;
     bool isInvalidState();
     bool invalidState = false;
     bool undoSnapshotTakenForCurrentDrag = false;
@@ -233,12 +238,17 @@ private:
     Fraction extraGridResolution{1, 1};
     bool gridTripletted = false;
 
+    float newNoteLength = 1;
+
     double cachedPpqPosition = 0.0;
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
 
-    juce::TooltipWindow tooltipWindow { this };
-    void displayToolTip(Point screenPosition);
+    juce::TooltipWindow tooltipWindow{ this };
+    juce::LookAndFeel_V4 lookAndFeel{};
+    void initialiseTooltipWindow();
+    juce::String getTooltip() override;
+    void setTooltipColours();
     static juce::String getIntervalTooltipText(Fraction& interval);
     static void logNote(const Note* note);
 

@@ -14,13 +14,15 @@ PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
     std::function<void()> handleMonitoring,
-    std::function<void()> handleInstructions
+    std::function<void()> handleInstructions,
+    std::function<void(const juce::MouseEvent&)> mouseMoveParent
     ) : handleSnapYChange(std::move(handleSnapY)),
         handleAbsoluteInfoChange(std::move(handleAbsoluteInfo)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
         handleMonitoringChange(std::move(handleMonitoring)),
-        handleInstructionsClick(std::move((handleInstructions))) {
+        handleInstructionsClick(std::move(handleInstructions)),
+        handleMouseMove(std::move(mouseMoveParent)) {
     initialiseSnapY();
     initialiseAbsoluteInfo();
     initialiseIntervals();
@@ -33,7 +35,6 @@ void PianoRollSettingsBar::initialiseSnapY() {
     addAndMakeVisible(snapYToggle);
     snapYToggle.setTooltip ("Fixes the pitch of notes, so they can only be changed relative to a selected reference note.");
     snapYToggle.onStateChange = handleSnapYChange;
-    snapYToggle.setHelpText("hoi");
 }
 
 void PianoRollSettingsBar::initialiseAbsoluteInfo() {
@@ -136,6 +137,10 @@ void PianoRollSettingsBar::setIntervals(int id) {
 
 void PianoRollSettingsBar::setCustomIntervals(const std::vector<Fraction>& fractions) {
     customIntervalsField.setFractions(fractions);
+}
+
+void PianoRollSettingsBar::mouseMove(const juce::MouseEvent& event) {
+    handleMouseMove(event);
 }
 
 void PianoRollSettingsBar::resized() {

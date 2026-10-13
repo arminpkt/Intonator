@@ -18,7 +18,8 @@ public:
         std::function<void()> handleVals,
         std::function<void()> handleCustomVals,
         std::function<void()> handleMonitoring,
-        std::function<void()> handleInstructions
+        std::function<void()> handleInstructions,
+        std::function<void(const juce::MouseEvent&)> mouseMoveParent
         );
 
     bool getSnapY() const;
@@ -35,6 +36,8 @@ public:
 
     void setCustomIntervalsVisibility(bool visible);
 
+    void mouseMove(const juce::MouseEvent& event) override;
+
 private:
     juce::ToggleButton snapYToggle { "snap Y" };
     juce::ToggleButton absoluteInfoToggle {"info"};
@@ -49,6 +52,7 @@ private:
     std::function<void()> handleCustomIntervalsChange;
     std::function<void()> handleMonitoringChange;
     std::function<void()> handleInstructionsClick;
+    std::function<void(const juce::MouseEvent&)> handleMouseMove;
 
     void initialiseSnapY();
     void initialiseAbsoluteInfo();
