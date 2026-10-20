@@ -4,17 +4,24 @@ if (APPLE)
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 endif()
 
+if (WIN32)
+    set(_copy_after_build FALSE)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    set(_copy_after_build TRUE)
+endif()
+
 juce_add_plugin(UnTETered
         VERSION 0.0.1
         # ICON_BIG ...
         # ICON_SMALL ...
-        COMPANY_NAME ACV
+        COMPANY_NAME UnTETered
         IS_SYNTH FALSE
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT TRUE
         IS_MIDI_EFFECT FALSE
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE
-        COPY_PLUGIN_AFTER_BUILD TRUE
+        COPY_PLUGIN_AFTER_BUILD ${_copy_after_build}
         PLUGIN_MANUFACTURER_CODE ACVV
         PLUGIN_CODE Into
 
@@ -118,7 +125,16 @@ if (UNTETERED_COPY_REMOTE_SCRIPT)
     if (APPLE)
         set(_default_user_library "$ENV{HOME}/Music/Ableton/User Library")
     elseif (WIN32)
-        file(TO_CMAKE_PATH "$ENV{USERPROFILE}/Documents/Ableton/User Library" _default_user_library)
+        # "Personal" = the real Documents folder, even when redirected to OneDrive
+        cmake_host_system_information(RESULT _docs
+                QUERY WINDOWS_REGISTRY
+                "HKCU/Software/Microsoft/Windows/CurrentVersion/Explorer/User Shell Folders"
+                VALUE "Personal"
+                ERROR_VARIABLE _docs_err)
+        if (NOT _docs OR _docs_err)
+            set(_docs "$ENV{USERPROFILE}/Documents")
+        endif()
+        file(TO_CMAKE_PATH "${_docs}/Ableton/User Library" _default_user_library)
     endif()
     set(ABLETON_USER_LIBRARY "${_default_user_library}"
             CACHE PATH "Ableton Live User Library folder")
@@ -139,7 +155,9 @@ if (UNTETERED_COPY_REMOTE_SCRIPT)
                 VERBATIM)
 
         add_custom_target(UnTETeredSyncRemoteScript DEPENDS "${_stamp}")
-        add_dependencies(UnTETered   UnTETeredSyncRemoteScript)
+        if (APPLE)
+            add_dependencies(UnTETeredAU UnTETeredSyncRemoteScript)
+        endif()
         add_dependencies(UnTETeredAU UnTETeredSyncRemoteScript)
     else()
         message(WARNING "UnTETeredSync Remote Script not copied: no .py files found in "
