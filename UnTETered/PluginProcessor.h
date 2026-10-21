@@ -80,6 +80,7 @@ public:
     const TransportState& getTransportState();
     void requestHostPlayheadJumpToBar(double targetBar) noexcept;
     void requestHostPlaybackStartStop(double targetBar) noexcept;
+    bool canControlHostTransport() const noexcept { return dawBackend->canControlTransport(); }
 
     //==============================================================================
     GridState getGridState() const;

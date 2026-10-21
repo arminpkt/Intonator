@@ -139,7 +139,7 @@ if (UNTETERED_COPY_REMOTE_SCRIPT)
     set(ABLETON_USER_LIBRARY "${_default_user_library}"
             CACHE PATH "Ableton Live User Library folder")
 
-    set(_remote_script_dest "${ABLETON_USER_LIBRARY}/Remote Scripts/UnTETeredSync")
+    set(_remote_script_dest "${ABLETON_USER_LIBRARY}/Remote Scripts/UnTETered")
     file(GLOB _remote_script_files CONFIGURE_DEPENDS "${UNTETERED_REMOTE_SCRIPT_SOURCE}/*.py")
 
     if (_remote_script_files AND ABLETON_USER_LIBRARY)
@@ -151,7 +151,7 @@ if (UNTETERED_COPY_REMOTE_SCRIPT)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${_remote_script_files} "${_remote_script_dest}"
                 COMMAND ${CMAKE_COMMAND} -E touch "${_stamp}"
                 DEPENDS ${_remote_script_files}
-                COMMENT "Copying UnTETeredSync Remote Script to ${_remote_script_dest}"
+                COMMENT "Copying UnTETered Remote Script to ${_remote_script_dest}"
                 VERBATIM)
 
         add_custom_target(UnTETeredSyncRemoteScript DEPENDS "${_stamp}")

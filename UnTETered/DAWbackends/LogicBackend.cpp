@@ -42,6 +42,8 @@ void LogicBackend::sendMessage(const juce::MidiMessage &message) noexcept {
     }
 }
 
+bool LogicBackend::canControlTransport() const noexcept { return midiOutput != nullptr; }
+
 std::optional<juce::MidiMessage> LogicBackend::beatsToGotoMessage(double targetBeat) noexcept {
     double currentBpm = transportState.bpm.load(std::memory_order_relaxed);
     double currentSampleRate = transportState.sampleRate.load(std::memory_order_relaxed);

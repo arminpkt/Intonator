@@ -8,6 +8,7 @@ class DAWBackend {
         virtual void requestPlay(double targetBeat) noexcept = 0;
         virtual void requestStop() noexcept = 0;
         virtual const char* getName() const noexcept = 0;
+        virtual bool canControlTransport() const noexcept = 0;
 
     protected:
         DAWBackend() = default;
@@ -21,4 +22,5 @@ class NullBackend : public DAWBackend {
         void requestPlay(double) noexcept override {}
         void requestStop() noexcept override {}
         const char* getName() const noexcept override { return "None";}
+        bool canControlTransport() const noexcept override { return false; }
 };

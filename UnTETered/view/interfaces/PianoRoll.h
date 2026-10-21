@@ -253,6 +253,7 @@ private:
     int    cachedNumerator   = 4;
     int    cachedDenominator = 4;
     bool cachedIsPlaying = false;
+    bool hostTransportControllable = false;
 
     juce::TooltipWindow tooltipWindow{ this };
     juce::LookAndFeel_V4 lookAndFeel{};

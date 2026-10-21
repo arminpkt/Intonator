@@ -13,6 +13,7 @@ class LogicBackend : public DAWBackend {
         void requestPlay(double targetBeat) noexcept override;
         void requestStop() noexcept override;
         const char* getName() const noexcept override;
+        bool canControlTransport() const noexcept override;
     private:
         void sendMessage(const juce::MidiMessage& message) noexcept;
         std::optional<juce::MidiMessage> beatsToGotoMessage(double targetBeat) noexcept;

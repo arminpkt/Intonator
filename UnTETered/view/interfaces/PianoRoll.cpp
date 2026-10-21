@@ -526,6 +526,8 @@ void PianoRoll::mouseDown(const juce::MouseEvent& event) {
     Point posPx = event.getPosition();
 
     if (getOrientationBarBounds().contains(posPx)) {
+        if (!hostTransportControllable)
+            return;
         internalPlayheadBarPos = getBarSubRoundedFromXPx(posPx.getX());
         internalPlayheadHandleBarPos = internalPlayheadBarPos;
         processor.requestHostPlayheadJumpToBar(internalPlayheadBarPos);
@@ -896,6 +898,8 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
     CrashLog::log(juce::String(code));
 
     if (key == juce::KeyPress::spaceKey) {
+        if (!hostTransportControllable)
+            return false;
         float playheadPos = internalPlayheadDetached ? internalPlayheadBarPos : hostPlayheadBarPos;
         processor.requestHostPlaybackStartStop(playheadPos);
         return true;
@@ -1141,6 +1145,9 @@ void PianoRoll::handleCustomIntervalsChanged() {
 }
 
 void PianoRoll::timerCallback() {
+    hostTransportControllable = processor.canControlHostTransport();
+    if (!hostTransportControllable)
+        internalPlayheadDetached = false;   // playhead always follows the host
     const auto& ts = processor.getTransportState();
     cachedPpqPosition = ts.ppqPosition.load(std::memory_order_relaxed);
     cachedNumerator   = ts.numerator.load(std::memory_order_relaxed);
