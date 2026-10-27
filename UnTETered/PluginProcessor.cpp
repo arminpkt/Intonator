@@ -118,6 +118,19 @@ void UnTETeredAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     setTransportStateFromHost(playHead);
     playMidi(midiMessages, buffer.getNumSamples());
+
+    const bool licensed = license.isLicensed();
+
+    if (!licensed)
+    {
+        midiMessages.clear();
+
+        if (wasLicensed)   // just lost the license: no hanging notes
+            for (int ch = 1; ch <= 16; ++ch)
+                midiMessages.addEvent (juce::MidiMessage::allNotesOff (ch), 0);
+    }
+
+    wasLicensed = licensed;
 }
 
 //==============================================================================

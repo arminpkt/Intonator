@@ -1,6 +1,5 @@
-/cmake-build-debug/
-/cmake-build-release/
+cmake-build-*/
 /.idea/
 /JUCE/
-/.DS_Store/
+.DS_Store
 /UnTETered/Installers/Output/

@@ -45,6 +45,34 @@ juce_add_plugin(UnTETeredAU
         FORMATS AU
         PRODUCT_NAME "UnTETered")
 
+option(UNTETERED_DRM "Build with Moonbase licensing" ON)
+
+if(UNTETERED_DRM)
+    if(APPLE)
+        enable_language(OBJC OBJCXX)   # module compiles an Obj-C++ file on macOS
+    endif()
+
+    CPMAddPackage(
+            NAME moonbase-cpp
+            GITHUB_REPOSITORY Moonbase-sh/moonbase-cpp
+            GIT_TAG v4.13.0
+            DOWNLOAD_ONLY YES)             # don't add the root CMake (OpenSSL/CURL)
+
+    juce_add_module(${moonbase-cpp_SOURCE_DIR}/modules/moonbase_licensing)
+
+    target_link_libraries(UnTETered PRIVATE moonbase_licensing)
+    target_compile_definitions(UnTETered PRIVATE JUCE_USE_CURL=0)
+    target_link_libraries(UnTETeredAU PRIVATE moonbase_licensing)
+    target_compile_definitions(UnTETeredAU PRIVATE JUCE_USE_CURL=0)
+else()
+    message(WARNING "UnTETered is being built WITHOUT DRM")
+endif()
+
+target_compile_definitions(UnTETered PRIVATE
+        UNTETERED_DRM=$<BOOL:${UNTETERED_DRM}>)
+target_compile_definitions(UnTETeredAU PRIVATE
+        UNTETERED_DRM=$<BOOL:${UNTETERED_DRM}>)
+
 target_sources(UnTETered
         PRIVATE
         PluginEditor.cpp
@@ -60,6 +88,7 @@ target_sources(UnTETered
         view/interfaces/PianoRollSettingsBar.cpp
         DAWbackends/AbletonBackend.cpp
         DAWbackends/LogicBackend.cpp
+        DRM/LicenseGuard.cpp
 )
 
 target_compile_definitions(UnTETered
@@ -94,6 +123,7 @@ target_sources(UnTETeredAU
         view/interfaces/PianoRollSettingsBar.cpp
         DAWbackends/AbletonBackend.cpp
         DAWbackends/LogicBackend.cpp
+        DRM/LicenseGuard.cpp
 )
 
 target_compile_definitions(UnTETeredAU

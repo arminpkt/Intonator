@@ -7,8 +7,17 @@ UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProc
     // addAndMakeVisible(grid2D);
     addAndMakeVisible(pianoRoll);
 
-    setSize (1200, 400);
+    activationOverlay = processorRef.license.createActivationUI();
+
+    if (activationOverlay != nullptr)
+    {
+        addChildComponent (*activationOverlay);
+        activationOverlay->setVisible (! processorRef.license.isLicensed());
+    }
+
+    setResizeLimits(200, 200, 20000, 20000);
     setResizable(true, true);
+    setSize (1200, 400);
 
     processorRef.addChangeListener(this);
 }
@@ -18,17 +27,26 @@ UnTETeredAudioProcessorEditor::~UnTETeredAudioProcessorEditor() {
 }
 
 void UnTETeredAudioProcessorEditor::resized() {
-    clipResize();
-    auto area = getLocalBounds();
-    pianoRoll.setBounds(area);
+    auto bounds = getLocalBounds();
+    if (activationOverlay != nullptr)
+        activationOverlay->setBounds (bounds);
+
+    pianoRoll.setBounds(bounds);
 }
 
-void UnTETeredAudioProcessorEditor::clipResize() {
-    auto bounds = getBounds();
-    if (bounds.getWidth() < 200)
-        setBounds(bounds.withWidth(200));
-    if (bounds.getHeight() < 200)
-        setBounds(bounds.withHeight(200));
+bool UnTETeredAudioProcessorEditor::keyPressed(const juce::KeyPress &key) {
+    const juce::KeyPress licenseShortcut('l', juce::ModifierKeys::commandModifier, 0);
+    if (key == licenseShortcut && activationOverlay != nullptr) {
+        if (activationOverlay->isVisible()) {
+            if (processorRef.license.isLicensed())
+                activationOverlay->setVisible(false);
+        } else {
+            activationOverlay->setVisible(true);
+            activationOverlay->toFront(false);
+        }
+        return true;
+    }
+    return false;
 }
 
 void UnTETeredAudioProcessorEditor::changeListenerCallback(juce::ChangeBroadcaster *source) {

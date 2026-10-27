@@ -12,6 +12,7 @@
 #include "view/interfaces/PianoRollStateSerialiser.h"
 #include "view/interfaces/PianoRollStateHelpers.h"
 #include "DAWbackends/DAWBackend.h"
+#include "DRM/LicenseGuard.h"
 
 struct PlaybackSequence
 {
@@ -105,6 +106,8 @@ public:
     //==============================================================================
     juce::MidiBuffer midiBuffer;
 
+    unTETered::LicenseGuard license;
+
 private:
     std::unique_ptr<DAWBackend> createDAWBackend();
     void setTransportStateFromHost(juce::AudioPlayHead*);
@@ -133,6 +136,8 @@ private:
     std::unique_ptr<DAWBackend> dawBackend;
 
     juce::AudioParameterFloat* editMarker = nullptr; //dummy parameter for logic
+
+    bool wasLicensed = true;
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UnTETeredAudioProcessor)
