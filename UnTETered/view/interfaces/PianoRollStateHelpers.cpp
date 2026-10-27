@@ -32,7 +32,7 @@ PianoRollState PianoRollStateHelpers::makeStateFromNoteRegion(const NoteRegion& 
 // ---------------------------------------------------------------------------
 // PianoRollState  →  NoteRegion
 // ---------------------------------------------------------------------------
-NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange)
+NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& state)
 {
     NoteRegion region;
 
@@ -50,7 +50,7 @@ NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& 
         ));
     }
 
-    region.calculateMidiMessages(pitchBendRange);
+    region.calculateMidiMessages(state.pitchBendRange);
     return region;
 }
 

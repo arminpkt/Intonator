@@ -516,7 +516,7 @@ void PianoRoll::startNotePreview(const Note* note) {
     }
 
     processor.addPreviewMessages({
-        juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE)),
+        juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue(pitchbendRange)),
         juce::MidiMessage::noteOn(channel, note->getRoundedMidiValue(), static_cast<juce::uint8>(100))});
 
     activePreviews.push_back({ note->getRoundedMidiValue(), channel, PREVIEW_DURATION_TICKS });
