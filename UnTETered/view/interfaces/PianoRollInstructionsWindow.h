@@ -8,7 +8,7 @@
 
 class InstructionsField : public juce::Component {
 public:
-    std::vector<std::pair<juce::String, juce::String>> CONTROLS = {
+    const std::vector<std::pair<juce::String, juce::String>> CONTROLS = {
         {"Double click", "Create or delete a note"},
         {"[Option/Alt]+click a note", "Set note as a reference"},
         {"[Cmd/Ctrl]+C", "Copy selection"},
@@ -49,12 +49,12 @@ public:
     }
 };
 
-class InstructionsWindow : public juce::DialogWindow {
+class PianoRollInstructionsWindow : public juce::DialogWindow {
 
     InstructionsField background{};
 
 public:
-    InstructionsWindow()
+    PianoRollInstructionsWindow()
         : DialogWindow("Controls",
                       juce::Colours::black,
                       true) {
@@ -62,8 +62,7 @@ public:
         // Add any components you want
         setContentOwned(&background, true);
 
-        // Set reasonable size
-        centreWithSize(getWidth(), getHeight());
+        centreWithSize(500, 700);
         enterModalState();
         setResizable(false, false);
     }
@@ -73,8 +72,7 @@ public:
     }
 
     void open() {
-        setCentrePosition(getBounds().getCentre());
-        centreWithSize(500, 670);
+        centreWithSize(getWidth(), getHeight());
         enterModalState();
         setVisible(true);
         setAlwaysOnTop(true);

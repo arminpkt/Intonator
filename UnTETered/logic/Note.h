@@ -130,14 +130,16 @@ struct Note {
         return static_cast<double>(ratio) * referenceFrequency;
     }
 
-    [[nodiscard]] juce::String getNoteName() const {
-        auto pc = getPitchClass();
+    [[nodiscard]] juce::String getNoteName(float concertPitch) const {
+        auto noteAfterCPCorrection = *this;
+        noteAfterCPCorrection.referenceFrequency *= (concertPitch / 440);
+        auto pc = noteAfterCPCorrection.getPitchClass();
         auto index = (pc.getRoundedValue() + 3) % 12;
         return NOTE_NAMES[index];
     }
 
-    [[nodiscard]] juce::String getAbsoluteInfo() const {
-        juce::String noteName = getNoteName();
+    [[nodiscard]] juce::String getAbsoluteInfo(float concertPitch) const {
+        juce::String noteName = getNoteName(concertPitch);
 
         auto centOffset = getCentOffset();
         juce::String connector = centOffset >= 0 ? " + " : " - ";

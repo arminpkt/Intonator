@@ -6,7 +6,7 @@
 
 #include "PianoRoll.h"
 
-#include "InstructionsWindow.h"
+#include "PianoRollInstructionsWindow.h"
 #include "PianoRollStateHelpers.h"
 #include "IntervalPresets.h"
 #include "../../logic/util.h"
@@ -17,16 +17,24 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
       settingsBar(PianoRollSettingsBar(
           [this] { handleSnapYChanged(); },
           [this] { handleAbsoluteInfoChanged(); },
+          [this] { handleMonitoringChanged(); },
           [this] { handleIntervalsChanged(); },
           [this] { handleCustomIntervalsChanged(); },
-          [this] { handleMonitoringChanged(); },
+          [this] { handleSettingsClicked(); },
           [this] { handleInstructionsClicked(); },
-          [this] (const juce::MouseEvent& e) { mouseMove(e); })) {
+          [this] (const juce::MouseEvent& e) { mouseMove(e); })),
+      settingsWindow(
+          [this]{ handleColourSchemeChanged(); },
+          [this]{ handleGradientColourChanged(); },
+          [this]{ handlePitchbendRangeChanged(); },
+          [this]{ handleConcertPitchChanged(); },
+          this) {
     Component::setName("PianoRoll");
     setWantsKeyboardFocus(true);
     pullStateFromProcessorAndRebuild();
     addAndMakeVisible(settingsBar);
     instructionsWindow.setVisible(false);
+    settingsWindow.setVisible(false);
     setLookAndFeel(&lookAndFeel);
     startTimerHz(30);
 }
@@ -73,9 +81,19 @@ void PianoRoll::drawText(juce::Graphics& g, const juce::String& text, const Rect
 void PianoRoll::drawBackground(juce::Graphics& g, const Rect& bounds) const {
     auto [t, l, b, r, w, h] = Util::getTLBRWH(bounds);
     for (int y = t; y < b; y++) {
-        auto colour = juce::Colour::fromHSV(getHueFromYPx(y), 0.2f, 0.7f, 1.0f);
+        auto colour = getBackgroundLineColour(y);
         fillRect(g, {l, y, w, 1}, colour);
     }
+}
+
+juce::Colour PianoRoll::getBackgroundLineColour(int y) const {
+    float hue = getHueFromYPx(y);
+    if (colourSchemeSetting == PianoRollSettingsWindow::RAINBOW_ID)
+        return juce::Colour::fromHSV(hue, 0.2f, 0.7f, 1.f);
+    if (colourSchemeSetting == PianoRollSettingsWindow::GRADIENT_ID) {
+        return gradientBackground.getColourAtPosition(hue).withSaturation(0.2f).withBrightness(0.7f).withAlpha(1.f);
+    }
+    return INVALID_BACKGROUND_COLOUR;
 }
 
 void PianoRoll::drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const {
@@ -181,7 +199,7 @@ juce::String PianoRoll::getNoteText(const Note* note, std::optional<std::vector<
         return std::to_string(intRatios.value()[i.value()]);
 
     if (absoluteInfoSetting)
-        return note->getAbsoluteInfo();
+        return note->getAbsoluteInfo(concertPitch);
 
     return "";
 }
@@ -293,7 +311,10 @@ Rect PianoRoll::getNoteCanvasBounds() const   { auto b = getCanvasBounds(); b.re
 Rect PianoRoll::getOrientationBarBounds() const { return getCanvasBounds().removeFromTop(ORIENTATION_BAR_HEIGHT); }
 
 float PianoRoll::getHueFromYPx(int y) const { return getHueFromFreq(getFreqFromYPx(y)); }
-float PianoRoll::getHueFromFreq(double freq) { Note note{freq, {1, 1}, 1, 0, 0}; return note.getHue(); }
+float PianoRoll::getHueFromFreq(double freq) const {
+    Note note{freq, {1, 1}, 1, 0, 0};
+    return note.getHue();
+}
 double PianoRoll::getFreqFromYPx(int y) const { return getFreqFromYPxF(static_cast<float>(y)); }
 
 double PianoRoll::getFreqFromYPxF(float y) const {
@@ -494,9 +515,9 @@ void PianoRoll::startNotePreview(const Note* note) {
         activePreviews.erase(oldest);
     }
 
-    processor.addPreviewMessages({juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE)),
-                                        juce::MidiMessage::noteOn(channel,
-                                        note->getRoundedMidiValue(),static_cast<juce::uint8>(100))});
+    processor.addPreviewMessages({
+        juce::MidiMessage::pitchWheel(channel, note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE)),
+        juce::MidiMessage::noteOn(channel, note->getRoundedMidiValue(), static_cast<juce::uint8>(100))});
 
     activePreviews.push_back({ note->getRoundedMidiValue(), channel, PREVIEW_DURATION_TICKS });
 }
@@ -505,17 +526,6 @@ void PianoRoll::stopAllPreviews() {
     for (const auto& p : activePreviews)
         processor.addPreviewMessages({juce::MidiMessage::noteOff(p.channel, p.midiNote)});
     activePreviews.clear();
-}
-
-void PianoRoll::handleMonitoringChanged() {
-    monitoringSetting = settingsBar.getMonitoring();
-    if (!monitoringSetting)
-        stopAllPreviews();
-    pushNoteStateToProcessor();
-}
-
-void PianoRoll::handleInstructionsClicked() {
-    instructionsWindow.open();
 }
 
 void PianoRoll::mouseDown(const juce::MouseEvent& event) {
@@ -1107,6 +1117,24 @@ void PianoRoll::tripletGrid() {
         gridTripletted = !gridTripletted;
 }
 
+void PianoRoll::applyIntervalsSetting() {
+    if (intervalsSetting == STANDARD_ID) {
+        intervals = Util::expandIntervals(getIntervalsByID(intervalsSetting));
+        settingsBar.setCustomIntervalsVisibility(false);
+    }
+    if (intervalsSetting == CUSTOM_INTERVALS_ID) {
+        intervals = customIntervals;
+        settingsBar.setCustomIntervalsVisibility(true);
+    }
+}
+
+void PianoRoll::applyGradientSetting() {
+    gradientBackground.clearColours();
+    gradientBackground.addColour(0, gradientColour1);
+    gradientBackground.addColour(0.5, gradientColour2);
+    gradientBackground.addColour(1, gradientColour1);
+}
+
 void PianoRoll::handleSnapYChanged() {
     snapYSetting = settingsBar.getSnapY();
     pushNoteStateToProcessor();
@@ -1117,15 +1145,11 @@ void PianoRoll::handleAbsoluteInfoChanged() {
     pushNoteStateToProcessor();
 }
 
-void PianoRoll::applyIntervalsSetting() {
-    if (intervalsSetting == CUSTOM_INTERVALS_ID) {
-        intervals = customIntervals;
-        settingsBar.setCustomIntervalsVisibility(true);
-    }
-    if (intervalsSetting == SEVEN_LIMIT_ID) {
-        intervals = Util::expandIntervals(getIntervalsByID(intervalsSetting));
-        settingsBar.setCustomIntervalsVisibility(false);
-    }
+void PianoRoll::handleMonitoringChanged() {
+    monitoringSetting = settingsBar.getMonitoring();
+    if (!monitoringSetting)
+        stopAllPreviews();
+    pushNoteStateToProcessor();
 }
 
 void PianoRoll::handleIntervalsChanged() {
@@ -1138,6 +1162,43 @@ void PianoRoll::handleCustomIntervalsChanged() {
     customIntervals = settingsBar.getCustomIntervals();
     applyIntervalsSetting();
     pushNoteStateToProcessor();
+}
+
+void PianoRoll::handleSettingsClicked() {
+    settingsWindow.open();
+}
+
+void PianoRoll::handleInstructionsClicked() {
+    instructionsWindow.open();
+}
+
+void PianoRoll::handleColourSchemeChanged() {
+    auto value = settingsWindow.getColourSchemeId();
+    colourSchemeSetting = value;
+    settingsWindow.placeComponents();
+}
+
+void PianoRoll::handleGradientColourChanged() {
+    auto [c1, c2] = settingsWindow.getGradientColours();
+    gradientColour1 = c1;
+    gradientColour2 = c2;
+    applyGradientSetting();
+}
+
+void PianoRoll::handlePitchbendRangeChanged() {
+    auto value = settingsWindow.getPitchbendRange();
+    pitchbendRange = juce::jlimit(0.5f, 48.f, value);
+    settingsWindow.setPitchbendRange(pitchbendRange);
+}
+
+void PianoRoll::handleConcertPitchChanged() {
+    auto value = settingsWindow.getConcertPitch();
+    concertPitch = juce::jlimit(400.f, 480.f, value);
+    settingsWindow.setConcertPitch(concertPitch);
+}
+
+void PianoRoll::changeListenerCallback(juce::ChangeBroadcaster* _) {
+    handleGradientColourChanged();
 }
 
 void PianoRoll::timerCallback() {
@@ -1183,7 +1244,7 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     barWidthPxF      = state.barWidthPxF;
     freqBottomScreen = state.freqBottomScreen;
     barLeftScreen    = state.barLeftScreen;
-    noteRegion       = makeNoteRegionFromState(state);
+    noteRegion       = PianoRollStateHelpers::makeNoteRegionFromState(state);
 
     notesSelected.clear();
     selectedNotesStartsEnds.clear();
@@ -1199,10 +1260,10 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     noteWasDraggedThisGesture = false;
 
     // Settings Bar
-    // reference=lockNote can't survive serialization (pointer is gone), so fall back
-    snapYSetting      = state.snapY;
-    monitoringSetting = state.monitoringEnabled;
-    intervalsSetting  = state.intervalsSetting;
+    snapYSetting        = state.snapY;
+    absoluteInfoSetting = state.absoluteInfo;
+    monitoringSetting   = state.monitoringEnabled;
+    intervalsSetting    = state.intervalsSetting;
 
     settingsBar.setSnapY(snapYSetting);
     settingsBar.setAbsoluteInfo(absoluteInfoSetting);
@@ -1210,17 +1271,29 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
     settingsBar.setIntervals(intervalsSetting);
 
     customIntervals.clear();
-    if (!state.customIntervals.empty())
-    {
+    if (!state.customIntervals.empty()) {
         for (const auto& [num, den] : state.customIntervals)
             customIntervals.emplace_back( num, den );
     }
-    else {
-        customIntervals = SEVEN_LIMIT;
-    }
-    settingsBar.setCustomIntervals(customIntervals);
+    else
+        customIntervals = STANDARD;
 
+    settingsBar.setCustomIntervals(customIntervals);
     applyIntervalsSetting();
+
+    // Settings Window
+    colourSchemeSetting = state.colourScheme;
+    gradientColour1 = PianoRollStateHelpers::makeColourFromTuple(state.gradientColour1);
+    gradientColour2 = PianoRollStateHelpers::makeColourFromTuple(state.gradientColour2);
+    applyGradientSetting();
+    pitchbendRange = state.pitchBendRange;
+    concertPitch = state.concertPitch;
+
+    settingsWindow.setColourScheme(colourSchemeSetting);
+    settingsWindow.setGradientColours(gradientColour1, gradientColour2);
+    settingsWindow.setPitchbendRange(pitchbendRange);
+    settingsWindow.setConcertPitch(concertPitch);
+
     repaint();
 }
 
@@ -1228,21 +1301,28 @@ void PianoRoll::pushNoteStateToProcessor() const {
     CrashLog::LOG_SCOPE();
     if (isLoadingState)
         return;
-    PianoRollState state    = makeStateFromNoteRegion(noteRegion);
+    PianoRollState state    = PianoRollStateHelpers::makeStateFromNoteRegion(noteRegion);
     state.octaveHeightPxF   = octaveHeightPxF;
     state.barWidthPxF       = barWidthPxF;
     state.freqBottomScreen  = freqBottomScreen;
     state.barLeftScreen     = barLeftScreen;
 
     state.snapY             = snapYSetting;
+    state.absoluteInfo      = absoluteInfoSetting;
     state.monitoringEnabled = monitoringSetting;
     state.intervalsSetting  = intervalsSetting;
     state.customIntervals.clear();
-    for (const auto& f : customIntervals)
-    {
+    for (const auto& f : customIntervals) {
         auto [num, den] = f.getNumeratorAndDenominator();
         state.customIntervals.emplace_back(num, den);
     }
+
+    state.colourScheme      = colourSchemeSetting;
+    state.gradientColour1   = PianoRollStateHelpers::makeTupleFromColour(gradientColour1);
+    state.gradientColour2   = PianoRollStateHelpers::makeTupleFromColour(gradientColour2);
+    state.pitchBendRange    = pitchbendRange;
+    state.concertPitch      = concertPitch;
+
     processor.setPianoRollState(state);
     processor.markStateDirtyForHost();
 }
@@ -1253,7 +1333,7 @@ void PianoRoll::pushViewportToProcessor() const {
 
 void PianoRoll::pushUndoSnapshot() {
     CrashLog::LOG_SCOPE();
-    undoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
+    undoStack.push_back(PianoRollStateHelpers::makeStateFromNoteRegion(noteRegion).notes);
     if (undoStack.size() > static_cast<size_t>(MAX_UNDO_STEPS))
         undoStack.erase(undoStack.begin());
     redoStack.clear();
@@ -1262,14 +1342,14 @@ void PianoRoll::pushUndoSnapshot() {
 void PianoRoll::undo() {
     CrashLog::LOG_SCOPE();
     if (undoStack.empty()) return;
-    redoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
+    redoStack.push_back(PianoRollStateHelpers::makeStateFromNoteRegion(noteRegion).notes);
     PianoRollState state;
     state.notes = std::move(undoStack.back()); undoStack.pop_back();
     state.octaveHeightPxF  = octaveHeightPxF;
     state.barWidthPxF      = barWidthPxF;
     state.freqBottomScreen = freqBottomScreen;
     state.barLeftScreen    = barLeftScreen;
-    noteRegion = makeNoteRegionFromState(state);
+    noteRegion = PianoRollStateHelpers::makeNoteRegionFromState(state);
     notesSelected.clear();
     lockedNoteReference = nullptr;
     noteHighlighted = nullptr;
@@ -1279,14 +1359,14 @@ void PianoRoll::undo() {
 void PianoRoll::redo() {
     CrashLog::LOG_SCOPE();
     if (redoStack.empty()) return;
-    undoStack.push_back(makeStateFromNoteRegion(noteRegion).notes);
+    undoStack.push_back(PianoRollStateHelpers::makeStateFromNoteRegion(noteRegion).notes);
     PianoRollState state;
     state.notes = std::move(redoStack.back()); redoStack.pop_back();
     state.octaveHeightPxF  = octaveHeightPxF;
     state.barWidthPxF      = barWidthPxF;
     state.freqBottomScreen = freqBottomScreen;
     state.barLeftScreen    = barLeftScreen;
-    noteRegion = makeNoteRegionFromState(state);
+    noteRegion = PianoRollStateHelpers::makeNoteRegionFromState(state);
     notesSelected.clear();
     lockedNoteReference = nullptr;
     noteHighlighted = nullptr;
@@ -1345,7 +1425,7 @@ juce::String PianoRoll::getTooltip() {
     setTooltipColours();
 
     if (noteHighlighted) {
-        auto tooltipText = noteHighlighted->getAbsoluteInfo();
+        auto tooltipText = noteHighlighted->getAbsoluteInfo(concertPitch);
         if (lockedNoteReference && noteHighlighted->isFamiliarWith(lockedNoteReference)) {
             auto interval = noteHighlighted->ratio / lockedNoteReference->ratio;
             tooltipText += ":   " + getIntervalTooltipText(interval);
@@ -1368,6 +1448,6 @@ juce::String PianoRoll::getIntervalTooltipText(Fraction& interval) {
     return tooltipText;
 }
 
-void PianoRoll::logNote(const Note* note) {
-    CrashLog::log(note ? note->getAbsoluteInfo() : "NULLPTR NOTE");
+void PianoRoll::logNote(const Note* note) const {
+    CrashLog::log(note ? note->getAbsoluteInfo(concertPitch) : "NULLPTR NOTE");
 }

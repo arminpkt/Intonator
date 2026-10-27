@@ -11,16 +11,18 @@
 PianoRollSettingsBar::PianoRollSettingsBar(
     std::function<void()> handleSnapY,
     std::function<void()> handleAbsoluteInfo,
+    std::function<void()> handleMonitoring,
     std::function<void()> handleVals,
     std::function<void()> handleCustomVals,
-    std::function<void()> handleMonitoring,
+    std::function<void()> handleSettings,
     std::function<void()> handleInstructions,
     std::function<void(const juce::MouseEvent&)> mouseMoveParent
     ) : handleSnapYChange(std::move(handleSnapY)),
         handleAbsoluteInfoChange(std::move(handleAbsoluteInfo)),
+        handleMonitoringChange(std::move(handleMonitoring)),
         handleIntervalsChange(std::move(handleVals)),
         handleCustomIntervalsChange(std::move(handleCustomVals)),
-        handleMonitoringChange(std::move(handleMonitoring)),
+        handleSettingsClick(std::move(handleSettings)),
         handleInstructionsClick(std::move(handleInstructions)),
         handleMouseMove(std::move(mouseMoveParent)) {
     initialiseSnapY();
@@ -28,6 +30,7 @@ PianoRollSettingsBar::PianoRollSettingsBar(
     initialiseIntervals();
     initialiseCustomIntervals();
     initialiseMonitoring();
+    initialiseSettings();
     initialiseInstructions();
 }
 
@@ -43,12 +46,19 @@ void PianoRollSettingsBar::initialiseAbsoluteInfo() {
     absoluteInfoToggle.onStateChange = handleAbsoluteInfoChange;
 }
 
+void PianoRollSettingsBar::initialiseMonitoring() {
+    addAndMakeVisible(monitoringToggle);
+    monitoringToggle.setTooltip ("Notes will sound when selected.");
+    monitoringToggle.setToggleState(false, juce::dontSendNotification);
+    monitoringToggle.onClick = handleMonitoringChange;
+}
+
 void PianoRollSettingsBar::initialiseIntervals() {
     addAndMakeVisible(intervalsComboBox);
     intervalsComboBox.setTooltip ("Choose which intervals should be available.");
     intervalsComboBox.onChange = handleIntervalsChange;
 
-    intervalsComboBox.addItem("standard", SEVEN_LIMIT_ID);
+    intervalsComboBox.addItem("standard", STANDARD_ID);
     intervalsComboBox.addItem("custom", CUSTOM_INTERVALS_ID);
 
     intervalsComboBox.setColour(juce::ComboBox::backgroundColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0));
@@ -70,11 +80,13 @@ void PianoRollSettingsBar::initialiseCustomIntervals() {
     customIntervalsField.onTextChange = handleCustomIntervalsChange;
 }
 
-void PianoRollSettingsBar::initialiseMonitoring() {
-    addAndMakeVisible(monitoringToggle);
-    monitoringToggle.setTooltip ("Notes will sound when selected.");
-    monitoringToggle.setToggleState(false, juce::dontSendNotification);
-    monitoringToggle.onClick = handleMonitoringChange;
+void PianoRollSettingsBar::initialiseSettings() {
+    addAndMakeVisible(settingsButton);
+    settingsButton.setColour(juce::TextButton::ColourIds::buttonColourId, juce::Colour::fromFloatRGBA(0, 0, 0, 0.3f));
+    settingsButton.setColour(juce::TextButton::ColourIds::textColourOffId, juce::Colour::fromFloatRGBA(1, 1, 1, 1));
+    settingsButton.setColour(juce::TextButton::ColourIds::textColourOnId, juce::Colour::fromFloatRGBA(1, 1, 1, 1));
+    settingsButton.setTooltip("Opens settings window.");
+    settingsButton.onClick = handleSettingsClick;
 }
 
 void PianoRollSettingsBar::initialiseInstructions() {
@@ -98,16 +110,16 @@ bool PianoRollSettingsBar::getAbsoluteInfo() const {
     return absoluteInfoToggle.getToggleState();
 }
 
+bool PianoRollSettingsBar::getMonitoring() const {
+    return monitoringToggle.getToggleState();
+}
+
 int PianoRollSettingsBar::getIntervals() const {
     return intervalsComboBox.getSelectedId();
 }
 
 std::vector<Fraction> PianoRollSettingsBar::getCustomIntervals() const {
     return customIntervalsField.getFractions();
-}
-
-bool PianoRollSettingsBar::getMonitoring() const {
-    return monitoringToggle.getToggleState();
 }
 
 void PianoRollSettingsBar::setSnapY(bool snapY, bool sendNotification) {
@@ -117,18 +129,18 @@ void PianoRollSettingsBar::setSnapY(bool snapY, bool sendNotification) {
         snapYToggle.setToggleState(snapY, juce::dontSendNotification);
 }
 
-void PianoRollSettingsBar::setMonitoring(const bool monitoring, bool sendNotification) {
-    if (sendNotification)
-        monitoringToggle.setToggleState(monitoring, juce::sendNotification);
-    else
-        monitoringToggle.setToggleState(monitoring, juce::dontSendNotification);
-}
-
 void PianoRollSettingsBar::setAbsoluteInfo(bool absoluteInfo, bool sendNotification) {
     if (sendNotification)
         absoluteInfoToggle.setToggleState(absoluteInfo, juce::sendNotification);
     else
         absoluteInfoToggle.setToggleState(absoluteInfo, juce::dontSendNotification);
+}
+
+void PianoRollSettingsBar::setMonitoring(const bool monitoring, bool sendNotification) {
+    if (sendNotification)
+        monitoringToggle.setToggleState(monitoring, juce::sendNotification);
+    else
+        monitoringToggle.setToggleState(monitoring, juce::dontSendNotification);
 }
 
 void PianoRollSettingsBar::setIntervals(int id) {
@@ -145,7 +157,7 @@ void PianoRollSettingsBar::mouseMove(const juce::MouseEvent& event) {
 
 void PianoRollSettingsBar::resized() {
     auto bounds = getLocalBounds().reduced(MARGIN);
-    snapYToggle.setBounds(bounds.removeFromLeft(70));
+    snapYToggle.setBounds(bounds.removeFromLeft(75));
     bounds.removeFromLeft(MARGIN);
     absoluteInfoToggle.setBounds(bounds.removeFromLeft(60));
     bounds.removeFromLeft(MARGIN);
@@ -154,6 +166,8 @@ void PianoRollSettingsBar::resized() {
     intervalsComboBox.setBounds(bounds.removeFromLeft(100));
     bounds.removeFromLeft(MARGIN);
     instructionsButton.setBounds(bounds.removeFromRight(20));
+    bounds.removeFromRight(MARGIN);
+    settingsButton.setBounds(bounds.removeFromRight(20));
     bounds.removeFromRight(MARGIN);
     customIntervalsField.setBounds(bounds);
 }

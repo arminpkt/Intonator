@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 // NoteRegion  →  PianoRollState
 // ---------------------------------------------------------------------------
-PianoRollState makeStateFromNoteRegion(const NoteRegion& region)
+PianoRollState PianoRollStateHelpers::makeStateFromNoteRegion(const NoteRegion& region)
 {
     PianoRollState state;
 
@@ -32,7 +32,7 @@ PianoRollState makeStateFromNoteRegion(const NoteRegion& region)
 // ---------------------------------------------------------------------------
 // PianoRollState  →  NoteRegion
 // ---------------------------------------------------------------------------
-NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange)
+NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange)
 {
     NoteRegion region;
 
@@ -50,11 +50,11 @@ NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendR
         ));
     }
 
-    region.calculateMidiMessages(pitchBendRange);
+    region.calculateMidiMessages(pitchBendRange, state.concertPitch);
     return region;
 }
 
-std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var) {
+std::array<int, primes::PrimeCount> PianoRollStateHelpers::makePrimePowersFromVar(juce::var var) {
     juce::String csvString = var.toString();
 
     juce::StringArray parts = juce::StringArray::fromTokens(csvString, ",", "\"");
@@ -66,7 +66,7 @@ std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var) {
     return primePowers;
 }
 
-juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers) {
+juce::var PianoRollStateHelpers::makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers) {
     juce::StringArray stringParts;
     for (auto& val : primePowers)
     {
@@ -77,7 +77,7 @@ juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers
     return {csvString};
 }
 
-juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals)
+juce::String PianoRollStateHelpers::makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals)
 {
     juce::StringArray parts;
     for (const auto& [num, den] : intervals)
@@ -85,7 +85,7 @@ juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& inte
     return parts.joinIntoString(" ");
 }
 
-std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str)
+std::vector<std::pair<int,int>> PianoRollStateHelpers::makeIntervalsFromString(const juce::String& str)
 {
     std::vector<std::pair<int,int>> out;
     auto parts = juce::StringArray::fromTokens(str, " ", "");
@@ -96,4 +96,20 @@ std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str)
             out.emplace_back(sides[0].getIntValue(), sides[1].getIntValue());
     }
     return out;
+}
+
+std::tuple<int, int, int> PianoRollStateHelpers::makeTupleFromColour(const juce::Colour& colour) {
+    return std::make_tuple(
+        colour.getRed(),
+        colour.getGreen(),
+        colour.getBlue()
+        );
+}
+
+juce::Colour PianoRollStateHelpers::makeColourFromTuple(const std::tuple<int, int, int>& tuple) {
+    return juce::Colour::fromRGB(
+        static_cast<juce::uint8>(std::get<0>(tuple)),
+        static_cast<juce::uint8>(std::get<1>(tuple)),
+        static_cast<juce::uint8>(std::get<2>(tuple))
+        );
 }
