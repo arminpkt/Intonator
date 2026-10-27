@@ -38,9 +38,6 @@ class UnTETeredAudioProcessor final : public juce::AudioProcessor,
                                         public juce::ChangeBroadcaster
 {
 public:
-
-    static constexpr double PITCH_BEND_RANGE = 2.0;
-
     //==============================================================================
     UnTETeredAudioProcessor();
     ~UnTETeredAudioProcessor() override;

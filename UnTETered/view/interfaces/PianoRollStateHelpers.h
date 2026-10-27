@@ -8,9 +8,13 @@
 #include "PianoRollState.h"
 #include "../../logic/Monzo.h"
 
-PianoRollState makeStateFromNoteRegion(const NoteRegion& region);
-NoteRegion makeNoteRegionFromState(const PianoRollState& state, float pitchBendRange = 2.0f);
-std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var);
-juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> var);
-juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals);
-std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str);
+namespace PianoRollStateHelpers {
+    PianoRollState makeStateFromNoteRegion(const NoteRegion& region);
+    NoteRegion makeNoteRegionFromState(const PianoRollState& state);
+    std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var);
+    juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> var);
+    juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals);
+    std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str);
+    std::tuple<int, int, int> makeTupleFromColour(const juce::Colour& colour);
+    juce::Colour makeColourFromTuple(const std::tuple<int, int, int>& tuple);
+}

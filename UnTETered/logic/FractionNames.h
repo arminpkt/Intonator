@@ -8,6 +8,22 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 namespace intervalNames {
+    inline juce::String toString(int numerator, int denominator) {
+        if (numerator == 140 && denominator == 23)
+            return "420/69";
+        if (numerator == 23 && denominator == 140)
+            return "69/420";
+        if (numerator == 41 && denominator == 32)
+            return "1312/1024";
+        if (numerator == 32 && denominator == 41)
+            return "1024/1312";
+        if (numerator == 105 && denominator == 64)
+            return "420/256";
+        if (numerator == 64 && denominator == 105)
+            return "256/420";
+        return std::to_string(numerator) + "/" + std::to_string(denominator);
+    }
+
     const std::unordered_map<juce::String, juce::String> NAMES = {
         {"1/1", "unison"},
         {"2/1", "octave"},
@@ -68,7 +84,7 @@ namespace intervalNames {
         {"19/10", "undevicesimal major seventh"},
         {"19/12", "undevicesimal minor sixth"},
         {"19/15", "undevicesimal ditone"},
-        {"19/16", "19th harmonic"},
+        {"19/16", "otonal minor third"},
         {"19/17", "quasi-meantone"},
         {"19/18", "undevicesimal semitone"},
         {"20/9", "small ninth"},
@@ -202,6 +218,7 @@ namespace intervalNames {
         {"68/35", "23/4-tone"},
         {"68/63", "supraminor second"},
         {"68/65", "Valentine semitone"},
+        {"69/64", "sexond"},
         {"72/49", "Arabic lute grave fifth"},
         {"72/55", "undecimal semi-diminished fourth"},
         {"72/59", "Ibn Sina's neutral third"},
@@ -325,6 +342,8 @@ namespace intervalNames {
         {"400/243", "grave major sixth"},
         {"405/256", "wide augmented fifth"},
         {"405/392", "greenwoodma"},
+        {"420/69", "edgelord's nineteenth"},
+        {"420/256", "blazing neutral sixth"},
         {"441/440", "Werckmeister's undecimal septenarian schisma"},
         {"512/343", "3 septatones or septatonic fifth"},
         {"512/375", "double diminished fifth"},
@@ -643,6 +662,7 @@ namespace intervalNames {
         {"44/35", "fwiwismic major third"},
         {"161/128", "just/Pythagorean major third meantone"},
         {"41/32", "octave-reduced 41st harmonic"},
+        {"1312/1024", "anarchist's supermajor third"},
         {"77/60", "swetismic supermajor third"},
         {"31/24", "sensi supermajor third"},
         {"22/17", "septendecimal supermajor third"},

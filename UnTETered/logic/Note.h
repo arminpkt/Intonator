@@ -51,8 +51,10 @@ struct Note {
     }
 
     // Computes cents from closest 12TET note, range -50 to 50.
-    [[nodiscard]] int getCentOffset() const {
-        auto pitch = getPitch();
+    [[nodiscard]] int getCentOffset(float concertPitch = 440) const {
+        auto noteAfterCPCorrection = *this;
+        noteAfterCPCorrection.referenceFrequency *= (440 / concertPitch);
+        auto pitch = noteAfterCPCorrection.getPitch();
         auto rounded = std::round(pitch);
         auto offset = pitch - rounded;
         return static_cast<int>(std::round(offset * 100));
@@ -100,9 +102,6 @@ struct Note {
         double distanceInSemitones = getDistanceInSemitonesFromFrequencies(other.getFrequency(), getFrequency());
         double distanceInOctaves = distanceInSemitones / 12;
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
-        DBG(distanceInSemitones);
-        DBG(distanceInOctaves);
-        DBG(numberOfOctavesToOctavate);
         if (numberOfOctavesToOctavate > 0) {
             int num = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
             *this *= {num, 1};
@@ -130,23 +129,22 @@ struct Note {
         return static_cast<double>(ratio) * referenceFrequency;
     }
 
-    [[nodiscard]] juce::String getNoteName() const {
-        auto pc = getPitchClass();
+    [[nodiscard]] juce::String getNoteName(float concertPitch = 440) const {
+        auto noteAfterCPCorrection = *this;
+        noteAfterCPCorrection.referenceFrequency *= (440 / concertPitch);
+        auto pc = noteAfterCPCorrection.getPitchClass();
         auto index = (pc.getRoundedValue() + 3) % 12;
         return NOTE_NAMES[index];
     }
 
-    [[nodiscard]] juce::String getAbsoluteInfo() const {
-        juce::String noteName = getNoteName();
+    [[nodiscard]] juce::String getAbsoluteInfo(float concertPitch = 440) const {
+        juce::String noteName = getNoteName(concertPitch);
 
-        auto centOffset = getCentOffset();
+        auto centOffset = getCentOffset(concertPitch);
         juce::String connector = centOffset >= 0 ? " + " : " - ";
         juce::String centString = juce::String{std::abs(centOffset)} + "ct";
 
-        auto pitchRounded = std::round(getPitch() * 100)/100;
-        juce::String midiValue = juce::String{pitchRounded};
-
-        return noteName + connector + centString; // + " " + midiValue;
+        return noteName + connector + centString;
     }
 
     bool isFamiliarWith(const Note* note) const {

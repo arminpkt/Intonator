@@ -7,10 +7,10 @@
 #include <vector>
 #include "../../logic/Fraction.h"
 
-const int CUSTOM_INTERVALS_ID = 1;
-const int SEVEN_LIMIT_ID = 2;
+constexpr int STANDARD_ID = 1;
+constexpr int CUSTOM_INTERVALS_ID = 2;
 
-const std::vector<Fraction> SEVEN_LIMIT = {
+const std::vector<Fraction> STANDARD = {
     {1, 1},
     {2, 1},
     {3, 2},
@@ -39,8 +39,8 @@ const std::vector<Fraction> SEVEN_LIMIT = {
 };
 
 inline std::vector<Fraction> getIntervalsByID(const int id) {
-    if (id == SEVEN_LIMIT_ID) {
-        return SEVEN_LIMIT;
+    if (id == STANDARD_ID) {
+        return STANDARD;
     }
     throw std::invalid_argument("invalid interval ID");
 }
