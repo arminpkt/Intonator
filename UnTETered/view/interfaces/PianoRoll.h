@@ -83,6 +83,7 @@ private:
     void drawSettingsBackground(juce::Graphics& g) const;
     void drawInvalidScreen(juce::Graphics& g) const;
     void resized() override;
+    void initialiseVersionLabel();
     float getHueFromYPx(int y) const;
     float getHueFromFreq(double freq) const;
     double getFreqFromYPx(int y) const;
@@ -159,6 +160,7 @@ private:
     Rect getSettingsBarBounds() const;
     Rect getNoteCanvasBounds() const;
     Rect getOrientationBarBounds() const;
+    Rect getVersionLabelBounds() const;
 
     void handleSnapYChanged();
     void handleAbsoluteInfoChanged();
@@ -230,6 +232,8 @@ private:
     juce::ColourGradient gradientBackground;
     float pitchbendRange = 2.f;
     float concertPitch = 440.f;
+
+    juce::Label versionLabel;
 
     float octaveHeightPxF = 200;
     float barWidthPxF = 100;

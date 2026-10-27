@@ -144,6 +144,11 @@ target_link_libraries(UnTETeredAU
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
+
+target_compile_definitions(UnTETered PRIVATE
+        PLUGIN_VERSION="${UnTETered_VERSION}"
+)
+
 # ---- Ableton Remote Script (UnTETeredSync) ---------------------------------
 option(UNTETERED_COPY_REMOTE_SCRIPT
         "Copy the UnTETeredSync Remote Script into Ableton's User Library when building" ON)

@@ -35,6 +35,7 @@ PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
     addAndMakeVisible(settingsBar);
     instructionsWindow.setVisible(false);
     settingsWindow.setVisible(false);
+    initialiseVersionLabel();
     setLookAndFeel(&lookAndFeel);
     startTimerHz(30);
 }
@@ -299,6 +300,16 @@ void PianoRoll::resized() {
     clipMagnification(0, 0);
     clipScreenEdges();
     settingsBar.setBounds(getSettingsBarBounds());
+    versionLabel.setBounds(getVersionLabelBounds());
+}
+
+void PianoRoll::initialiseVersionLabel() {
+    addAndMakeVisible(versionLabel);
+    versionLabel.setText(PLUGIN_VERSION, juce::dontSendNotification);
+    versionLabel.setColour(juce::Label::backgroundColourId, juce::Colour::fromFloatRGBA(0.8f, 0.8f, 0.8f, 0.5f));
+    versionLabel.setColour(juce::Label::outlineColourId, juce::Colour::fromRGBA(0, 0, 0, 0));
+    versionLabel.setColour(juce::Label::textColourId, juce::Colour::fromFloatRGBA(0.2f, 0.2f, 0.2f, 0.5f));
+    versionLabel.setJustificationType(juce::Justification::centred);
 }
 
 Rect PianoRoll::getCanvasBounds() const {
@@ -309,6 +320,7 @@ Rect PianoRoll::getCanvasBounds() const {
 Rect PianoRoll::getSettingsBarBounds() const  { return getLocalBounds().removeFromTop(SETTINGS_BAR_HEIGHT); }
 Rect PianoRoll::getNoteCanvasBounds() const   { auto b = getCanvasBounds(); b.removeFromTop(ORIENTATION_BAR_HEIGHT); return b; }
 Rect PianoRoll::getOrientationBarBounds() const { return getCanvasBounds().removeFromTop(ORIENTATION_BAR_HEIGHT); }
+Rect PianoRoll::getVersionLabelBounds() const { return getCanvasBounds().removeFromBottom(25).removeFromRight(60); }
 
 float PianoRoll::getHueFromYPx(int y) const { return getHueFromFreq(getFreqFromYPx(y)); }
 float PianoRoll::getHueFromFreq(double freq) const {

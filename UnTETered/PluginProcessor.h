@@ -104,6 +104,7 @@ public:
     juce::MidiBuffer midiBuffer;
 
     unTETered::LicenseGuard license;
+    juce::String VERSION = "1.0.0";
 
 private:
     std::unique_ptr<DAWBackend> createDAWBackend();
