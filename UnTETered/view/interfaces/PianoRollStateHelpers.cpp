@@ -50,7 +50,7 @@ NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& 
         ));
     }
 
-    region.calculateMidiMessages(pitchBendRange, state.concertPitch);
+    region.calculateMidiMessages(pitchBendRange);
     return region;
 }
 
