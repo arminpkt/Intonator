@@ -21,7 +21,7 @@ TextInput::TextInput(UnTETeredAudioProcessor& proc) :
 
     addAndMakeVisible(button);
     button.setButtonText("button");
-    button.onClick = [this]{evaluateAndSendMidi();};
+    button.onClick = [this]{evaluateAndSendMidi(440);};
 }
 
 void TextInput::resized() {
@@ -35,12 +35,12 @@ void TextInput::resized() {
     button.setBounds(area.getX(), area.getY(), 2 * FIELD_WIDTH, FIELD_HEIGHT);
 }
 
-void TextInput::evaluateAndSendMidi() {
+void TextInput::evaluateAndSendMidi(float concertPitch) {
     for (size_t i = 0; i < activeNotes.size(); ++i) {
         const Note* note = activeNotes[i].get();
 
         auto noteOff = juce::MidiMessage::noteOff(
-            static_cast<int>(i + 2), note->getRoundedMidiValue());
+            static_cast<int>(i + 2), note->getRoundedMidiValue(concertPitch));
         processor.midiBuffer.addEvent(noteOff, 10);
     }
     std::vector<std::unique_ptr<Note>> nextActiveNotes;
@@ -66,11 +66,11 @@ void TextInput::evaluateAndSendMidi() {
         const Note* note = nextActiveNotes[i].get();
 
         auto noteOn = juce::MidiMessage::noteOn(
-            static_cast<int>(i + 2), note->getRoundedMidiValue(),
+            static_cast<int>(i + 2), note->getRoundedMidiValue(440),
             static_cast<juce::uint8>(100));
         processor.midiBuffer.addEvent(noteOn, 20);
 
-        auto pitchBendValue = note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE);
+        auto pitchBendValue = note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE, 440);
         auto pitchBend = juce::MidiMessage::pitchWheel(
             static_cast<int>(i + 2), pitchBendValue);
         processor.midiBuffer.addEvent(pitchBend, 30);

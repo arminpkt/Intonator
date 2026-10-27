@@ -31,7 +31,14 @@ struct PianoRollState
     float  barLeftScreen     = 0.0f;
 
     bool   snapY             = false;
+    bool   absoluteInfo      = false;
     bool   monitoringEnabled = false;
-    int    intervalsSetting  = SEVEN_LIMIT_ID;
+    int    intervalsSetting  = STANDARD_ID;
     std::vector<std::pair<int,int>> customIntervals;  // num/den pairs, no Fraction include needed
+
+    int    colourScheme      = 1;
+    std::tuple<int, int, int> gradientColour1 = std::make_tuple(255, 0, 255);
+    std::tuple<int, int, int> gradientColour2 = std::make_tuple(0, 255, 255);
+    float  pitchBendRange    = 2.f;
+    float  concertPitch      = 440.f;
 };

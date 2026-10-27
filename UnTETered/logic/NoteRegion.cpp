@@ -27,7 +27,7 @@ void NoteRegion::deleteNote(Note* note) {
         }
 }
 
-void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
+void NoteRegion::calculateMidiMessages(const float pitchBendRange, float concertPitch) {
     midiMessages.clear();
     noteEvents.clear();
     noteEvents.reserve(notes.size());
@@ -35,8 +35,8 @@ void NoteRegion::calculateMidiMessages(const float pitchBendRange) {
     // Build one NoteEvent per note
     for (const auto& note : notes)
     {
-        const int midiNoteNumber = note->getRoundedMidiValue();
-        const int pitchBendValue = note->getPitchBendValue(pitchBendRange);
+        const int midiNoteNumber = note->getRoundedMidiValue(concertPitch);
+        const int pitchBendValue = note->getPitchBendValue(pitchBendRange, concertPitch);
 
         NoteEvent event
         {

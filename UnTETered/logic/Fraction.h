@@ -75,7 +75,7 @@ public:
 
     juce::String toString() const {
         const auto [numerator, denominator] = getNumeratorAndDenominator();
-        return std::to_string(numerator) + "/" + std::to_string(denominator);
+        return intervalNames::toString(numerator, denominator);
     }
 
     std::optional<juce::String> getName() const {

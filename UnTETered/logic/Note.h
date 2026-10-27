@@ -30,29 +30,29 @@ struct Note {
 
 
     // Computes the MIDI value if MIDI were continuous.
-    [[nodiscard]] double getPitch() const {
-        double distanceFromA440 = getDistanceInSemitonesFromFrequencies(440, getFrequency());
-        double pitch = distanceFromA440 + 69;
+    [[nodiscard]] double getPitch(float concertPitch) const {
+        double distanceFromConcertPitch = getDistanceInSemitonesFromFrequencies(concertPitch, getFrequency());
+        double pitch = distanceFromConcertPitch + 69;
         return pitch;
     }
 
     // Computes the continuous pitch class, where A -> 0, Bb -> 1, ...
-    [[nodiscard]] PitchClass getPitchClass() const {
-        double pitch = getPitch();
+    [[nodiscard]] PitchClass getPitchClass(float concertPitch) const {
+        double pitch = getPitch(concertPitch);
         return {pitch};
     }
 
     // Computes the closest MIDI value for this note.
-    [[nodiscard]] int getRoundedMidiValue() const {
-        double roundedMidiValue = std::round(getPitch());
+    [[nodiscard]] int getRoundedMidiValue(float concertPitch) const {
+        double roundedMidiValue = std::round(getPitch(concertPitch));
         if (roundedMidiValue < 0 || roundedMidiValue > 127)
             throw std::out_of_range("note out of midi range");
         return static_cast<int>(roundedMidiValue);
     }
 
     // Computes cents from closest 12TET note, range -50 to 50.
-    [[nodiscard]] int getCentOffset() const {
-        auto pitch = getPitch();
+    [[nodiscard]] int getCentOffset(float concertPitch) const {
+        auto pitch = getPitch(concertPitch);
         auto rounded = std::round(pitch);
         auto offset = pitch - rounded;
         return static_cast<int>(std::round(offset * 100));
@@ -63,8 +63,8 @@ struct Note {
      * @param midiNoteValue     The note from which the offset is calculated
      * @return                  The distance in semitones
      */
-    [[nodiscard]] double getPitchBendInSemitonesWRT(const int midiNoteValue) const {
-        double offsetInSemitones = getPitch() - static_cast<double>(midiNoteValue);
+    [[nodiscard]] double getPitchBendInSemitonesWRT(const int midiNoteValue, float concertPitch) const {
+        double offsetInSemitones = getPitch(concertPitch) - static_cast<double>(midiNoteValue);
         return offsetInSemitones;
     }
 
@@ -72,9 +72,9 @@ struct Note {
      *
      * @param bendRange     The range of the pitchbend in semitones
      */
-    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange) const {
-        int roundedMidiValue = getRoundedMidiValue();
-        return getPitchBendValueWRT(roundedMidiValue, bendRange);
+    [[nodiscard]] juce::uint16 getPitchBendValue(const double bendRange, float concertPitch) const {
+        int roundedMidiValue = getRoundedMidiValue(concertPitch);
+        return getPitchBendValueWRT(roundedMidiValue, bendRange, concertPitch);
     }
 
     /** Computes the pitchbend value to get this note, if it were constructed through pitchbend
@@ -84,8 +84,8 @@ struct Note {
      * @param bendRange         The range of the pitchbend in semitones
      * @return
      */
-    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange) const {
-        double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue);
+    [[nodiscard]] juce::uint16 getPitchBendValueWRT(const int midiNoteValue, const double bendRange, float concertPitch) const {
+        double offsetInSemitones = getPitchBendInSemitonesWRT(midiNoteValue, concertPitch);
         double bendRatio = offsetInSemitones / bendRange;
         double bendValueCont = 8192 + 8192 * bendRatio;
         double roundedBendValue = std::round(bendValueCont);
@@ -112,16 +112,16 @@ struct Note {
         }
     }
 
-    void roundTo12TET() {
-        auto semitonesTo440 = getDistanceInSemitonesFromFrequencies(getFrequency(), 440);
-        auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
+    void roundTo12TET(float concertPitch) {
+        auto semitonesToConcertPitch = getDistanceInSemitonesFromFrequencies(getFrequency(), concertPitch);
+        auto semitonesToClosest12TET = semitonesToConcertPitch - std::round(semitonesToConcertPitch);
         auto factor = std::pow(2, semitonesToClosest12TET / 12);
         referenceFrequency = getFrequency() * factor;
         ratio = {1, 1};
     }
 
-    [[nodiscard]] float getHue() const {
-        auto pitchClass = getPitchClass();
+    [[nodiscard]] float getHue(float concertPitch) const {
+        auto pitchClass = getPitchClass(concertPitch);
         float hue = static_cast<float>(pitchClass.value) / 12.f;
         return hue;
     }
@@ -130,20 +130,20 @@ struct Note {
         return static_cast<double>(ratio) * referenceFrequency;
     }
 
-    [[nodiscard]] juce::String getNoteName() const {
-        auto pc = getPitchClass();
+    [[nodiscard]] juce::String getNoteName(float concertPitch) const {
+        auto pc = getPitchClass(concertPitch);
         auto index = (pc.getRoundedValue() + 3) % 12;
         return NOTE_NAMES[index];
     }
 
-    [[nodiscard]] juce::String getAbsoluteInfo() const {
-        juce::String noteName = getNoteName();
+    [[nodiscard]] juce::String getAbsoluteInfo(float concertPitch) const {
+        juce::String noteName = getNoteName(concertPitch);
 
-        auto centOffset = getCentOffset();
+        auto centOffset = getCentOffset(concertPitch);
         juce::String connector = centOffset >= 0 ? " + " : " - ";
         juce::String centString = juce::String{std::abs(centOffset)} + "ct";
 
-        auto pitchRounded = std::round(getPitch() * 100)/100;
+        auto pitchRounded = std::round(getPitch(concertPitch) * 100)/100;
         juce::String midiValue = juce::String{pitchRounded};
 
         return noteName + connector + centString; // + " " + midiValue;
@@ -188,17 +188,17 @@ struct Note {
         return ratioLog * 12;
     }
 
-    [[nodiscard]] static double getPitchFromFrequency(double frequency) {
-        double semitonesFrom440 = getDistanceInSemitonesFromFrequencies(440, frequency);
-        double pitch = semitonesFrom440 + 69;
+    [[nodiscard]] static double getPitchFromFrequency(double frequency, float concertPitch) {
+        double semitonesFromConcertPitch = getDistanceInSemitonesFromFrequencies(concertPitch, frequency);
+        double pitch = semitonesFromConcertPitch + 69;
         return pitch;
     }
 
-    [[nodiscard]] static double getFrequencyFromPitch(double pitch) {
-        double semitonesFromA440 = pitch - 69;
-        double ratioLog = semitonesFromA440 / 12;
+    [[nodiscard]] static double getFrequencyFromPitch(double pitch, float concertPitch) {
+        double semitonesFromConcertPitch = pitch - 69;
+        double ratioLog = semitonesFromConcertPitch / 12;
         double ratio = std::pow(2, ratioLog);
-        double frequency = ratio * 440;
+        double frequency = ratio * concertPitch;
         return frequency;
     }
 };

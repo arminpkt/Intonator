@@ -30,5 +30,5 @@ private:
     std::vector<std::unique_ptr<Note>> activeNotes;
 
     void resized() override;
-    void evaluateAndSendMidi();
+    void evaluateAndSendMidi(float concertPitch);
 };

@@ -27,7 +27,7 @@ void Util::optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::v
     // vector of pairs of PitchClasses and their indices in as, sorted by PitchClass
     std::vector<std::pair<PitchClass, size_t>> as_pcs(as_ordered.size());
     for (size_t i = 0; i < as_ordered.size(); ++i)
-        as_pcs[i] = std::make_pair(as_ordered[i]->getPitchClass(), i);
+        as_pcs[i] = std::make_pair(as_ordered[i]->getPitchClass(440), i);
     std::sort(as_pcs.begin(), as_pcs.end(),
           [](auto const& a1, auto const& a2) {
               return a1.first < a2.first;
@@ -36,7 +36,7 @@ void Util::optimiseDestinationOrder(const std::vector<Note*>& as_ordered, std::v
     // vector of pairs of PitchClasses and their indices in bs, sorted by PitchClass
     std::vector<std::pair<PitchClass, size_t>> bs_pcs(bs_ordered.size());
     for (size_t i = 0; i < bs_ordered.size(); ++i)
-        bs_pcs[i] = std::make_pair(bs_ordered[i]->getPitchClass(), i);
+        bs_pcs[i] = std::make_pair(bs_ordered[i]->getPitchClass(440), i);
     std::sort(bs_pcs.begin(), bs_pcs.end(),
           [](auto const& b1, auto const& b2) {
               return b1.first < b2.first;

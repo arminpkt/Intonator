@@ -138,7 +138,7 @@ void Grid2D::activateTransition() {
         const Note* note = activeNotes[i];
 
         auto noteOff = juce::MidiMessage::noteOff(
-            static_cast<int>(i + 2), note->getRoundedMidiValue());
+            static_cast<int>(i + 2), note->getRoundedMidiValue(440));
         processor.midiBuffer.addEvent(noteOff, 10);
     }
 
@@ -158,11 +158,11 @@ void Grid2D::activateTransition() {
         const Note* note = nextActiveNotes[i];
 
         auto noteOn = juce::MidiMessage::noteOn(
-            static_cast<int>(i + 2), note->getRoundedMidiValue(),
+            static_cast<int>(i + 2), note->getRoundedMidiValue(440),
             static_cast<juce::uint8>(100));
         processor.midiBuffer.addEvent(noteOn, 20);
 
-        auto pitchBendValue = note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE);
+        auto pitchBendValue = note->getPitchBendValue(UnTETeredAudioProcessor::PITCH_BEND_RANGE, 440);
         auto pitchBend = juce::MidiMessage::pitchWheel(
             static_cast<int>(i + 2), pitchBendValue);
         processor.midiBuffer.addEvent(pitchBend, 30);
@@ -200,7 +200,7 @@ void Grid2D::updateKernel() const {
 }
 
 juce::Colour Grid2D::getColourForNote(Note* note, bool selected) {
-    float hue = note->getHue();
+    float hue = note->getHue(440);
     auto colour = juce::Colour::fromHSV(hue, 0.4f, 0.7f, 1.0f);
     if (selected)
         colour = colour.withBrightness(0.9f).withSaturation(0.25f);

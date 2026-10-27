@@ -269,7 +269,7 @@ void UnTETeredAudioProcessor::rebuildPlaybackSequence()
         const juce::ScopedLock sl(pianoRollStateLock);
         stateCopy = pianoRollState;
     }
-    auto region = makeNoteRegionFromState(stateCopy, PITCH_BEND_RANGE);
+    auto region = PianoRollStateHelpers::makeNoteRegionFromState(stateCopy, PITCH_BEND_RANGE);
     PlaybackSequence newSeq;
     newSeq.messages      = region.midiMessages;
     newSeq.pitchBendRange = PITCH_BEND_RANGE;

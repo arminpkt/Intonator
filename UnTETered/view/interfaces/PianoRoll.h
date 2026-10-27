@@ -4,21 +4,22 @@
 
 #pragma once
 
-#include "InstructionsWindow.h"
+#include "PianoRollInstructionsWindow.h"
 #include "PianoRollSettingsBar.h"
+#include "PianoRollSettingsWindow.h"
 #include "../Types.h"
 #include "../../logic/NoteRegion.h"
 #include "../../PluginProcessor.h"
 #include "../../logic/TimelineHelpers.h"
 
-class PianoRoll : public juce::Component, public juce::Timer, public juce::TooltipClient {
+class PianoRoll : public juce::Component, public juce::Timer, public juce::TooltipClient, public juce::ChangeListener {
 public:
     const float NOTE_HEIGHT_PER_OCTAVE = 7.0f/120.0f;
     const float SCROLL_FACTOR = 60.0f;
     const int SETTINGS_BAR_HEIGHT = 30;
     const int ORIENTATION_BAR_HEIGHT = 15;
-    const double LOWEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(0);
-    const double HIGHEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(127);
+    const double LOWEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(0, 440);
+    const double HIGHEST_ALLOWED_FREQ = Note::getFrequencyFromPitch(127, 440);
     const float HIGHEST_ALLOWED_OCTAVE_HEIGHT = 400;
     const float LOWEST_ALLOWED_BAR_WIDTH = 20;
     const float HIGHEST_ALLOWED_BAR_WIDTH = 800;
@@ -63,6 +64,7 @@ private:
     static void drawText(juce::Graphics& g, const juce::String& text, const Rect& bounds, juce::Colour colour, juce::Justification
                          justification);
     void drawBackground(juce::Graphics& g, const Rect& bounds) const;
+    juce::Colour getBackgroundLineColour(int y) const;
     void drawBarLines(juce::Graphics& g, const Rect& bounds, bool drawSubDivs) const;
     Fraction getSubDivsFraction() const;
     int getNrOfSubDivs() const;
@@ -82,7 +84,7 @@ private:
     void drawInvalidScreen(juce::Graphics& g) const;
     void resized() override;
     float getHueFromYPx(int y) const;
-    static float getHueFromFreq(double freq);
+    float getHueFromFreq(double freq) const;
     double getFreqFromYPx(int y) const;
     double getFreqFromYPxF(float y) const;
     int getYPxFromFreq(double freq) const;
@@ -161,10 +163,20 @@ private:
     void handleSnapYChanged();
     void handleAbsoluteInfoChanged();
     void applyIntervalsSetting();
+    void applyGradientSetting();
     void handleIntervalsChanged();
     void handleCustomIntervalsChanged();
     void handleMonitoringChanged();
+
+    void handleSettingsClicked();
     void handleInstructionsClicked();
+
+    void handleColourSchemeChanged();
+    void handleGradientColourChanged();
+    void handlePitchbendRangeChanged();
+    void handleConcertPitchChanged();
+
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
 
     void timerCallback() override;
 
@@ -194,10 +206,8 @@ private:
     };
 
     void startNotePreview(const Note* note);
-
     void stopAllPreviews();
 
-    bool monitoringSetting = false;
     std::vector<ActivePreview> activePreviews;
     std::unordered_set<Note*> previewedDuringCurrentDrag;
 
@@ -208,10 +218,18 @@ private:
     PianoRollSettingsBar settingsBar;
     bool snapYSetting = false;
     bool absoluteInfoSetting = false;
-
+    bool monitoringSetting = false;
     int intervalsSetting = 1;
     std::vector<Fraction> intervals;
     std::vector<Fraction> customIntervals;
+
+    PianoRollSettingsWindow settingsWindow;
+    int colourSchemeSetting = 1;
+    juce::Colour gradientColour1;
+    juce::Colour gradientColour2;
+    juce::ColourGradient gradientBackground;
+    float pitchbendRange = 2.f;
+    float concertPitch = 440.f;
 
     float octaveHeightPxF = 200;
     float barWidthPxF = 100;
@@ -256,13 +274,12 @@ private:
 
     juce::TooltipWindow tooltipWindow{ this };
     juce::LookAndFeel_V4 lookAndFeel{};
-    void initialiseTooltipWindow();
     juce::String getTooltip() override;
     void setTooltipColours();
     static juce::String getIntervalTooltipText(Fraction& interval);
-    static void logNote(const Note* note);
+    void logNote(const Note* note) const;
 
-    InstructionsWindow instructionsWindow;
+    PianoRollInstructionsWindow instructionsWindow;
 
     bool isLoadingState = false;
 };
