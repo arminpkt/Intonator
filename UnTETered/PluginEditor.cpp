@@ -12,7 +12,6 @@ UnTETeredAudioProcessorEditor::UnTETeredAudioProcessorEditor (UnTETeredAudioProc
     if (activationOverlay != nullptr)
     {
         addChildComponent (*activationOverlay);
-        activationOverlay->setVisible (! processorRef.license.isLicensed());
     }
 
     setResizeLimits(200, 200, 20000, 20000);

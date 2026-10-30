@@ -12,7 +12,7 @@ else()
 endif()
 
 juce_add_plugin(UnTETered
-        VERSION 0.0.1
+        VERSION ${PROJECT_VERSION}
         # ICON_BIG ...
         # ICON_SMALL ...
         COMPANY_NAME UnTETered
@@ -22,25 +22,25 @@ juce_add_plugin(UnTETered
         IS_MIDI_EFFECT FALSE
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE
         COPY_PLUGIN_AFTER_BUILD ${_copy_after_build}
-        PLUGIN_MANUFACTURER_CODE ACVV
-        PLUGIN_CODE Into
+        PLUGIN_MANUFACTURER_CODE NTET
+        PLUGIN_CODE Ntet
 
         FORMATS VST3 Standalone
         PRODUCT_NAME "UnTETered")
 
 juce_add_plugin(UnTETeredAU
-        VERSION 0.0.1
+        VERSION ${PROJECT_VERSION}
         # ICON_BIG ...
         # ICON_SMALL ...
-        COMPANY_NAME ACV
+        COMPANY_NAME UnTETered
         IS_SYNTH FALSE
         NEEDS_MIDI_INPUT TRUE
         NEEDS_MIDI_OUTPUT TRUE
         IS_MIDI_EFFECT TRUE
         # EDITOR_WANTS_KEYBOARD_FOCUS TRUE/FALSE
         COPY_PLUGIN_AFTER_BUILD TRUE
-        PLUGIN_MANUFACTURER_CODE ACVV
-        PLUGIN_CODE UnAU
+        PLUGIN_MANUFACTURER_CODE NTET
+        PLUGIN_CODE NtAU
 
         FORMATS AU
         PRODUCT_NAME "UnTETered")
@@ -143,11 +143,6 @@ target_link_libraries(UnTETeredAU
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
-
-
-target_compile_definitions(UnTETered PRIVATE
-        PLUGIN_VERSION="${UnTETered_VERSION}"
-)
 
 # ---- Ableton Remote Script (UnTETeredSync) ---------------------------------
 option(UNTETERED_COPY_REMOTE_SCRIPT

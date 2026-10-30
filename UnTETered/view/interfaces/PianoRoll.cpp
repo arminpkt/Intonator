@@ -305,7 +305,7 @@ void PianoRoll::resized() {
 
 void PianoRoll::initialiseVersionLabel() {
     addAndMakeVisible(versionLabel);
-    versionLabel.setText(PLUGIN_VERSION, juce::dontSendNotification);
+    versionLabel.setText(JucePlugin_VersionString, juce::dontSendNotification);
     versionLabel.setColour(juce::Label::backgroundColourId, juce::Colour::fromFloatRGBA(0.8f, 0.8f, 0.8f, 0.5f));
     versionLabel.setColour(juce::Label::outlineColourId, juce::Colour::fromRGBA(0, 0, 0, 0));
     versionLabel.setColour(juce::Label::textColourId, juce::Colour::fromFloatRGBA(0.2f, 0.2f, 0.2f, 0.5f));
