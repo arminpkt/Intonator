@@ -81,7 +81,7 @@ juce::ValueTree PianoRollStateSerialiser::toValueTree(const PianoRollState& stat
     tree.setProperty(PianoRollStateIds::absoluteInfo,      state.absoluteInfo, nullptr);
     tree.setProperty(PianoRollStateIds::monitoringEnabled, state.monitoringEnabled, nullptr);
     tree.setProperty(PianoRollStateIds::intervalsSetting,  state.intervalsSetting, nullptr);
-    tree.setProperty(PianoRollStateIds::customIntervals,   PianoRollStateHelpers::makeStringFromIntervals(state.customIntervals), nullptr);
+    // tree.setProperty(PianoRollStateIds::customIntervals,   PianoRollStateHelpers::makeStringFromIntervals(state.customIntervals), nullptr);
 
     return tree;
 }
@@ -138,8 +138,8 @@ PianoRollState PianoRollStateSerialiser::fromValueTree(const juce::ValueTree& tr
     state.intervalsSetting  = (int)  tree.getProperty(PianoRollStateIds::intervalsSetting, false);
 
     juce::String ratiosStr  = tree.getProperty(PianoRollStateIds::customIntervals, "").toString();
-    if (ratiosStr.isNotEmpty())
-        state.customIntervals = PianoRollStateHelpers::makeIntervalsFromString(ratiosStr);
+    // if (ratiosStr.isNotEmpty())
+    //     state.customIntervals = PianoRollStateHelpers::makeIntervalsFromString(ratiosStr);
 
     return state;
 }

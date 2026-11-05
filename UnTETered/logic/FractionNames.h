@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <juce_audio_processors/juce_audio_processors.h>
 
-namespace intervalNames {
+namespace fractionNames {
     inline juce::String toString(int numerator, int denominator) {
         if (numerator == 140 && denominator == 23)
             return "420/69";

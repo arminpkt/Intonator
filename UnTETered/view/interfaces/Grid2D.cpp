@@ -312,7 +312,7 @@ Note* Grid2D::getNoteFromKernel(const Point& cellKernel, bool reset = false) {
     if (reset || !kernel[y][x]) {
         const Point cellGrid = getCellGridFromKernel(cellKernel);
         const Fraction ratioToRef = (intervalHorizontal ^ cellGrid.x) * (intervalVertical ^ cellGrid.y);
-        kernel[y][x] = std::make_unique<Note>(refFreq, ratioToRef, 1, 0, 0);
+        kernel[y][x] = std::make_unique<Note>(refFreq, ratioToRef, 0, 0);
     }
 
     return kernel[y][x].get();

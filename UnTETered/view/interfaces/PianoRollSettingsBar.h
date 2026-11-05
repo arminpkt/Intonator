@@ -6,7 +6,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-#include "FractionsField.h"
+#include "IntervalsField.h"
 
 class PianoRollSettingsBar : public juce::Component {
 public:
@@ -27,13 +27,13 @@ public:
     bool getAbsoluteInfo() const;
     bool getMonitoring() const;
     int getIntervals() const;
-    std::vector<Fraction> getCustomIntervals() const;
+    std::vector<Interval> getCustomIntervals() const;
 
     void setSnapY(bool snapY, bool sendNotification = false);
     void setAbsoluteInfo(bool absoluteInfo, bool sendNotification = false);
     void setMonitoring(bool monitoring, bool sendNotification = false);
     void setIntervals(int id);
-    void setCustomIntervals(const std::vector<Fraction>& fractions);
+    void setCustomIntervals(const std::vector<Interval>& intervals);
 
     void setCustomIntervalsVisibility(bool visible);
 
@@ -44,7 +44,7 @@ private:
     juce::ToggleButton absoluteInfoToggle {"info"};
     juce::ToggleButton monitoringToggle { "monitor" };
     juce::ComboBox intervalsComboBox;
-    FractionsField customIntervalsField;
+    IntervalsField customIntervalsField;
     juce::TextButton settingsButton { juce::String::fromUTF8(u8"⚙") };
     juce::TextButton instructionsButton { "?" };
 

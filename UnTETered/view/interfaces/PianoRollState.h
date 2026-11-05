@@ -11,13 +11,12 @@
 #include "../../logic/Monzo.h"
 
 
-// Every drawable note in the piano roll is a child of exactly one matriarch.
 struct StoredPianoNote
 {
     double ref            = 0.0;
     float  start          = 0.0f;
     float  end            = 0.0f;
-    std::array<int, primes::PrimeCount> primePowers{};
+    std::array<int, Primes::PrimeCount> primePowers{};
     double irratio        = 1.0;
 };
 
@@ -34,7 +33,7 @@ struct PianoRollState
     bool   absoluteInfo      = false;
     bool   monitoringEnabled = false;
     int    intervalsSetting  = STANDARD_ID;
-    std::vector<std::pair<int,int>> customIntervals;  // num/den pairs, no Fraction include needed
+    std::vector<std::string> customIntervals;  // num/den pairs, no Fraction include needed
 
     int    colourScheme      = 1;
     std::tuple<int, int, int> gradientColour1 = std::make_tuple(255, 0, 255);

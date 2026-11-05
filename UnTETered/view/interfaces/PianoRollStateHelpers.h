@@ -11,8 +11,8 @@
 namespace PianoRollStateHelpers {
     PianoRollState makeStateFromNoteRegion(const NoteRegion& region);
     NoteRegion makeNoteRegionFromState(const PianoRollState& state);
-    std::array<int, primes::PrimeCount> makePrimePowersFromVar(juce::var var);
-    juce::var makeVarFromPrimePowers(std::array<int, primes::PrimeCount> var);
+    std::array<int, Primes::PrimeCount> makePrimePowersFromVar(juce::var var);
+    juce::var makeVarFromPrimePowers(std::array<int, Primes::PrimeCount> var);
     juce::String makeStringFromIntervals(const std::vector<std::pair<int,int>>& intervals);
     std::vector<std::pair<int,int>> makeIntervalsFromString(const juce::String& str);
     std::tuple<int, int, int> makeTupleFromColour(const juce::Colour& colour);

@@ -70,7 +70,7 @@ private:
     int getNrOfSubDivs() const;
     void drawNotes(juce::Graphics& g) const;
     void drawIntervals(juce::Graphics& g) const;
-    juce::Colour getIntervalColour(Fraction interval) const;
+    juce::Colour getIntervalColour(Interval interval) const;
     std::tuple<juce::Colour, juce::Colour, juce::Colour> getNoteColours(Note* note, bool highlight = true) const;
     juce::String getNoteText(const Note* note, std::optional<std::vector<int>> intRatios) const;
     void drawRectDragged(juce::Graphics& g) const;
@@ -96,12 +96,12 @@ private:
     int getBarFloorFromXPx(int px, bool ignoreBarLeft = false) const;
     int getXPxFromBar(float bar) const;
     Note* getNoteAt(Point px);
-    std::optional<Fraction> getIntervalAt(Point px) const;
-    std::optional<Fraction> getClosestInterval(Point px);
+    std::optional<Interval> getIntervalAt(Point px) const;
+    std::optional<Interval> getClosestInterval(Point px);
     Rect getNoteBounds(const Note* note) const;
     int getNoteHeight() const;
-    std::optional<Rect> getIntervalBounds(Fraction ratio) const;
-    std::optional<std::tuple<double, Fraction, double>> getReferenceRefFreqRatioIrratio() const;
+    std::optional<Rect> getIntervalBounds(Interval ratio) const;
+    std::optional<std::pair<double, Interval>> getReferenceRefFreqInterval() const;
     std::vector<double> getIntervalFrequencies(Note* note) const;
     void selectNote(Note* note, Point clickedPos, bool invertIfSelected = false);
     std::optional<size_t> indexOfSelection(const Note* note) const;
@@ -125,7 +125,7 @@ private:
     void moveExtendShrinkHorizontally(int dX) const;
     void moveVertically(Point currentPos, Point mouseDownPos);
     void moveVerticallyFreely(double freqFactor);
-    void moveVerticallyRelativeToReference(const Fraction& interval) const;
+    void moveVerticallyRelativeToReference(const Interval& iv) const;
     void mouseUp(const juce::MouseEvent& _) override;
     void mouseWheelMove(const juce::MouseEvent& _, const juce::MouseWheelDetails& wheel) override;
     void scroll(PointF deltaXY);
@@ -145,7 +145,7 @@ private:
     void setAbsoluteInfo(bool absoluteInfo);
     void roundTo12TET();
     void addNoteWithoutReference(double frequency, float start, float end);
-    void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end);
+    void addNoteWithRefFreq(double refFreq, const Interval& interval, float start, float end);
     void deleteNote(Note* note, bool pushState = true);
     void deleteSelection();
     void copySelectionToClipboard();
@@ -222,8 +222,8 @@ private:
     bool absoluteInfoSetting = false;
     bool monitoringSetting = false;
     int intervalsSetting = 1;
-    std::vector<Fraction> intervals;
-    std::vector<Fraction> customIntervals;
+    std::vector<Interval> intervals;
+    std::vector<Interval> customIntervals;
 
     PianoRollSettingsWindow settingsWindow;
     int colourSchemeSetting = 1;
@@ -254,10 +254,9 @@ private:
     float blinkPhase = 0.0f;
 
     std::vector<Note*> notesSelected;
-    std::optional<std::tuple<double, Fraction, double>> customReference;
     Note* lockedNoteReference{};
     Note* noteHighlighted{};
-    std::optional<Fraction> intervalHighlighted;
+    std::optional<Interval> intervalHighlighted;
     int dragStartOffsetPx{};
     std::vector<std::pair<float, float>> selectedNotesStartsEnds;
     std::vector<double> selectedNotesRefFreqs;
@@ -281,7 +280,7 @@ private:
     juce::LookAndFeel_V4 lookAndFeel{};
     juce::String getTooltip() override;
     void setTooltipColours();
-    static juce::String getIntervalTooltipText(Fraction& interval);
+    static juce::String getIntervalTooltipText(Interval& interval);
     void logNote(const Note* note) const;
 
     PianoRollInstructionsWindow instructionsWindow;

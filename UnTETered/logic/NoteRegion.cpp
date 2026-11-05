@@ -6,17 +6,25 @@
 #include <algorithm>
 
 void NoteRegion::addNoteWithoutReference(double frequency, float start, float end) {
-    addNoteWithRefFreq(frequency, {1, 1}, 1, start, end);
+    addNoteWithRefFreq(frequency, Interval{1, 1}, start, end);
 }
 
-void NoteRegion::addNoteWithRefNote(Note* reference, Fraction ratio, double irratio, float start, float end) {
-    Fraction ratioTotal = ratio * reference->ratio;
-    double irratioTotal = irratio * reference->irratio;
-    addNoteWithRefFreq(reference->referenceFrequency, ratioTotal, irratioTotal, start, end);
+void NoteRegion::addNoteWithRefNote(const Note* reference, const Fraction& ratio, float start, float end) {
+    Interval interval = reference->interval * ratio;
+    addNoteWithRefFreq(reference->referenceFrequency, interval, start, end);
 }
 
-void NoteRegion::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end) {
-    notes.push_back(std::make_unique<Note>(refFreq, ratio, irratio, start, end));
+void NoteRegion::addNoteWithRefFreq(double refFreq, const Fraction& ratio, double start, double end) {
+    notes.push_back(std::make_unique<Note>(refFreq, ratio, start, end));
+}
+
+void NoteRegion::addNoteWithRefNote(const Note* reference, const Interval& iv, float start, float end) {
+    Interval interval = reference->interval * iv;
+    addNoteWithRefFreq(reference->referenceFrequency, interval, start, end);
+}
+
+void NoteRegion::addNoteWithRefFreq(double refFreq, const Interval& iv, double start, double end) {
+    notes.push_back(std::make_unique<Note>(refFreq, iv, start, end));
 }
 
 void NoteRegion::deleteNote(Note* note) {

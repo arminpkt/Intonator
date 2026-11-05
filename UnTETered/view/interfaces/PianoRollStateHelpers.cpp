@@ -20,8 +20,7 @@ PianoRollState PianoRollStateHelpers::makeStateFromNoteRegion(const NoteRegion& 
         sn.ref       = notePtr->referenceFrequency;
         sn.start     = notePtr->start;
         sn.end       = notePtr->end;
-        sn.primePowers = notePtr->ratio.getMonzo().primePowers;
-        sn.irratio   = notePtr->irratio;
+        // sn.primePowers = notePtr->interval.fronzo.primePowers;
 
         state.notes.push_back(sn);
     }
@@ -44,7 +43,6 @@ NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& 
         region.notes.push_back(std::make_unique<Note>(
             sn.ref,
             ratio,
-            sn.irratio,
             sn.start,
             sn.end
         ));
@@ -54,11 +52,11 @@ NoteRegion PianoRollStateHelpers::makeNoteRegionFromState(const PianoRollState& 
     return region;
 }
 
-std::array<int, primes::PrimeCount> PianoRollStateHelpers::makePrimePowersFromVar(juce::var var) {
+std::array<int, Primes::PrimeCount> PianoRollStateHelpers::makePrimePowersFromVar(juce::var var) {
     juce::String csvString = var.toString();
 
     juce::StringArray parts = juce::StringArray::fromTokens(csvString, ",", "\"");
-    std::array<int, primes::PrimeCount> primePowers{};
+    std::array<int, Primes::PrimeCount> primePowers{};
 
     for (int i = 0; i < parts.size(); ++i)
         primePowers[static_cast<size_t>(i)] = parts[i].getIntValue();
@@ -66,7 +64,7 @@ std::array<int, primes::PrimeCount> PianoRollStateHelpers::makePrimePowersFromVa
     return primePowers;
 }
 
-juce::var PianoRollStateHelpers::makeVarFromPrimePowers(std::array<int, primes::PrimeCount> primePowers) {
+juce::var PianoRollStateHelpers::makeVarFromPrimePowers(std::array<int, Primes::PrimeCount> primePowers) {
     juce::StringArray stringParts;
     for (auto& val : primePowers)
     {

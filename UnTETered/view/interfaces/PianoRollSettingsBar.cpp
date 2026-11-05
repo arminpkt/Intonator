@@ -118,8 +118,8 @@ int PianoRollSettingsBar::getIntervals() const {
     return intervalsComboBox.getSelectedId();
 }
 
-std::vector<Fraction> PianoRollSettingsBar::getCustomIntervals() const {
-    return customIntervalsField.getFractions();
+std::vector<Interval> PianoRollSettingsBar::getCustomIntervals() const {
+    return customIntervalsField.getIntervals();
 }
 
 void PianoRollSettingsBar::setSnapY(bool snapY, bool sendNotification) {
@@ -147,8 +147,8 @@ void PianoRollSettingsBar::setIntervals(int id) {
     intervalsComboBox.setSelectedId(id, juce::dontSendNotification);
 }
 
-void PianoRollSettingsBar::setCustomIntervals(const std::vector<Fraction>& fractions) {
-    customIntervalsField.setFractions(fractions);
+void PianoRollSettingsBar::setCustomIntervals(const std::vector<Interval>& intervals) {
+    customIntervalsField.setIntervals(intervals);
 }
 
 void PianoRollSettingsBar::mouseMove(const juce::MouseEvent& event) {

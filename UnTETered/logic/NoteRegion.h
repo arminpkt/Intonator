@@ -26,8 +26,10 @@ public:
     std::vector<juce::MidiMessage> midiMessages;
 
     void addNoteWithoutReference(double frequency, float start, float end);
-    void addNoteWithRefNote(Note* reference, Fraction ratio, double irratio, float start, float end);
-    void addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, double start, double end);
+    void addNoteWithRefNote(const Note* reference, const Fraction& ratio, float start, float end);
+    void addNoteWithRefFreq(double refFreq, const Fraction& ratio, double start, double end);
+    void addNoteWithRefNote(const Note* reference, const Interval& iv, float start, float end);
+    void addNoteWithRefFreq(double refFreq, const Interval& iv, double start, double end);
     void deleteNote(Note* note);
     void calculateMidiMessages(float pitchBendRange); // not const!
 

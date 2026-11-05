@@ -11,6 +11,7 @@
 #include "IntervalPresets.h"
 #include "../../logic/util.h"
 #include "../../CrashLog.h"
+#include "../../logic/Interval.h"
 
 PianoRoll::PianoRoll(UnTETeredAudioProcessor& proc)
     : processor(proc),
@@ -152,7 +153,7 @@ void PianoRoll::drawIntervals(juce::Graphics& g) const {
     }
 }
 
-juce::Colour PianoRoll::getIntervalColour(Fraction interval) const {
+juce::Colour PianoRoll::getIntervalColour(Interval interval) const {
     auto intervalColour = (intervalHighlighted && interval == intervalHighlighted.value())
                           ? INTERVAL_BODY_COLOUR.brighter() : INTERVAL_BODY_COLOUR;
     if (interval.isOctavial())
@@ -193,7 +194,7 @@ juce::String PianoRoll::getNoteText(const Note* note, std::optional<std::vector<
         return "";
 
     if (lockedNoteReference && note->isFamiliarWith(lockedNoteReference))
-        return (note->ratio / lockedNoteReference->ratio).toString();
+        return (note->interval / lockedNoteReference->interval).toString();
 
     auto i = indexOfSelection(note);
     if (i && !lockedNoteReference && intRatios && intRatios.value().size() > 1)
@@ -324,7 +325,7 @@ Rect PianoRoll::getVersionLabelBounds() const { return getCanvasBounds().removeF
 
 float PianoRoll::getHueFromYPx(int y) const { return getHueFromFreq(getFreqFromYPx(y)); }
 float PianoRoll::getHueFromFreq(double freq) const {
-    Note note{freq, {1, 1}, 1, 0, 0};
+    Note note{freq, {1, 1}, 0, 0};
     return note.getHue();
 }
 double PianoRoll::getFreqFromYPx(int y) const { return getFreqFromYPxF(static_cast<float>(y)); }
@@ -394,7 +395,7 @@ Note* PianoRoll::getNoteAt(Point px) {
     return nullptr;
 }
 
-std::optional<Fraction> PianoRoll::getIntervalAt(Point px) const {
+std::optional<Interval> PianoRoll::getIntervalAt(Point px) const {
     if (!lockedNoteReference) return std::nullopt;
     for (auto& ratio : intervals) {
         auto boundsOpt = getIntervalBounds(ratio);
@@ -404,12 +405,12 @@ std::optional<Fraction> PianoRoll::getIntervalAt(Point px) const {
     return std::nullopt;
 }
 
-std::optional<Fraction> PianoRoll::getClosestInterval(Point px) {
+std::optional<Interval> PianoRoll::getClosestInterval(Point px) {
     if (!lockedNoteReference)
         return std::nullopt;
 
     int smallestDistance = std::numeric_limits<int>::max();
-    std::optional<Fraction> closestInterval{};
+    std::optional<Interval> closestInterval{};
     for (auto& interval : intervals) {
         auto bounds = getIntervalBounds(interval).value();
         auto distance = std::abs(px.getY() - bounds.getCentreY());
@@ -437,7 +438,7 @@ int PianoRoll::getNoteHeight() const {
     return static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
 }
 
-std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
+std::optional<Rect> PianoRoll::getIntervalBounds(Interval ratio) const {
     if (!lockedNoteReference) return std::nullopt;
     auto [t, l, b, r, w, h] = Util::getTLBRWH(getNoteCanvasBounds());
     int noteH = static_cast<int>(NOTE_HEIGHT_PER_OCTAVE * octaveHeightPxF);
@@ -445,13 +446,12 @@ std::optional<Rect> PianoRoll::getIntervalBounds(Fraction ratio) const {
     return Rect{l, y, r, noteH};
 }
 
-std::optional<std::tuple<double, Fraction, double>> PianoRoll::getReferenceRefFreqRatioIrratio() const {
+std::optional<std::pair<double, Interval>> PianoRoll::getReferenceRefFreqInterval() const {
     if (!lockedNoteReference)
         return std::nullopt;
-    return std::make_tuple(
+    return std::make_pair(
         lockedNoteReference->referenceFrequency,
-        lockedNoteReference->ratio,
-        lockedNoteReference->irratio
+        lockedNoteReference->interval
         );
 }
 
@@ -763,8 +763,8 @@ void PianoRoll::handleDoubleClick(const Point px) {
     }
 
     if (auto closestInterval = getClosestInterval(px)) {
-        auto [refFreq, ratio, irratio] = getReferenceRefFreqRatioIrratio().value();
-        addNoteWithRefFreq(refFreq, ratio * closestInterval.value(), irratio, barSub, barSub + newNoteLength);
+        auto [refFreq, ratio] = getReferenceRefFreqInterval().value();
+        addNoteWithRefFreq(refFreq, ratio * closestInterval.value(), barSub, barSub + newNoteLength);
         return;
     }
 
@@ -886,27 +886,23 @@ void PianoRoll::moveVerticallyFreely(double freqFactor) {
     }
 }
 
-void PianoRoll::moveVerticallyRelativeToReference(const Fraction& interval) const {
+void PianoRoll::moveVerticallyRelativeToReference(const Interval& iv) const {
     auto refFreq   = lockedNoteReference->referenceFrequency;
-    auto ratio    = lockedNoteReference->ratio;
-    auto irratio   = lockedNoteReference->irratio;
-    double refFreqFactor = refFreq / noteClicked->referenceFrequency;
-    Fraction ratioFactor = ratio   / noteClicked->ratio;
-    double irratioFactor = irratio / noteClicked->irratio;
+    auto interval        = lockedNoteReference->interval;
+    double refFreqFactor = refFreq  / noteClicked->referenceFrequency;
+    Interval ratioFactor = interval / noteClicked->interval;
 
     for (auto* note : notesSelected) {
         Note copy = *note;
         copy.referenceFrequency *= refFreqFactor;
-        copy.ratio = copy.ratio * ratioFactor * interval;
-        copy.irratio *= irratioFactor;
+        copy.interval = copy.interval * ratioFactor * iv;
         if (copy.getFrequency() > HIGHEST_ALLOWED_FREQ || copy.getFrequency() < LOWEST_ALLOWED_FREQ)
             return;
     }
 
     for (auto* note : notesSelected) {
         note->referenceFrequency *= refFreqFactor;
-        note->ratio = note->ratio * ratioFactor * interval;
-        note->irratio *= irratioFactor;
+        note->interval = note->interval * ratioFactor * interval;
     }
 }
 
@@ -935,13 +931,13 @@ bool PianoRoll::keyPressed(const juce::KeyPress& key) {
 
     if (code == static_cast<size_t>(juce::KeyPress::upKey) && key.getModifiers().isAltDown()) {
         pushUndoSnapshot();
-        for (auto* n : notesSelected) n->ratio = n->ratio * 2;
+        for (auto* n : notesSelected) n->interval = n->interval * 2;
         pushNoteStateToProcessor();
         return true;
     }
     if (code == static_cast<size_t>(juce::KeyPress::downKey) && key.getModifiers().isAltDown()) {
         pushUndoSnapshot();
-        for (auto* n : notesSelected) n->ratio = n->ratio / 2;
+        for (auto* n : notesSelected) n->interval = n->interval / 2;
         pushNoteStateToProcessor();
         return true;
     }
@@ -1007,10 +1003,10 @@ void PianoRoll::addNoteWithoutReference(double frequency, float start, float end
         startNotePreview(noteRegion.notes.back().get());
 }
 
-void PianoRoll::addNoteWithRefFreq(double refFreq, Fraction ratio, double irratio, float start, float end) {
+void PianoRoll::addNoteWithRefFreq(double refFreq, const Interval& interval, float start, float end) {
     CrashLog::LOG_SCOPE();
     pushUndoSnapshot();
-    noteRegion.addNoteWithRefFreq(refFreq, ratio, irratio, start, end);
+    noteRegion.addNoteWithRefFreq(refFreq, interval, start, end);
     logNote(noteRegion.notes.back().get());
     pushNoteStateToProcessor();
     if (!noteRegion.notes.empty())
@@ -1051,7 +1047,7 @@ void PianoRoll::copySelectionToClipboard() {
     clipboard.clear();
     for (const auto* note : notesSelected)
         clipboard.push_back(std::make_unique<Note>(
-            note->referenceFrequency, note->ratio, note->irratio, note->start, note->end));
+            note->referenceFrequency, note->interval, note->start, note->end));
 }
 
 void PianoRoll::cutSelection() {
@@ -1078,7 +1074,7 @@ void PianoRoll::pasteClipboard() {
     for (const auto& n : clipboard) {
         float start = pasteCursorBarPos + n->start - earliestStart;
         float end   = start + n->end - n->start;
-        noteRegion.addNoteWithRefFreq(n->referenceFrequency, n->ratio, n->irratio, start, end);
+        noteRegion.addNoteWithRefFreq(n->referenceFrequency, n->interval, start, end);
         notesSelected.push_back(noteRegion.notes.back().get());
     }
 
@@ -1104,7 +1100,7 @@ void PianoRoll::duplicate() {
     for (const auto* n : originalSelection) {
         float start = latestEnd + n->start - earliestStart;
         float end   = start + n->end - n->start;
-        noteRegion.addNoteWithRefFreq(n->referenceFrequency, n->ratio, n->irratio, start, end);
+        noteRegion.addNoteWithRefFreq(n->referenceFrequency, n->interval, start, end);
     }
 
     notesSelected.clear();
@@ -1291,8 +1287,8 @@ void PianoRoll::pullStateFromProcessorAndRebuild() {
 
     customIntervals.clear();
     if (!state.customIntervals.empty()) {
-        for (const auto& [num, den] : state.customIntervals)
-            customIntervals.emplace_back( num, den );
+        for (const auto& s : state.customIntervals)
+            customIntervals.push_back(Interval::fromString(s).value());
     }
     else
         customIntervals = STANDARD;
@@ -1330,10 +1326,10 @@ void PianoRoll::pushNoteStateToProcessor() const {
     state.absoluteInfo      = absoluteInfoSetting;
     state.monitoringEnabled = monitoringSetting;
     state.intervalsSetting  = intervalsSetting;
-    state.customIntervals.clear();
-    for (const auto& f : customIntervals) {
-        auto [num, den] = f.getNumeratorAndDenominator();
-        state.customIntervals.emplace_back(num, den);
+    state.customIntervals   = {};
+    for (const auto& iv : customIntervals) {
+        auto s = iv.toString();
+        state.customIntervals.push_back(s.toStdString());
     }
 
     state.colourScheme      = colourSchemeSetting;
@@ -1446,7 +1442,7 @@ juce::String PianoRoll::getTooltip() {
     if (noteHighlighted) {
         auto tooltipText = noteHighlighted->getAbsoluteInfo(concertPitch);
         if (lockedNoteReference && noteHighlighted->isFamiliarWith(lockedNoteReference)) {
-            auto interval = noteHighlighted->ratio / lockedNoteReference->ratio;
+            auto interval = noteHighlighted->interval / lockedNoteReference->interval;
             tooltipText += ":   " + getIntervalTooltipText(interval);
         }
 
@@ -1459,7 +1455,7 @@ juce::String PianoRoll::getTooltip() {
     return {};
 }
 
-juce::String PianoRoll::getIntervalTooltipText(Fraction& interval) {
+juce::String PianoRoll::getIntervalTooltipText(Interval& interval) {
     auto tooltipText = interval.toString() + " (";
     if (auto name = interval.getName())
         tooltipText += name.value() + ", ";

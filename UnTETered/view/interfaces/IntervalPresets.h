@@ -5,12 +5,12 @@
 #pragma once
 
 #include <vector>
-#include "../../logic/Fraction.h"
+#include "../../logic/Interval.h"
 
 constexpr int STANDARD_ID = 1;
 constexpr int CUSTOM_INTERVALS_ID = 2;
 
-const std::vector<Fraction> STANDARD = {
+const std::vector<Interval> STANDARD = {
     {1, 1},
     {2, 1},
     {3, 2},
@@ -38,7 +38,7 @@ const std::vector<Fraction> STANDARD = {
     {8, 15}
 };
 
-inline std::vector<Fraction> getIntervalsByID(const int id) {
+inline std::vector<Interval> getIntervalsByID(const int id) {
     if (id == STANDARD_ID) {
         return STANDARD;
     }

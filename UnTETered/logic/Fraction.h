@@ -14,11 +14,15 @@ private:
 
 public:
     Fraction(const int numerator, const int denominator) : monzo(numerator, denominator) {}
+    Fraction(const int numerator) : Fraction(numerator, 1) {}
     explicit Fraction(const Monzo m) : monzo(m) {}
 
     static std::optional<Fraction> fromString(const juce::String& text) {
         auto trimmed = text.trim();
         auto parts = juce::StringArray::fromTokens(trimmed, "/", "");
+
+        if (parts.size() == 1)
+            parts.add("1");
 
         if (parts.size() != 2)
             return std::nullopt;
@@ -73,17 +77,53 @@ public:
         return static_cast<double>(*this);
     }
 
+    static std::pair<std::vector<int>, Fraction> getIntRatiosAndScalingFactor(std::vector<Fraction> fractions) {
+        Monzo scalingFactor{1, 1};
+
+        for (size_t i = 0; i < Primes::PrimeCount; ++i) {
+            int smallestPower = getSmallestPowerAtIndex(fractions, i);
+            addToPowersAtIndex(fractions, -smallestPower, i);
+            scalingFactor.primePowers[i] = -smallestPower;
+        }
+
+        std::vector<int> intRatios;
+        intRatios.reserve(fractions.size());
+        for (const auto& fraction : fractions)
+            intRatios.push_back(fraction.getNumeratorAndDenominator().first);
+
+        return std::make_pair(intRatios, Fraction(scalingFactor));
+    }
+
+    static std::vector<int> getIntRatios(const std::vector<Fraction>& fractions) {
+        return getIntRatiosAndScalingFactor(fractions).first;
+    }
+
+    static int getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t i) {
+        int smallestPower = std::numeric_limits<int>::max();
+        for (const auto& fraction : fractions)
+            if (const int primePower = fraction.getMonzo().primePowers[i]; primePower < smallestPower)
+                smallestPower = primePower;
+        return smallestPower;
+    }
+
+    static void addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t index) {
+        Fraction toMultiply = Fraction{Primes::Primes[index], 1} ^ increment;
+        for (auto& fraction : fractions) {
+            fraction = fraction * toMultiply;
+        }
+    }
+
     juce::String toString() const {
         const auto [numerator, denominator] = getNumeratorAndDenominator();
-        return intervalNames::toString(numerator, denominator);
+        return fractionNames::toString(numerator, denominator);
     }
 
     std::optional<juce::String> getName() const {
         if (isContractive())
             return reciprocal().getName();
 
-        if (intervalNames::NAMES.count(toString()))
-            return intervalNames::NAMES.at(toString());
+        if (fractionNames::NAMES.count(toString()))
+            return fractionNames::NAMES.at(toString());
 
         Fraction copy = *this;
         int nrOfOctaves = 0;
@@ -91,8 +131,8 @@ public:
             copy = copy / 2;
             nrOfOctaves++;
         }
-        if (intervalNames::NAMES.count(copy.toString())) {
-            auto reducedName = intervalNames::NAMES.at(copy.toString());
+        if (fractionNames::NAMES.count(copy.toString())) {
+            auto reducedName = fractionNames::NAMES.at(copy.toString());
             if (reducedName.equalsIgnoreCase("octave"))
                 return juce::String(nrOfOctaves + 1) + " octaves";
             juce::String name = reducedName + " +" + juce::String(nrOfOctaves) + "oct";
@@ -136,21 +176,19 @@ public:
         return monzo;
     }
 
-    double getSizeInSemitones() const {
-        double ratioLog = std::log2(toDouble());
-        return ratioLog * 12;
-    }
-
-    int getSizeInCents() const {
-        return static_cast<int>(std::round(getSizeInSemitones() * 100));
-    }
-
     bool isExpansive() const {
         return toDouble() > 1;
     }
 
     bool isContractive() const {
         return toDouble() < 1;
+    }
+
+    bool isInteger() const {
+        for (size_t i = 0; i < monzo.primePowers.size(); ++i)
+            if (monzo.primePowers[i] < 0)
+                return false;
+        return true;
     }
 
     bool isOctavial() const {

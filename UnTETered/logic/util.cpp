@@ -102,36 +102,12 @@ std::optional<std::vector<int>> Util::getIntRatios(const std::vector<Note*>& not
     std::vector<Fraction> ratios{};
     ratios.reserve(notes.size());
     for (auto& note : notes)
-        ratios.push_back(note->ratio);
+        if (auto f = note->interval.asFraction())
+            ratios.push_back(f.value());
+        else
+            return std::nullopt;
 
-    return getIntRatios(ratios);
-}
-
-std::vector<int> Util::getIntRatios(std::vector<Fraction> fractions) {
-    for (size_t i = 0; i < primes::PrimeCount; ++i) {
-        int smallestPower = getSmallestPowerAtIndex(fractions, i);
-        addToPowersAtIndex(fractions, -smallestPower, i);
-    }
-    std::vector<int> intRatios;
-    intRatios.reserve(fractions.size());
-    for (const auto& fraction : fractions)
-        intRatios.push_back(fraction.getNumeratorAndDenominator().first);
-    return intRatios;
-}
-
-int Util::getSmallestPowerAtIndex(const std::vector<Fraction>& fractions, const size_t i) {
-    int smallestPower = std::numeric_limits<int>::max();
-    for (const auto& fraction : fractions)
-        if (const int primePower = fraction.getMonzo().primePowers[i]; primePower < smallestPower)
-            smallestPower = primePower;
-    return smallestPower;
-}
-
-void Util::addToPowersAtIndex(std::vector<Fraction>& fractions, int increment, size_t index) {
-    Fraction toMultiply = Fraction{primes::Primes[index], 1} ^ increment;
-    for (auto& fraction : fractions) {
-        fraction = fraction * toMultiply;
-    }
+    return Fraction::getIntRatios(ratios);
 }
 
 std::tuple<int, int, int, int, int, int> Util::getTLBRWH(Rect r) {
@@ -160,19 +136,21 @@ std::tuple<float, float, float, float, float, float> Util::getTLBRWH(RectF r) {
     };
 }
 
-std::vector<Fraction> Util::expandIntervals(const std::vector<Fraction>& intervals) {
-    std::vector<Fraction> expanded;
+std::vector<Interval> Util::expandIntervals(const std::vector<Interval>& intervals) {
+    std::vector<Interval> expanded;
     for (auto interval : intervals) {
-        expanded.push_back(interval);
+        DBG(interval.toString());
         if (interval.isExpansive()) {
             while ((interval / 2).isExpansive())
                 interval = interval / 2;
+            expanded.push_back(interval);
             for (int i = 2; i <= 2048; i *= 2)
                 expanded.push_back(interval * i);
         }
         if (interval.isContractive()) {
             while ((interval * 2).isContractive())
                 interval = interval * 2;
+            expanded.push_back(interval);
             for (int i = 2; i <= 2048; i *= 2)
                 expanded.push_back(interval / i);
         }

@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <juce_audio_processors/juce_audio_processors.h>
 
-#include "Fraction.h"
+#include "Interval.h"
 #include "PitchClass.h"
 
 
@@ -20,13 +20,12 @@ const juce::String NOTE_NAMES[] = {
 struct Note {
     double referenceFrequency;
 
-    Fraction ratio;
-    double irratio;
+    Interval interval;
     float start;
     float end;
 
-    Note(const double ref, Fraction r, double i, const float s, const float e)
-        : referenceFrequency(ref), ratio(r), irratio(i), start(s), end(e) {}
+    Note(const double ref, Interval iv, const float s, const float e)
+        : referenceFrequency(ref), interval(iv), start(s), end(e) {}
 
 
     // Computes the MIDI value if MIDI were continuous.
@@ -104,10 +103,10 @@ struct Note {
         int numberOfOctavesToOctavate = -static_cast<int>(std::round(distanceInOctaves));
         if (numberOfOctavesToOctavate > 0) {
             int num = static_cast<int>(std::pow(2, numberOfOctavesToOctavate));
-            *this *= {num, 1};
+            *this *= Interval{num, 1};
         } else {
             int den = static_cast<int>(std::pow(2, -numberOfOctavesToOctavate));
-            *this *= {1, den};
+            *this *= Interval{1, den};
         }
     }
 
@@ -116,7 +115,7 @@ struct Note {
         auto semitonesToClosest12TET = semitonesTo440 - std::round(semitonesTo440);
         auto factor = std::pow(2, semitonesToClosest12TET / 12);
         referenceFrequency = getFrequency() * factor;
-        ratio = {1, 1};
+        interval = {1, 1};
     }
 
     [[nodiscard]] float getHue() const {
@@ -126,7 +125,7 @@ struct Note {
     }
 
     [[nodiscard]] double getFrequency() const {
-        return static_cast<double>(ratio) * referenceFrequency;
+        return static_cast<double>(interval) * referenceFrequency;
     }
 
     [[nodiscard]] juce::String getNoteName(float concertPitch = 440) const {
@@ -156,19 +155,19 @@ struct Note {
     }
 
     Note& operator*=(const Fraction& f) {
-        ratio = ratio * f;
+        interval = interval * f;
         return *this;
     }
     Note& operator/=(const Fraction& f) {
-        ratio = ratio / f;
+        interval = interval * f.reciprocal();
         return *this;
     }
-    Note& operator*=(const double& i) {
-        irratio *= i;
+    Note& operator*=(const Interval& iv) {
+        interval = interval * iv;
         return *this;
     }
-    Note& operator/=(const double& i) {
-        irratio /= i;
+    Note& operator/=(const Interval& iv) {
+        interval = interval * iv.reciprocal();
         return *this;
     }
     Note& operator*=(const int& i) {
