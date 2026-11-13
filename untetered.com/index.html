@@ -7,8 +7,6 @@
     <title>UnTETered</title>
     <meta name="description"
         content="An MPE piano roll for just intonation. Every note is an exact ratio, and every note in a chord can be tuned on its own.">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <style>
         * {
             box-sizing: border-box;
@@ -119,6 +117,35 @@
             border: 0
         }
 
+        .play {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            background: #000;
+            color: #fff;
+            font: inherit;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px
+        }
+
+        .play b {
+            font-size: clamp(48px, 8vw, 96px);
+            line-height: 1
+        }
+
+        .play small {
+            font-size: 14px;
+            opacity: .7;
+            max-width: 44ch;
+            text-align: center
+        }
+
         .join {
             display: inline-block;
             margin-top: 24px;
@@ -133,7 +160,20 @@
         footer {
             font-size: 16px;
             display: flex;
+            flex-wrap: wrap;
+            gap: 8px 20px;
             justify-content: space-between
+        }
+
+        footer nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 20px
+        }
+
+        .note {
+            font-size: 16px;
+            margin-top: 12px
         }
 
         @media(max-width:700px) {
@@ -198,6 +238,7 @@
                 option.</p>
             <a class=join href="https://untetered.moonbase.sh/download/untetered" target=_blank rel=noopener>Download
                 the beta &rarr;</a>
+            <p class=note>By downloading and using UnTETered you agree to the <a href="eula.html">License Agreement</a>.</p>
         </div>
         <div class=step>
         <p>Join the community on Discord for installation help, bug reports and feature requests,
@@ -210,25 +251,35 @@
             opens.</p>
         -->
     </div>
-    <footer><span>UnTETered</span><a class=discord href="#">Discord</a></footer>
+    <footer><span>UnTETered</span>
+        <nav><a class=discord href="#">Discord</a><a href="privacy.html">Privacy</a><a href="eula.html">EULA</a><a href="refunds.html">Refunds</a><a href="imprint.html">Imprint</a><a href="mailto:info@untetered.com">Contact</a></nav>
+    </footer>
 
     <script>
         // ===== Paste your links here =====
         const YOUTUBE_URL = "https://youtu.be/FnOb8e-QtQI";
-        const DISCORD_URL = "https://discord.gg/RHbEfQdGS";
+        const DISCORD_URL = "https://discord.gg/r9GnSxf5MC";
         // =================================
 
         (function () {
             const m = YOUTUBE_URL.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([\w-]{11})/);
             const video = document.getElementById("video");
             if (m) {
-                const f = document.createElement("iframe");
-                f.src = "https://www.youtube-nocookie.com/embed/" + m[1] + "?rel=0";
-                f.title = "UnTETered demo";
-                f.loading = "lazy";
-                f.allow = "accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen";
-                f.allowFullscreen = true;
-                video.querySelector(".frame").appendChild(f);
+                // Click-to-load: nothing is requested from YouTube until the visitor clicks.
+                const frame = video.querySelector(".frame");
+                const btn = document.createElement("button");
+                btn.className = "play";
+                btn.type = "button";
+                btn.innerHTML = "<b>&#9654;</b><small>Play the demo video. Clicking loads it from YouTube (youtube-nocookie.com), see our privacy policy.</small>";
+                btn.addEventListener("click", function () {
+                    const f = document.createElement("iframe");
+                    f.src = "https://www.youtube-nocookie.com/embed/" + m[1] + "?rel=0&autoplay=1";
+                    f.title = "UnTETered demo";
+                    f.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+                    f.allowFullscreen = true;
+                    frame.replaceChildren(f);
+                });
+                frame.appendChild(btn);
             } else {
                 video.remove();
             }
