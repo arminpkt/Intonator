@@ -4,6 +4,7 @@
 #include "PluginEditor.h"
 #include "DAWbackends/AbletonBackend.h"
 #include "DAWbackends/LogicBackend.h"
+#include "DAWbackends/BackendLog.h"
 
 //==============================================================================
 UnTETeredAudioProcessor::UnTETeredAudioProcessor()
@@ -80,8 +81,26 @@ void UnTETeredAudioProcessor::changeProgramName(int index, const juce::String& n
 }
 
 //==============================================================================
-void UnTETeredAudioProcessor::prepareToPlay(double /*sampleRate*/, int /*samplesPerBlock*/) {}
-void UnTETeredAudioProcessor::releaseResources() {}
+void UnTETeredAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+{
+    // DEBUG (hanging notes in Logic): remove before release
+    BACKEND_LOG("prepareToPlay sr=" << sampleRate << " block=" << samplesPerBlock
+                << " host=" << juce::PluginHostType().getHostDescription()
+                << " wrapper=" << juce::AudioProcessor::getWrapperTypeDescription(wrapperType)
+                << " nonRealtime=" << (int) isNonRealtime());
+}
+
+void UnTETeredAudioProcessor::releaseResources()
+{
+    BACKEND_LOG("releaseResources()"); // DEBUG
+}
+
+void UnTETeredAudioProcessor::reset()
+{
+    // DEBUG: Logic calls this (AU Reset) on stop/seek. Possibly from a non-audio thread,
+    // so only log here, don't touch activeNotes.
+    BACKEND_LOG("reset()");
+}
 
 bool UnTETeredAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
 {
@@ -114,9 +133,34 @@ void UnTETeredAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer,
 
     auto* playHead = getPlayHead();
     if (playHead == nullptr)
+    {
+        if (!dbgLoggedNoPlayhead) { BACKEND_LOG("processBlock: no playhead"); dbgLoggedNoPlayhead = true; } // DEBUG
         return;
+    }
+    dbgLoggedNoPlayhead = false;
 
     setTransportStateFromHost(playHead);
+
+    // DEBUG (hanging notes in Logic): log transport transitions + first blocks after stop
+    {
+        const bool dbgPlaying = transportState.isPlaying.load(std::memory_order_relaxed);
+        if (dbgPlaying != dbgLastPlaying)
+        {
+            BACKEND_LOG("transport " << (dbgPlaying ? "PLAY" : "STOP")
+                        << " ppq=" << transportState.ppqPosition.load(std::memory_order_relaxed)
+                        << " block=" << buffer.getNumSamples()
+                        << " activeNotes=" << (int) activeNotes.size());
+            dbgLastPlaying     = dbgPlaying;
+            dbgBlocksAfterStop = 0;
+        }
+        else if (!dbgPlaying && dbgBlocksAfterStop < 5)
+        {
+            ++dbgBlocksAfterStop;
+            BACKEND_LOG("  block while stopped #" << dbgBlocksAfterStop
+                        << " size=" << buffer.getNumSamples()
+                        << " activeNotes=" << (int) activeNotes.size());
+        }
+    }
     playMidi(midiMessages, buffer.getNumSamples());
 
     const bool licensed = license.isLicensed();
@@ -271,6 +315,13 @@ void UnTETeredAudioProcessor::setTransportStateFromHost(juce::AudioPlayHead* ph)
             transportState.numerator.store(sig->numerator, std::memory_order_relaxed);
             transportState.denominator.store(sig->denominator, std::memory_order_relaxed);
         }
+        dbgLoggedNoPosition = false;
+    }
+    else if (!dbgLoggedNoPosition) // DEBUG: if this fires after stop, isPlaying stays stuck on true
+    {
+        BACKEND_LOG("getPosition() returned nothing, isPlaying stays "
+                    << (int) transportState.isPlaying.load(std::memory_order_relaxed));
+        dbgLoggedNoPosition = true;
     }
     transportState.sampleRate.store(getSampleRate(), std::memory_order_relaxed);
 }
@@ -296,6 +347,9 @@ void UnTETeredAudioProcessor::rebuildPlaybackSequence()
 
 void UnTETeredAudioProcessor::flushActiveNotes(juce::MidiBuffer& midiMessages)
 {
+    if (!activeNotes.empty()) // DEBUG
+        BACKEND_LOG("flush " << (int) activeNotes.size() << " notes -> noteOff at sample 0");
+
     for (const auto& [channel, noteNumber] : activeNotes)
         midiMessages.addEvent(juce::MidiMessage::noteOff(channel, noteNumber), 0);
     activeNotes.clear();
@@ -330,7 +384,10 @@ void UnTETeredAudioProcessor::playMidi(juce::MidiBuffer& midiMessages, int numSa
     const bool positionJumpedBack = (lastExpectedBar >= 0.0)
                                  && (startBar < lastExpectedBar - 0.5 * blockBars);
     if (positionJumpedBack)
+    {
+        BACKEND_LOG("position jumped back: startBar=" << startBar << " expected=" << lastExpectedBar); // DEBUG
         flushActiveNotes(midiMessages);
+    }
 
     lastExpectedBar = endBar;
 

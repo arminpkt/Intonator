@@ -45,6 +45,7 @@ public:
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override;
+    void reset() override; // DEBUG logging only for now
 
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
 
@@ -115,6 +116,12 @@ private:
 
     std::set<std::pair<int, int>> activeNotes; // pair<channel, note>
     double lastExpectedBar = -1.0;
+
+    // DEBUG (hanging notes in Logic): remove before release
+    bool dbgLastPlaying      = false;
+    int  dbgBlocksAfterStop  = 0;
+    bool dbgLoggedNoPlayhead = false;
+    bool dbgLoggedNoPosition = false;
 
     mutable juce::CriticalSection gridStateLock;
     GridState gridState;
